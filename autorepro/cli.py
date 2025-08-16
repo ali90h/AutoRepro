@@ -62,29 +62,18 @@ def cmd_scan() -> int:
     return 0
 
 
-def main():
-    """Main entry point for the autorepro CLI."""
+def main() -> int:
     parser = create_parser()
-
-    # If no arguments provided, show help and exit with code 0
-    if len(sys.argv) == 1:
-        parser.print_help()
-        return 0
-
-    # Parse arguments
     try:
         args = parser.parse_args()
     except SystemExit as e:
-        # argparse calls sys.exit() for -h/--help, we want to return the code
-        return e.code if e.code is not None else 0
+        return int(e.code) if e.code is not None else 0
 
-    # Handle subcommands
     if args.command == "scan":
         return cmd_scan()
-    else:
-        # No valid subcommand provided
-        parser.print_help()
-        return 0
+
+    parser.print_help()
+    return 0
 
 
 if __name__ == "__main__":
