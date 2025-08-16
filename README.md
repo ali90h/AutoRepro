@@ -60,7 +60,7 @@ pytest -v
 ```
 autorepro/
 ├── README.md              # This file
-├── LICENSE                # MIT License
+├── LICENSE                # Apache-2.0
 ├── pyproject.toml         # Package configuration
 ├── autorepro/             # Main package
 │   ├── __init__.py
