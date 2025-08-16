@@ -219,4 +219,59 @@ ERROR: No matching distribution found for types-pkg-resources
 
 ---
 
+### Scan Command Implementation (August 16, 2025)
+**Status**: 🔧 Patch Proposed
+**Feature**: Implement `autorepro scan` command with detection reasons
+
+#### Implementation Overview:
+Created a complete language detection system that identifies technologies based on file patterns and provides explicit reasons for each detection.
+
+#### New Files Created:
+- **`autorepro/detect.py`**: Core detection logic with `detect_languages()` API
+- **`tests/test_detect.py`**: Comprehensive tests for detection logic (10 test cases)
+- **`tests/test_scan_cli.py`**: CLI integration tests (6 test cases)
+
+#### Modified Files:
+- **`autorepro/cli.py`**: Added subcommand support and `scan` command implementation
+- **`README.md`**: Updated with scan command documentation and examples
+
+#### API Design:
+```python
+def detect_languages(path: str) -> List[Tuple[str, List[str]]]
+```
+- **Pure function**: No side effects, returns structured data
+- **Deterministic ordering**: Languages and reasons sorted alphabetically
+- **Root-only scanning**: Non-recursive directory scanning
+- **Mixed pattern support**: Both exact filenames and glob patterns
+
+#### Supported Languages:
+- **Python**: `pyproject.toml`, `setup.py`, `requirements.txt`, `*.py`
+- **Node.js**: `package.json`, `yarn.lock`, `pnpm-lock.yaml`, `npm-shrinkwrap.json`
+- **Go**: `go.mod`, `go.sum`, `*.go`
+- **Rust**: `Cargo.toml`, `Cargo.lock`, `*.rs`
+- **Java**: `pom.xml`, `build.gradle`, `*.java`
+- **C#**: `*.csproj`, `*.sln`, `*.cs`
+
+#### CLI Output Format:
+```bash
+$ autorepro scan
+Detected: node, python
+- node  -> package.json, pnpm-lock.yaml
+- python  -> pyproject.toml, requirements.txt
+```
+
+#### Technical Decisions:
+- **Alphabetical ordering**: Ensures deterministic, predictable output
+- **Exact vs glob patterns**: Handles both `pyproject.toml` (exact) and `*.py` (glob) patterns
+- **Basename collection**: For globs, collects actual matched filenames, not patterns
+- **Pure function design**: Detection logic is testable and reusable
+- **Comprehensive testing**: 16 total test cases covering edge cases and CLI integration
+
+#### Branch Strategy:
+- **Target branch**: `feat/scan-reasons`
+- **Feature scope**: Complete scan command implementation
+- **Testing coverage**: Unit tests for detection logic + CLI integration tests
+
+---
+
 *This report is updated after each major development milestone.*
