@@ -26,9 +26,7 @@ For more information, visit: https://github.com/ali90h/AutoRepro
         """.strip(),
     )
 
-    parser.add_argument(
-        "--version", action="version", version=f"%(prog)s {__version__}"
-    )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
 
     return parser
 

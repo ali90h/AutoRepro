@@ -80,9 +80,7 @@ class TestCLIIntegration:
             text=True,
         )
         assert result.returncode == 0
-        assert (
-            "autorepro" in result.stdout.lower() or "autorepro" in result.stderr.lower()
-        )
+        assert "autorepro" in result.stdout.lower() or "autorepro" in result.stderr.lower()
 
         # Test --help flag
         result = subprocess.run(
@@ -91,9 +89,7 @@ class TestCLIIntegration:
             text=True,
         )
         assert result.returncode == 0
-        assert (
-            "autorepro" in result.stdout.lower() or "autorepro" in result.stderr.lower()
-        )
+        assert "autorepro" in result.stdout.lower() or "autorepro" in result.stderr.lower()
 
     def test_cli_no_args_via_subprocess(self):
         """Test CLI without arguments using subprocess."""
@@ -101,9 +97,7 @@ class TestCLIIntegration:
             [sys.executable, "-m", "autorepro.cli"], capture_output=True, text=True
         )
         assert result.returncode == 0
-        assert (
-            "autorepro" in result.stdout.lower() or "autorepro" in result.stderr.lower()
-        )
+        assert "autorepro" in result.stdout.lower() or "autorepro" in result.stderr.lower()
 
     def test_cli_version_via_subprocess(self):
         """Test CLI version flag using subprocess."""
