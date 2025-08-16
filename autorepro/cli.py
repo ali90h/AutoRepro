@@ -4,41 +4,47 @@
 import argparse
 import sys
 
+from autorepro import __version__
+
 
 def create_parser():
     """Create and configure the argument parser."""
     parser = argparse.ArgumentParser(
         prog="autorepro",
-        description="CLI for AutoRepro - transforms issue descriptions into clear repro steps and shareable workspaces",
+        description="CLI for AutoRepro - transforms issues into repro steps",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-AutoRepro automatically detects repository technologies, generates ready-made devcontainers,
-and writes prioritized repro plans with explicit assumptions.
+AutoRepro automatically detects repository technologies, generates ready-made
+devcontainers, and writes prioritized repro plans with explicit assumptions.
 
 MVP commands (coming soon):
   scan    Detect languages/frameworks from file pointers
-  init    Create an installer devcontainer  
+  init    Create a developer container
   plan    Derive execution plan from issue description
 
 For more information, visit: https://github.com/ali90h/AutoRepro
-        """.strip()
+        """.strip(),
     )
-    
+
+    parser.add_argument(
+        "--version", action="version", version=f"%(prog)s {__version__}"
+    )
+
     return parser
 
 
 def main():
     """Main entry point for the autorepro CLI."""
     parser = create_parser()
-    
+
     # If no arguments provided, show help and exit with code 0
     if len(sys.argv) == 1:
         parser.print_help()
         return 0
-    
+
     # Parse arguments
     try:
-        args = parser.parse_args()
+        parser.parse_args()
         # Since we only support help at this stage, this shouldn't be reached
         # unless -h/--help was used, which argparse handles automatically
         parser.print_help()
