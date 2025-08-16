@@ -10,10 +10,10 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "Apache-2.0"}
 authors = [
-    {name = "Ali", email = "ali@example.com"}
+    {name = "Ali Nazzal", email = "ali90h7@pm.me"}
 ]
 maintainers = [
-    {name = "Ali", email = "ali@example.com"}
+    {name = "Ali Nazzal", email = "ali90h7@pm.me"}
 ]
 keywords = ["developer-tools", "reproduction", "devcontainer", "automation", "testing", "ci-cd"]
 classifiers = [
