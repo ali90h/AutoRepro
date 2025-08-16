@@ -75,8 +75,7 @@ class TestCLIIntegration:
         result = subprocess.run(
             [sys.executable, '-m', 'autorepro.cli', '-h'],
             capture_output=True,
-            text=True,
-            cwd='/Users/ali/autorepro'
+            text=True
         )
         assert result.returncode == 0
         assert 'autorepro' in result.stdout.lower() or 'autorepro' in result.stderr.lower()
@@ -85,8 +84,7 @@ class TestCLIIntegration:
         result = subprocess.run(
             [sys.executable, '-m', 'autorepro.cli', '--help'],
             capture_output=True,
-            text=True,
-            cwd='/Users/ali/autorepro'
+            text=True
         )
         assert result.returncode == 0
         assert 'autorepro' in result.stdout.lower() or 'autorepro' in result.stderr.lower()
@@ -96,8 +94,7 @@ class TestCLIIntegration:
         result = subprocess.run(
             [sys.executable, '-m', 'autorepro.cli'],
             capture_output=True,
-            text=True,
-            cwd='/Users/ali/autorepro'
+            text=True
         )
         assert result.returncode == 0
         assert 'autorepro' in result.stdout.lower() or 'autorepro' in result.stderr.lower()
