@@ -278,5 +278,16 @@ Detected: node, python
 
 ---
 
+### Documentation Tweaks Applied (August 16, 2025)
+**Status**: ✅ Completed
+**Branch**: `feat/scan-reasons`
+**Commits**: 3 focused commits (README status fix, detect.py MVP comment, report relocation note)
+**CI Status**: ✅ In progress - https://github.com/ali90h/AutoRepro/actions/runs/17004248793
+
+#### Changes Applied:
+1. **README.md**: Added scan status line and "Known limitations (MVP)" section
+2. **detect.py**: Added MVP limitation comment about source-file globs
+3. **report.md**: Added relocation note for pr.md file organization
+
 ### File Organization Notes
 **Note**: The original `pr.md` file containing the PR description has been relocated to the project root for better GitHub integration and visibility during pull request workflows.

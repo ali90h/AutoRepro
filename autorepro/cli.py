@@ -67,7 +67,8 @@ def main() -> int:
     try:
         args = parser.parse_args()
     except SystemExit as e:
-        return int(e.code) if e.code is not None else 0
+        code = e.code
+        return code if isinstance(code, int) else (0 if code is None else 2)
 
     if args.command == "scan":
         return cmd_scan()
