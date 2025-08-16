@@ -60,6 +60,8 @@ $ autorepro scan
 No known languages detected.
 ```
 
+**Status:** `scan` is implemented and prints per-language detection reasons (deterministic order; root-only).
+
 **Scan Behavior:**
 - **Root-only**: Scans only the current directory (non-recursive)
 - **Deterministic ordering**: Languages and reasons are sorted alphabetically
@@ -72,6 +74,10 @@ No known languages detected.
 - **Node.js**: `package.json`, `yarn.lock`, `pnpm-lock.yaml`, `npm-shrinkwrap.json`
 - **Python**: `pyproject.toml`, `setup.py`, `requirements.txt`, `*.py`
 - **Rust**: `Cargo.toml`, `Cargo.lock`, `*.rs`
+
+**Known limitations (MVP):**
+- Source-file globs (e.g., `*.py`, `*.go`) may cause false positives in sparse repos; prefer root indicators (config/lockfiles).
+- Future direction: weight/score reasons and down-rank raw source globs in favor of strong root indicators (tracked on the roadmap).
 
 ## Development
 
