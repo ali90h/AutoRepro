@@ -46,14 +46,14 @@ autorepro scan
 
 ### Scan Command
 
-The `scan` command detects languages and frameworks in the current directory by analyzing file patterns:
+Detects repo languages and prints the reasons (marker files).
 
 ```bash
 # Example output when multiple languages are detected
 $ autorepro scan
 Detected: node, python
-- node  -> package.json, pnpm-lock.yaml
-- python  -> pyproject.toml, requirements.txt
+- node  -> package.json
+- python  -> pyproject.toml
 
 # Example output when no languages are detected
 $ autorepro scan
