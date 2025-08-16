@@ -6,7 +6,7 @@ AutoRepro is a developer tools project that transforms issue descriptions into c
 
 The current MVP scope includes three core commands:
 - **scan**: Detect languages/frameworks from file pointers
-- **init**: Create an installer devcontainer  
+- **init**: devcontainer  
 - **plan**: Derive an execution plan from issue description (no execution)
 
 The project targets multilingualism (initially Python/JS/Go) and emphasizes simplicity, transparency, and automated testing. The ultimate goal is to produce tests that automatically fail and open Draft PRs containing them, improving contribution quality and speeding up maintenance on GitHub.
