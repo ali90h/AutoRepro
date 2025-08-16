@@ -4,6 +4,7 @@ import glob
 import os
 
 # Language detection patterns: language -> list of file patterns
+# MVP limitation: source-file globs may cause false positives in sparse repos
 LANGUAGE_PATTERNS = {
     "csharp": ["*.csproj", "*.sln", "*.cs"],
     "go": ["go.mod", "go.sum", "*.go"],
