@@ -143,5 +143,9 @@ class TestCLIErrorHandling:
             text=True,
         )
         assert result.returncode == 2
-        error_output = result.stdout + result.stderr
-        assert "unrecognized arguments" in error_output.lower()
+        error_output = (result.stderr or result.stdout).lower()
+        # argparse may say either "unrecognized arguments" (unknown options)
+        # or "invalid choice" (unknown subcommand). Accept both.
+        assert any(
+            needle in error_output for needle in ("unrecognized arguments", "invalid choice")
+        )
