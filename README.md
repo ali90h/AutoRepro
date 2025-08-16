@@ -5,9 +5,9 @@ AutoRepro is a developer tools project that transforms issue descriptions into c
 ## Features
 
 The current MVP scope includes three core commands:
-- **scan**: Detect languages/frameworks from file pointers
-- **init**: devcontainer
-- **plan**: Derive an execution plan from issue description (no execution)
+- **scan**: Detect languages/frameworks from file pointers (✅ implemented)
+- **init**: devcontainer (coming soon)
+- **plan**: Derive an execution plan from issue description (coming soon)
 
 The project targets multilingualism (initially Python/JS/Go) and emphasizes simplicity, transparency, and automated testing. The ultimate goal is to produce tests that automatically fail and open Draft PRs containing them, improving contribution quality and speeding up maintenance on GitHub.
 
@@ -39,9 +39,45 @@ The project targets multilingualism (initially Python/JS/Go) and emphasizes simp
 ```bash
 # Display help and available commands
 autorepro --help
+
+# Scan current directory for language/framework indicators
+autorepro scan
 ```
 
-Currently, AutoRepro is in early development and supports only the help interface. The MVP commands (scan, init, plan) are coming soon.
+### Scan Command
+
+Detects repo languages and prints the reasons (marker files).
+
+```bash
+# Example output when multiple languages are detected
+$ autorepro scan
+Detected: node, python
+- node  -> package.json
+- python  -> pyproject.toml
+
+# Example output when no languages are detected
+$ autorepro scan
+No known languages detected.
+```
+
+**Status:** `scan` is implemented and prints per-language detection reasons (deterministic order; root-only).
+
+**Scan Behavior:**
+- **Root-only**: Scans only the current directory (non-recursive)
+- **Deterministic ordering**: Languages and reasons are sorted alphabetically
+- **Detection patterns**: Uses both exact filenames and glob patterns to identify technologies
+
+**Supported Languages:**
+- **C#**: `*.csproj`, `*.sln`, `*.cs`
+- **Go**: `go.mod`, `go.sum`, `*.go`
+- **Java**: `pom.xml`, `build.gradle`, `*.java`
+- **Node.js**: `package.json`, `yarn.lock`, `pnpm-lock.yaml`, `npm-shrinkwrap.json`
+- **Python**: `pyproject.toml`, `setup.py`, `requirements.txt`, `*.py`
+- **Rust**: `Cargo.toml`, `Cargo.lock`, `*.rs`
+
+**Known limitations (MVP):**
+- Source-file globs (e.g., `*.py`, `*.go`) may cause false positives in sparse repos; prefer root indicators (config/lockfiles).
+- Future direction: weight/score reasons and down-rank raw source globs in favor of strong root indicators (tracked on the roadmap).
 
 ## Development
 

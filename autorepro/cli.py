@@ -5,6 +5,7 @@ import argparse
 import sys
 
 from autorepro import __version__
+from autorepro.detect import detect_languages
 
 
 def create_parser():
@@ -17,10 +18,10 @@ def create_parser():
 AutoRepro automatically detects repository technologies, generates ready-made
 devcontainers, and writes prioritized repro plans with explicit assumptions.
 
-MVP commands (coming soon):
+MVP commands:
   scan    Detect languages/frameworks from file pointers
-  init    Create a developer container
-  plan    Derive execution plan from issue description
+  init    Create a developer container (coming soon)
+  plan    Derive execution plan from issue description (coming soon)
 
 For more information, visit: https://github.com/ali90h/AutoRepro
         """.strip(),
@@ -28,28 +29,52 @@ For more information, visit: https://github.com/ali90h/AutoRepro
 
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
 
+    # Add subcommands
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+
+    # scan subcommand
+    subparsers.add_parser(
+        "scan",
+        help="Detect languages/frameworks from file pointers",
+        description="Scan the current directory for language/framework indicators",
+    )
+
     return parser
 
 
-def main():
-    """Main entry point for the autorepro CLI."""
+def cmd_scan() -> int:
+    """Handle the scan command."""
+    detected = detect_languages(".")
+
+    if not detected:
+        print("No known languages detected.")
+        return 0
+
+    # Extract language names for header
+    languages = [lang for lang, _ in detected]
+    print(f"Detected: {', '.join(languages)}")
+
+    # Print details for each language
+    for lang, reasons in detected:
+        reasons_str = ", ".join(reasons)
+        print(f"- {lang}  -> {reasons_str}")
+
+    return 0
+
+
+def main() -> int:
     parser = create_parser()
-
-    # If no arguments provided, show help and exit with code 0
-    if len(sys.argv) == 1:
-        parser.print_help()
-        return 0
-
-    # Parse arguments
     try:
-        parser.parse_args()
-        # Since we only support help at this stage, this shouldn't be reached
-        # unless -h/--help was used, which argparse handles automatically
-        parser.print_help()
-        return 0
+        args = parser.parse_args()
     except SystemExit as e:
-        # argparse calls sys.exit() for -h/--help, we want to return the code
-        return e.code if e.code is not None else 0
+        code = e.code
+        return code if isinstance(code, int) else (0 if code is None else 2)
+
+    if args.command == "scan":
+        return cmd_scan()
+
+    parser.print_help()
+    return 0
 
 
 if __name__ == "__main__":
