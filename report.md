@@ -275,3 +275,8 @@ Detected: node, python
 ---
 
 *This report is updated after each major development milestone.*
+
+---
+
+### File Organization Notes
+**Note**: The original `pr.md` file containing the PR description has been relocated to the project root for better GitHub integration and visibility during pull request workflows.
