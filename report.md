@@ -274,6 +274,43 @@ Detected: node, python
 
 ---
 
+### Issue #4 Implementation Planning (August 16, 2025)
+**Status**: 📋 Planned
+**Issue**: [T-002 — `init`: idempotent + `--force` / `--out`](https://github.com/ali90h/AutoRepro/issues/4)
+**Objective**: Implement `init` command to create default devcontainer.json with idempotent behavior
+
+#### Analysis Summary:
+**Problem**: Create an `init` command that generates standardized devcontainer configurations with Python 3.11, Node 20, and Go 1.22 features, supporting force overwrite and custom output paths.
+
+**Key Requirements**:
+- Idempotent behavior (don't overwrite without `--force`)
+- Support `--force` flag for overwriting existing files
+- Support `--out PATH` for custom output locations
+- Create `.devcontainer/devcontainer.json` by default
+- Proper exit codes (0=success, 1=exists, 2=args, 3=permissions)
+- Comprehensive test coverage with unit and integration tests
+
+#### Implementation Strategy:
+**Phase 1**: Core command structure with subparsers
+**Phase 2**: Embedded devcontainer JSON template
+**Phase 3**: Error handling and edge cases
+**Phase 4**: Comprehensive testing (unit + integration)
+
+#### Technical Decisions:
+- **Template Storage**: Embed JSON in code for minimal surface area
+- **Path Handling**: Use `pathlib.Path` for cross-platform compatibility
+- **Default Location**: `.devcontainer/devcontainer.json` (standard convention)
+- **Testing**: pytest with tmp_path fixtures and subprocess integration tests
+
+#### Scope & Risk Assessment:
+**Files Modified**: `autorepro/cli.py`, `tests/test_cli.py` only
+**Estimated Effort**: 4-6 hours (2-3 dev, 1-2 test, 30min validation)
+**Risk Level**: Low (minimal surface area, well-defined requirements)
+
+**Next Steps**: Await approval before implementation to ensure alignment with project priorities and approach.
+
+---
+
 *This report is updated after each major development milestone.*
 
 ---
