@@ -6,7 +6,7 @@ AutoRepro is a developer tools project that transforms issue descriptions into c
 
 The current MVP scope includes three core commands:
 - **scan**: Detect languages/frameworks from file pointers (✅ implemented)
-- **init**: devcontainer (coming soon)
+- **init**: Create a developer container (✅ implemented)
 - **plan**: Derive an execution plan from issue description (coming soon)
 
 The project targets multilingualism (initially Python/JS/Go) and emphasizes simplicity, transparency, and automated testing. The ultimate goal is to produce tests that automatically fail and open Draft PRs containing them, improving contribution quality and speeding up maintenance on GitHub.
@@ -42,6 +42,9 @@ autorepro --help
 
 # Scan current directory for language/framework indicators
 autorepro scan
+
+# Create a devcontainer.json file
+autorepro init
 ```
 
 ### Scan Command
@@ -78,6 +81,41 @@ No known languages detected.
 **Known limitations (MVP):**
 - Source-file globs (e.g., `*.py`, `*.go`) may cause false positives in sparse repos; prefer root indicators (config/lockfiles).
 - Future direction: weight/score reasons and down-rank raw source globs in favor of strong root indicators (tracked on the roadmap).
+
+### Init Command
+
+Creates a devcontainer.json file with default configuration (Python 3.11, Node 20, Go 1.22). The command is idempotent and provides atomic file writes.
+
+```bash
+# Create default devcontainer (first time)
+$ autorepro init
+Wrote devcontainer to /path/to/.devcontainer/devcontainer.json
+
+# Run again - idempotent behavior (exit code 0)
+$ autorepro init
+devcontainer.json already exists at /path/to/.devcontainer/devcontainer.json.
+Use --force to overwrite or --out <path> to write elsewhere.
+
+# Force overwrite existing file
+$ autorepro init --force
+Overwrote devcontainer at /path/to/.devcontainer/devcontainer.json
+
+# Custom output location
+$ autorepro init --out dev/devcontainer.json
+Wrote devcontainer to /path/to/dev/devcontainer.json
+```
+
+**Status:** `init` is implemented with idempotent behavior and proper exit codes.
+
+**Init Behavior:**
+- **Idempotent**: Won't overwrite existing files without `--force` flag (returns exit code 0)
+- **Atomic writes**: Uses temporary file + rename for safe file creation
+- **Directory creation**: Automatically creates parent directories as needed
+- **Exit codes**: 0=success/exists, 1=I/O errors, 2=misuse (e.g., --out points to directory)
+
+**Options:**
+- `--force`: Overwrite existing devcontainer.json file
+- `--out PATH`: Custom output path (default: .devcontainer/devcontainer.json)
 
 ## Development
 
