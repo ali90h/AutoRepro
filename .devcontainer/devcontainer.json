@@ -11,5 +11,9 @@
     }
   },
   "name": "autorepro-dev",
+<<<<<<< fix/devcontainer
+  "postCreateCommand": "python -m venv .venv && source .venv/bin/activate && python -m pip install -e ."
+=======
   "postCreateCommand": "python -m venv .venv && source .venv/bin/activate && pip install -e ."
+>>>>>>> main
 }
