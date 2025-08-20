@@ -3,7 +3,6 @@
 
 import argparse
 import sys
-from pathlib import Path
 
 from autorepro import __version__
 from autorepro.detect import detect_languages
@@ -91,30 +90,17 @@ def cmd_init(force: bool = False, out: str | None = None) -> int:
     config = default_devcontainer()
 
     try:
-        # Determine output path to check if file exists before writing
-        if out is None:
-            output_path = Path(".devcontainer") / "devcontainer.json"
-            file_existed = output_path.exists()
-        else:
-            try:
-                output_path = Path(out).resolve()
-                file_existed = output_path.exists()
-            except (OSError, ValueError):
-                # Let env.py handle path validation errors
-                file_existed = False
-
         # Write devcontainer with specified options
         result_path, diff_lines = write_devcontainer(config, force=force, out=out)
 
-        if force and file_existed:
+        if force and diff_lines is not None:
             print(f"Overwrote devcontainer at {result_path}")
-            if diff_lines is not None:
-                if diff_lines:
-                    print("Changes:")
-                    for line in diff_lines:
-                        print(line)
-                else:
-                    print("No changes.")
+            if diff_lines:
+                print("Changes:")
+                for line in diff_lines:
+                    print(line)
+            else:
+                print("No changes.")
         else:
             print(f"Wrote devcontainer to {result_path}")
         return 0
