@@ -432,3 +432,64 @@ Changes:
 - Feature is ready for production use
 - All acceptance criteria met with comprehensive test coverage
 - Can be extended for other configuration file types in future
+
+---
+
+### Command Behavior Consolidation and Documentation Update (August 20, 2025)
+**Status**: ✅ Completed
+**Objective**: Ensure `scan` and `init` commands behave exactly as documented and update README with current reality
+
+#### Summary:
+Successfully consolidated and validated command behavior to match documented specifications. Fixed output format inconsistencies, updated comprehensive test coverage, and ensured all examples in README reflect actual command behavior.
+
+#### Key Changes Made:
+
+##### 1. Output Format Standardization:
+- **Scan format**: Fixed spacing from `"- python  -> pyproject.toml"` (double space) to `"- python -> pyproject.toml"` (single space)
+- **Updated tests**: Modified test assertions in `test_scan_cli.py` to expect correct single-space format
+- **Verified behavior**: All scan output now matches README examples exactly
+
+##### 2. README Documentation Enhancements:
+- **Added Exit Codes section**: Documented standard exit codes (0=success, 1=I/O errors, 2=misuse)
+- **Updated init examples**: Added comprehensive examples showing:
+  - First-time creation: `"Wrote devcontainer to .devcontainer/devcontainer.json"`
+  - Force overwrite with changes: `"Overwrote devcontainer at ..."` + `"Changes:"` block
+  - Force overwrite no changes: `"Overwrote devcontainer at ..."` + `"No changes."`
+  - Custom output path: `"Wrote devcontainer to dev/devcontainer.json"`
+- **Corrected scan examples**: Fixed spacing and ensured alphabetical ordering examples
+- **Path consistency**: Used relative paths (`.devcontainer/devcontainer.json`) instead of absolute paths
+
+##### 3. Behavior Validation:
+All command scenarios tested and confirmed to match documentation:
+- ✅ `init` first build → prints only creation message (no diff block)
+- ✅ `init --force` with changes → prints overwrite message + Changes block
+- ✅ `init --force` with no changes → prints overwrite message + "No changes."
+- ✅ `init --out <path>` success → writes to specified path
+- ✅ `init --out <dir>` misuse → exit code 2 with clear error message
+- ✅ `scan` empty directory → `"No known languages detected."`
+- ✅ `scan` with languages → `"Detected: lang1, lang2"` + reasons in alphabetical order
+
+#### Testing and Quality Assurance:
+- **Test Results**: 73 tests passed (all existing tests maintained)
+- **Pre-commit**: All hooks pass (✅ trim whitespace, fix files, black, ruff, mypy)
+- **Black formatting**: All files properly formatted (✅)
+- **Real behavior verification**: Tested actual command outputs in temporary directories
+
+#### Files Modified:
+- `autorepro/cli.py`: Fixed scan output format (line 82)
+- `tests/test_scan_cli.py`: Updated test assertions for correct format
+- `README.md`: Added Exit Codes section and corrected all examples
+- `report.md`: Added this consolidation summary
+
+#### Validation Summary:
+- ✅ **pre-commit**: All checks pass
+- ✅ **pytest**: 73/73 tests passed
+- ✅ **black**: Code formatting verified
+- ✅ **Actual outputs**: All commands produce expected output matching README examples
+
+#### Impact:
+- Commands now behave exactly as documented
+- README serves as accurate reference for users
+- All test coverage maintained while fixing format issues
+- Exit codes clearly documented for proper error handling
+- Foundation ready for future enhancements

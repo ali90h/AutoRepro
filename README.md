@@ -55,8 +55,8 @@ Detects repo languages and prints the reasons (marker files).
 # Example output when multiple languages are detected
 $ autorepro scan
 Detected: node, python
-- node  -> package.json
-- python  -> pyproject.toml
+- node -> package.json
+- python -> pyproject.toml
 
 # Example output when no languages are detected
 $ autorepro scan
@@ -89,20 +89,27 @@ Creates a devcontainer.json file with default configuration (Python 3.11, Node 2
 ```bash
 # Create default devcontainer (first time)
 $ autorepro init
-Wrote devcontainer to /path/to/.devcontainer/devcontainer.json
+Wrote devcontainer to .devcontainer/devcontainer.json
 
 # Run again - idempotent behavior (exit code 0)
 $ autorepro init
-devcontainer.json already exists at /path/to/.devcontainer/devcontainer.json.
+devcontainer.json already exists at .devcontainer/devcontainer.json.
 Use --force to overwrite or --out <path> to write elsewhere.
 
-# Force overwrite existing file
+# Force overwrite existing file with changes
 $ autorepro init --force
-Overwrote devcontainer at /path/to/.devcontainer/devcontainer.json
+Overwrote devcontainer at .devcontainer/devcontainer.json
+Changes:
+~ postCreateCommand: "old command" -> "python -m venv .venv && source .venv/bin/activate && python -m pip install -e ."
+
+# Force overwrite with no changes
+$ autorepro init --force
+Overwrote devcontainer at .devcontainer/devcontainer.json
+No changes.
 
 # Custom output location
 $ autorepro init --out dev/devcontainer.json
-Wrote devcontainer to /path/to/dev/devcontainer.json
+Wrote devcontainer to dev/devcontainer.json
 ```
 
 **Status:** `init` is implemented with idempotent behavior and proper exit codes.
@@ -116,6 +123,14 @@ Wrote devcontainer to /path/to/dev/devcontainer.json
 **Options:**
 - `--force`: Overwrite existing devcontainer.json file
 - `--out PATH`: Custom output path (default: .devcontainer/devcontainer.json)
+
+## Exit Codes
+
+AutoRepro uses standard exit codes to indicate success or failure:
+
+- **0**: Success (including "already exists" and overwrite operations)
+- **1**: Unexpected I/O or permission errors
+- **2**: Misuse (e.g., `--out` points to a directory)
 
 ## Development
 
