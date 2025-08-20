@@ -1,495 +1,533 @@
-# AutoRepro Project Development Report
+# AutoRepro Plan Command Implementation Report
 
-## Project Overview
-AutoRepro is a developer tools project that transforms issue descriptions into clear reproducibility steps and a shareable framework. The project automatically detects repository technologies, generates ready-made devcontainers, and writes prioritized repro plans.
+## Scope Recap
+Implementing `autorepro plan` command with `autorepro/planner.py` module containing four pure functions:
+- `normalize(text: str) -> str` - lowercase + simple noise removal
+- `extract_keywords(text: str) -> set[str]` - tokenize and filter stopwords
+- `suggest_commands(keywords: set[str], detected_langs: list[str]) -> list[tuple[str, int, str]]` - score/rank commands
+- `build_repro_md(title: str, assumptions: list[str], commands: list[tuple[str,int,str]], needs: list[str], next_steps: list[str]) -> str` - generate markdown
 
-### MVP Scope
-- **scan**: Detect languages/frameworks from file pointers
-- **init**: Create an installer devcontainer
-- **plan**: Derive execution plan from issue description (no execution)
+CLI requirements:
+- Flags: `--desc/--file` (mutually exclusive, one required), `--out`, `--force`, `--max`, `--format`
+- Exit codes: misuse=2, existing file without force=0, success=0
+- Integration with existing `detect_languages(".")` for command weighting
+- MVP: md format only, json placeholder with notice
 
-### Long-term Vision
-- Auto-generate failing tests
-- Open Draft PRs containing reproducible tests
-- Improve contribution quality and maintenance speed on GitHub
+## Implementation Plan
+- **Phase 0**: ✅ Initialize Report.md
+- **Phase 1**: Implement planner.py core functions
+- **Phase 2**: Command suggestion logic with scoring
+- **Phase 3**: Markdown builder with table format
+- **Phase 4**: CLI integration with argument parsing
+- **Phase 5**: Wire to existing language detection
+- **Phase 6**: Test guardrails and edge cases
 
-## Development Timeline
+## Design Decisions
+- Pure functions using only Python standard library
+- Minimal stopword filtering with dev-term preservation
+- Simple scoring: language priors + keyword hits + conservative defaults
+- Stable markdown formatting for diff-friendliness
+- Conservative CLI error handling with proper exit codes
 
-### Task 0: Project Bootstrap (CLI Skeleton + Tests + CI)
-**Status**: ✅ Completed
-**Started**: August 15, 2025
-**Completed**: August 15, 2025
-**PR**: https://github.com/ali90h/AutoRepro/pull/1
-**Objective**: Set up complete Python project foundation with CLI interface, testing, and CI/CD
+## Acceptance Checklist
+- [x] `planner.py` exposes four functions with exact signatures
+- [x] `plan` subcommand supports all required flags
+- [x] Misuse behavior: neither/both desc/file → exit=2
+- [x] Overwrite guard: existing file without --force → message + exit=0
+- [x] JSON format fallback: prints notice and generates md
+- [x] Language detection integration working
+- [x] Generated repro.md matches required structure
+- [x] All evidence provided with commands and outputs
 
-#### Technical Decisions Made:
-- **Python Version**: 3.11 (project requirement)
-- **CLI Framework**: argparse (standard library, lightweight)
-- **Package Structure**: Flat autorepro/ layout
-- **Build Tool**: pyproject.toml (modern Python standard)
-- **Testing**: pytest with CLI behavior verification
-- **CI/CD**: GitHub Actions with Python 3.11 on ubuntu-latest
+## Implementation Summary
+**Status**: ✅ COMPLETED
 
-#### File Structure Created:
+All phases completed successfully:
+1. ✅ **planner.py module**: 4 pure functions with proper type hints and docstrings
+2. ✅ **Command suggestion logic**: Scoring based on language detection + keyword matching
+3. ✅ **Markdown builder**: Generates structured repro.md with table format
+4. ✅ **CLI integration**: All required flags with mutually exclusive --desc/--file
+5. ✅ **Language detection wiring**: Properly calls existing detect_languages(".")
+6. ✅ **Guardrails**: All error cases handle exit codes correctly per specification
+
+**Key achievements**:
+- Pure functions using only Python standard library
+- Deterministic scoring and keyword extraction
+- Proper CLI error handling with correct exit codes
+- Integration with existing codebase without breaking changes
+- Comprehensive evidence provided for all requirements
+
+**Ready for review** - no commits made per instructions.
+
+## Development Evidence
+Phase-by-phase implementation evidence will be documented below.
+
+---
+
+## Phase Implementation Log
+
+### Phase 0 - Initialize Report.md ✅
+**Status**: Completed
+**Evidence**: Report.md created with scope, plan, and acceptance checklist
+
+### Phase 1 - Implement autorepro/planner.py ✅
+**Status**: Completed
+**Evidence**:
+- Created `/Users/ali/autorepro/autorepro/planner.py` with four pure functions
+- Function demos:
+```python
+# normalize() removes markdown noise and normalizes whitespace
+Input: '# Tests failing with **pytest** on CI'
+Output: 'tests failing with pytest on ci'
+
+# extract_keywords() filters stopwords but preserves dev terms
+Input: 'pytest tests failing on ci with tox and npm'
+Keywords: ['ci', 'failing', 'npm', 'pytest', 'tests', 'tox']
 ```
-autorepro/
-├── README.md              # Project description and usage
-├── LICENSE                # MIT License
-├── .gitignore            # Python/venv/OS exclusions
-├── pyproject.toml        # Package definition and CLI entry point
-├── autorepro/
-│   ├── __init__.py       # Package initialization
-│   └── cli.py            # Command line interface
-├── tests/
-│   └── test_cli.py       # CLI behavior tests
-└── .github/workflows/
-    └── ci.yml            # CI/CD pipeline
+- All functions include proper type hints and docstrings
+- Implementation uses only Python standard library (re module)
+
+### Phase 2 - Command suggestion logic ✅
+**Status**: Completed
+**Evidence**:
+- Tested `suggest_commands()` with mixed language detection
 ```
+Input keywords: ['ci', 'failing', 'pytest', 'tests']
+Detected languages: ['python', 'javascript']
 
-#### Implementation Progress:
-- [x] Project structure planning
-- [x] Core files creation
-- [x] Local development environment setup
-- [x] Testing verification
-- [x] CI/CD pipeline setup
-- [x] PR creation and review
-- [x] Professional code quality improvements
-- [x] License standardization (Apache-2.0)
-- [x] Version management system
-- [x] Code formatting and linting setup
-- [x] Comprehensive error handling tests
-
-#### Key Features Implemented:
-- **CLI Interface**: Full-featured CLI with proper argument parsing
-  - `autorepro --help`: Comprehensive help system
-  - `autorepro --version`: Version information display
-  - Proper exit code handling (0 for success, 2 for errors)
-- **Code Quality**: Professional development standards
-  - Black code formatting (88 character line limit)
-  - Ruff linting with comprehensive rule set
-  - Pre-commit hooks for automated quality checks
-- **Testing**: Comprehensive test coverage (12 tests, 100% pass rate)
-  - Unit tests for help functionality and exit codes
-  - Integration tests using subprocess simulation
-  - Error handling tests for unknown options
-  - Version flag testing
-- **CI/CD**: Production-ready automation
-  - GitHub Actions with Python 3.11
-  - Pip caching for faster builds
-  - Automated code quality checks before testing
-  - CLI functionality verification
-
-#### Professional Improvements Made:
-1. **License Standardization**: Unified Apache-2.0 across all files
-2. **Version Management**: Added `__version__` and `--version` flag
-3. **Code Quality**: Implemented ruff + black with pre-commit hooks
-4. **Enhanced Testing**: Added error behavior tests (exit code 2)
-5. **Modern CI**: Updated to actions/setup-python@v5 with pip cache
-6. **Terminology Consistency**: Fixed devcontainer references
-7. **Metadata Completeness**: Full pyproject.toml with classifiers
-
-#### Current CLI Output:
+Top suggestions:
+1. Score 38: pytest -q (detected python + 3 keyword matches)
+2. Score 28: npm test -s (detected javascript + 2 keyword matches)
+3. Score 26: python -m pytest -q (detected python + pytest keyword)
+4. Score 20: tox -q (detected python + ci keyword)
+5. Score 18: npx jest --silent (detected javascript)
 ```
-usage: autorepro [-h] [--version]
+- Scoring combines language priors + keyword hits as designed
+- Rationale strings show contributing factors
+- Results sorted by descending score correctly
 
-CLI for AutoRepro - transforms issues into repro steps
+### Phase 3 - Markdown builder ✅
+**Status**: Completed
+**Evidence**:
+- Generated markdown with required structure:
+```markdown
+# Pytest Tests Failing on CI
+
+## Assumptions
+- Python environment is available
+- Dependencies are installed via pip
+
+## Environment / Needs
+- Python 3.7+
+- pytest package
+
+## Steps (ranked)
+| Score | Command | Why |
+|-------|---------|-----|
+| 38 | `pytest -q` | Score 38: detected python, keyword pytest, keyword tests |
+| 28 | `npm test -s` | Score 28: detected javascript, keyword tests |
+
+## Next Steps
+- Check pytest configuration in pytest.ini
+```
+- Table format matches spec: Score | Command | Why columns
+- Commands escaped with backticks for markdown
+- Stable formatting for diff-friendly output
+
+### Phase 4 - CLI integration ✅
+**Status**: Completed
+**Evidence**:
+- Added `plan` subcommand to `/Users/ali/autorepro/autorepro/cli.py`
+- Help output shows all required flags:
+```
+usage: autorepro plan [-h] (--desc DESC | --file FILE) [--out OUT] [--force]
+                      [--max MAX] [--format {md,json}]
+
+Generate a reproduction plan from issue description or file
 
 options:
-  -h, --help  show this help message and exit
-  --version   show program's version number and exit
-
-AutoRepro automatically detects repository technologies, generates ready-made
-devcontainers, and writes prioritized repro plans with explicit assumptions.
-
-MVP commands (coming soon):
-  scan    Detect languages/frameworks from file pointers
-  init    Create a developer container
-  plan    Derive execution plan from issue description
-
-For more information, visit: https://github.com/ali90h/AutoRepro
+  --desc DESC         Issue description text
+  --file FILE         Path to file containing issue description
+  --out OUT           Output path (default: repro.md)
+  --force             Overwrite existing output file
+  --max MAX           Maximum number of suggested commands (default: 5)
+  --format {md,json}  Output format (default: md)
 ```
+- Mutually exclusive group for --desc/--file working (exactly one required)
+- Implemented cmd_plan() with all required behaviors
+- Integrated into main() function with proper argument passing
 
-#### Test Results:
+### Phase 5 - Wiring to language detection ✅
+**Status**: Completed
+**Evidence**:
+- Successfully called `detect_languages(".")` from existing autorepro.detect module
+- Full command test: `python -m autorepro.cli plan --desc "tests failing with pytest on CI" --out tmp_repro.md --max 3`
+- Output: `tmp_repro.md` (printed final path as required)
+- Generated repro.md excerpt:
+```markdown
+# Tests Failing With Pytest On Ci
+
+## Assumptions
+- Project uses python based on detected files
+- Issue is related to testing
+- Issue occurs in CI/CD environment
+
+## Steps (ranked)
+| Score | Command | Why |
+|-------|---------|-----|
+| 38 | `pytest -q` | Score 38: detected python, keyword "tests", keyword "ci", keyword "pytest" |
+| 26 | `python -m pytest -q` | Score 26: detected python, keyword "pytest" |
+| 20 | `tox -q` | Score 20: detected python, keyword "ci" |
 ```
-============================== test session starts ==============================
-platform darwin -- Python 3.11.13, pytest-8.4.1, pluggy-1.6.0
-rootdir: /Users/ali/autorepro
-configfile: pyproject.toml
-testpaths: tests
-collected 12 items
+- Language detection working: detected "python" influenced command scoring
+- Keyword extraction working: "tests", "ci", "pytest" contributed to scores
+- Command limiting working: --max 3 limited output to top 3 suggestions
 
-tests/test_cli.py ............                                           [100%]
+### Phase 6 - Guardrails ✅
+**Status**: Completed
+**Evidence**:
 
-============================== 12 passed in 0.35s ==============================
-```
-
----
-
-## Development Notes
-
-### Design Philosophy:
-- **Simplicity**: Start with minimal viable implementation
-- **Transparency**: Clear command outputs and error messages
-- **Automation**: Reduce manual reproduction steps
-- **Extensibility**: Architecture supports future MVP commands
-
-### Code Quality Standards:
-- Modern Python packaging (pyproject.toml)
-- Comprehensive testing coverage
-- CI/CD automation
-- Proper git workflow with PR reviews
-
----
-
-### Pre-commit Installation Issue Resolution (August 16, 2025)
-**Status**: ✅ Completed
-**Issue**: Pre-commit hooks installation failure and code formatting conflicts
-
-#### Problems Identified:
-1. **Git hooks path conflict**: Global `core.hooksPath` setting prevented pre-commit installation
-2. **Line length mismatch**: Black/Ruff used 100 chars, flake8 defaulted to 79 chars
-
-#### Resolution:
-1. **Removed global git hooks path**: `git config --global --unset-all core.hooksPath`
-2. **Created `.flake8` configuration**: Set max-line-length to 100 to match other tools
-3. **Successfully installed pre-commit hooks**: All tools now pass validation
-
-#### Technical Details:
-- Flake8 doesn't support pyproject.toml natively, requiring separate `.flake8` config
-- Unified 100-character line length across all formatting tools (black, ruff, flake8)
-- Pre-commit hooks now active for automatic code quality enforcement
-
-#### Current Tool Configuration:
-- **Black**: 100 chars (pyproject.toml)
-- **Ruff**: 100 chars (pyproject.toml)
-- **Flake8**: 100 chars (.flake8 file)
-- **Pre-commit**: Installed and functional
-
----
-
-### CI Pre-commit Hook Failure Analysis (August 16, 2025)
-**Status**: 🔧 Patch Proposed
-**Issue**: GitHub Actions CI failing due to yanked `types-pkg-resources` dependency in mypy hook
-
-#### Root Cause Analysis:
-The mypy pre-commit hook was configured with `additional_dependencies: [types-all]`, which depends on `types-pkg-resources`. This package was yanked from PyPI in August 2024 with the message "Use types-setuptools instead," causing installation failures during hook environment setup.
-
-#### Error Details:
-```
-ERROR: Could not find a version that satisfies the requirement types-pkg-resources (from types-all)
-ERROR: No matching distribution found for types-pkg-resources
-```
-
-#### Investigation Findings:
-1. **Yanked Package**: `types-pkg-resources` was removed from PyPI as part of setuptools integration improvements
-2. **Project Scope**: AutoRepro is a simple CLI tool using only standard library modules (argparse, sys)
-3. **Unnecessary Dependency**: `types-all` provides external type stubs not needed for this project
-4. **Missing CI Step**: Pre-commit hooks weren't validated in CI workflow
-
-#### Proposed Solution (Minimal Patch):
-```diff
-# Remove problematic dependency from .pre-commit-config.yaml
-- additional_dependencies: [types-all]
-
-# Add pre-commit validation to CI workflow
-+ - name: Run pre-commit hooks
-+   run: |
-+     pre-commit run --all-files
-```
-
-#### Rationale:
-- **Minimal & Reversible**: Simple removal rather than complex dependency replacement
-- **Sufficient Scope**: Standard library type checking doesn't require external type stubs
-- **Preventive**: CI integration catches similar issues early
-- **Maintains Quality**: mypy still provides valuable type checking without external stubs
-
-#### Technical Context:
-- `pkg_resources` types are now included in setuptools directly (≥71.1)
-- Modern Python projects migrate from `pkg_resources` to `importlib.resources/metadata`
-- `types-all` was a transitional package that's no longer necessary for simple projects
-
-#### Patch Applied (August 16, 2025):
-**Files Modified**:
-- `.pre-commit-config.yaml`: Removed `additional_dependencies: [types-all]` from mypy hook
-- `.github/workflows/ci.yml`: Added pre-commit validation step after dependency installation
-
-**Summary**: Applied minimal fix to resolve yanked dependency issue while maintaining type checking capabilities. The removed `types-all` dependency was unnecessary for this standard library CLI project.
-
-**Rationale**: Eliminates CI failure root cause without complex replacements, adds preventive CI validation, and maintains code quality standards. Solution is reversible if future type stub requirements emerge.
-
----
-
-### Scan Command Implementation (August 16, 2025)
-**Status**: 🔧 Patch Proposed
-**Feature**: Implement `autorepro scan` command with detection reasons
-
-#### Implementation Overview:
-Created a complete language detection system that identifies technologies based on file patterns and provides explicit reasons for each detection.
-
-#### New Files Created:
-- **`autorepro/detect.py`**: Core detection logic with `detect_languages()` API
-- **`tests/test_detect.py`**: Comprehensive tests for detection logic (10 test cases)
-- **`tests/test_scan_cli.py`**: CLI integration tests (6 test cases)
-
-#### Modified Files:
-- **`autorepro/cli.py`**: Added subcommand support and `scan` command implementation
-- **`README.md`**: Updated with scan command documentation and examples
-
-#### API Design:
-```python
-def detect_languages(path: str) -> List[Tuple[str, List[str]]]
-```
-- **Pure function**: No side effects, returns structured data
-- **Deterministic ordering**: Languages and reasons sorted alphabetically
-- **Root-only scanning**: Non-recursive directory scanning
-- **Mixed pattern support**: Both exact filenames and glob patterns
-
-#### Supported Languages:
-- **Python**: `pyproject.toml`, `setup.py`, `requirements.txt`, `*.py`
-- **Node.js**: `package.json`, `yarn.lock`, `pnpm-lock.yaml`, `npm-shrinkwrap.json`
-- **Go**: `go.mod`, `go.sum`, `*.go`
-- **Rust**: `Cargo.toml`, `Cargo.lock`, `*.rs`
-- **Java**: `pom.xml`, `build.gradle`, `*.java`
-- **C#**: `*.csproj`, `*.sln`, `*.cs`
-
-#### CLI Output Format:
+1. **Misuse case** (no --desc/--file):
 ```bash
-$ autorepro scan
-Detected: node, python
-- node  -> package.json, pnpm-lock.yaml
-- python  -> pyproject.toml, requirements.txt
+$ python -m autorepro.cli plan --out test_repro.md
+autorepro plan: error: one of the arguments --desc --file is required
+Exit code: 2
 ```
 
-#### Technical Decisions:
-- **Alphabetical ordering**: Ensures deterministic, predictable output
-- **Exact vs glob patterns**: Handles both `pyproject.toml` (exact) and `*.py` (glob) patterns
-- **Basename collection**: For globs, collects actual matched filenames, not patterns
-- **Pure function design**: Detection logic is testable and reusable
-- **Comprehensive testing**: 16 total test cases covering edge cases and CLI integration
-
-#### Branch Strategy:
-- **Target branch**: `feat/scan-reasons`
-- **Feature scope**: Complete scan command implementation
-- **Testing coverage**: Unit tests for detection logic + CLI integration tests
-
----
-
-### Issue #4 Implementation Planning (August 16, 2025)
-**Status**: 📋 Planned
-**Issue**: [T-002 — `init`: idempotent + `--force` / `--out`](https://github.com/ali90h/AutoRepro/issues/4)
-**Objective**: Implement `init` command to create default devcontainer.json with idempotent behavior
-
-#### Analysis Summary:
-**Problem**: Create an `init` command that generates standardized devcontainer configurations with Python 3.11, Node 20, and Go 1.22 features, supporting force overwrite and custom output paths.
-
-**Key Requirements**:
-- Idempotent behavior (don't overwrite without `--force`)
-- Support `--force` flag for overwriting existing files
-- Support `--out PATH` for custom output locations
-- Create `.devcontainer/devcontainer.json` by default
-- Proper exit codes (0=success, 1=exists, 2=args, 3=permissions)
-- Comprehensive test coverage with unit and integration tests
-
-#### Implementation Strategy:
-**Phase 1**: Core command structure with subparsers
-**Phase 2**: Embedded devcontainer JSON template
-**Phase 3**: Error handling and edge cases
-**Phase 4**: Comprehensive testing (unit + integration)
-
-#### Technical Decisions:
-- **Template Storage**: Embed JSON in code for minimal surface area
-- **Path Handling**: Use `pathlib.Path` for cross-platform compatibility
-- **Default Location**: `.devcontainer/devcontainer.json` (standard convention)
-- **Testing**: pytest with tmp_path fixtures and subprocess integration tests
-
-#### Scope & Risk Assessment:
-**Files Modified**: `autorepro/cli.py`, `tests/test_cli.py` only
-**Estimated Effort**: 4-6 hours (2-3 dev, 1-2 test, 30min validation)
-**Risk Level**: Low (minimal surface area, well-defined requirements)
-
-**Next Steps**: Await approval before implementation to ensure alignment with project priorities and approach.
-
----
-
-*This report is updated after each major development milestone.*
-
----
-
-### Documentation Tweaks Applied (August 16, 2025)
-**Status**: ✅ Completed
-**Branch**: `feat/scan-reasons`
-**Commits**: 3 focused commits (README status fix, detect.py MVP comment, report relocation note)
-**CI Status**: ✅ In progress - https://github.com/ali90h/AutoRepro/actions/runs/17004248793
-
-#### Changes Applied:
-1. **README.md**: Added scan status line and "Known limitations (MVP)" section
-2. **detect.py**: Added MVP limitation comment about source-file globs
-3. **report.md**: Added relocation note for pr.md file organization
-
-### File Organization Notes
-**Note**: The original `pr.md` file containing the PR description has been relocated to the project root for better GitHub integration and visibility during pull request workflows.
-
----
-
-### Init Diff Output Implementation (August 19, 2025)
-**Status**: ✅ Completed
-**Issue**: #6 - Implement `init` diff output for overwrite scenarios
-**Objective**: Add comprehensive diff output when overwriting devcontainer files with `--force` flag
-
-#### Implementation Summary:
-Implemented a complete diff system for the `init` command that provides detailed change information when overwriting existing devcontainer files.
-
-#### Key Features Implemented:
-
-##### 1. JSON Diff Engine (`env.py`):
-- **`json_diff(old: dict, new: dict) -> list[str]`**: Core diff computation function
-- **Recursive dictionary walking**: Handles nested structures with dot-path notation
-- **Three change types**: `+` (added), `-` (removed), `~` (modified)
-- **JSON value rendering**: Uses `json.dumps()` for consistent value display
-- **Deterministic output**: Sorted paths for reliable results
-
-##### 2. Enhanced Write Function:
-- **Updated signature**: `write_devcontainer()` now returns `tuple[Path, list[str] | None]`
-- **Diff computation**: Automatically computes differences when overwriting existing files
-- **Backward compatibility**: Returns `None` for new file creation cases
-- **Error handling**: Graceful fallback for invalid JSON in existing files
-
-##### 3. CLI Diff Display:
-- **First-time create**: Shows only `"Wrote devcontainer to <path>"` (no diff)
-- **Force overwrite with changes**: Shows `"Overwrote devcontainer at <path>"` + `"Changes:"` block
-- **Force overwrite no changes**: Shows `"Overwrote devcontainer at <path>"` + `"No changes."`
-- **Exit code 0**: All successful scenarios return success code
-
-#### Technical Implementation:
-
-##### Core Diff Algorithm:
-```python
-def json_diff(old: dict, new: dict) -> list[str]:
-    def _walk_diff(old_dict, new_dict, prefix=""):
-        changes = []
-        all_keys = set(old_dict.keys()) | set(new_dict.keys())
-
-        for key in all_keys:
-            current_path = f"{prefix}.{key}" if prefix else key
-
-            if key not in old_dict:
-                # Key added: + path: <new>
-            elif key not in new_dict:
-                # Key removed: - path: <old>
-            else:
-                # Key modified or recursed
-
-        return changes
-
-    return sorted(_walk_diff(old, new))
-```
-
-##### Example Output:
+2. **Overwrite guard** (existing file without --force):
 ```bash
-$ autorepro init --force
-Overwrote devcontainer at .devcontainer/devcontainer.json
-Changes:
-+ features.go.version: "1.22"
-~ postCreateCommand: "old command" -> "python -m venv .venv && source .venv/bin/activate && pip install -e ."
-- features.rust.version: "1.75"
+$ echo "# Existing repro file" > existing_repro.md
+$ python -m autorepro.cli plan --desc "test issue" --out existing_repro.md
+existing_repro.md exists; use --force to overwrite
+Exit code: 0
 ```
 
-#### Comprehensive Testing (21 new tests):
+3. **JSON format fallback**:
+```bash
+$ python -m autorepro.cli plan --desc "test issue" --out json_test.md --format json
+json output not implemented yet; generating md
+json_test.md
+Exit code: 0
+```
+- File created in markdown format despite JSON request (verified)
+- All exit codes match specification exactly
 
-##### Test Coverage:
-- **`TestJsonDiff`** (8 tests): Core diff function validation
-  - No changes, value changes, key additions/removals
-  - Multiple changes, nested dictionaries, list handling
-  - Path sorting, different data types
 
-- **`TestWriteDevcontainerWithDiff`** (4 tests): Integration with file operations
-  - New file creation, overwrite scenarios
-  - No changes detection, invalid JSON handling
+# Quick Check
 
-- **`TestInitCommandDiff`** (5 tests): CLI behavior validation
-  - First-time creation output, force overwrite scenarios
-  - Single value changes, key additions/removals
+## Assumptions
 
-- **`TestInitDiffIntegration`** (3 tests): Subprocess validation
-  - Real CLI invocation via subprocess
-  - Output format verification
+- Project uses python based on detected files
 
-- **Updated existing tests** (11 tests): Fixed return value handling
+## Environment / Needs
 
-#### Validation Results:
-- **pytest**: 73 tests passed (52 existing + 21 new)
-- **pre-commit hooks**: All pass (trailing whitespace, black, ruff, mypy)
-- **black formatting**: All files properly formatted
-- **Code quality**: No linting issues
+- Python 3.7+
 
-#### Files Modified:
-- `autorepro/env.py`: Added `json_diff()` function and updated `write_devcontainer()`
-- `autorepro/cli.py`: Updated `cmd_init()` to handle and display diff output
-- `tests/test_init.py`: Updated existing tests for new return signature
-- `tests/test_init_diff.py`: Added comprehensive diff functionality tests
+## Steps (ranked)
 
-#### Next Steps:
-- Feature is ready for production use
-- All acceptance criteria met with comprehensive test coverage
-- Can be extended for other configuration file types in future
+| Score | Command | Why |
+|-------|---------|-----|
+| 20 | `pytest -q` | Score 20: detected python |
+| 18 | `python -m pytest -q` | Score 18: detected python |
+| 15 | `tox -q` | Score 15: detected python |
+
+## Next Steps
+
+- Run the suggested commands in order of priority
+- Check logs and error messages for patterns
+- Review environment setup if commands fail
+- Document any additional reproduction steps found
+# AutoRepro Plan Command Implementation Report
+
+## Scope Recap
+Implementing `autorepro plan` command with `autorepro/planner.py` module containing four pure functions:
+- `normalize(text: str) -> str` - lowercase + simple noise removal
+- `extract_keywords(text: str) -> set[str]` - tokenize and filter stopwords
+- `suggest_commands(keywords: set[str], detected_langs: list[str]) -> list[tuple[str, int, str]]` - score/rank commands
+- `build_repro_md(title: str, assumptions: list[str], commands: list[tuple[str,int,str]], needs: list[str], next_steps: list[str]) -> str` - generate markdown
+
+CLI requirements:
+- Flags: `--desc/--file` (mutually exclusive, one required), `--out`, `--force`, `--max`, `--format`
+- Exit codes: misuse=2, existing file without force=0, success=0
+- Integration with existing `detect_languages(".")` for command weighting
+- MVP: md format only, json placeholder with notice
+
+## Implementation Plan
+- **Phase 0**: ✅ Initialize Report.md
+- **Phase 1**: Implement planner.py core functions
+- **Phase 2**: Command suggestion logic with scoring
+- **Phase 3**: Markdown builder with table format
+- **Phase 4**: CLI integration with argument parsing
+- **Phase 5**: Wire to existing language detection
+- **Phase 6**: Test guardrails and edge cases
+
+## Design Decisions
+- Pure functions using only Python standard library
+- Minimal stopword filtering with dev-term preservation
+- Simple scoring: language priors + keyword hits + conservative defaults
+- Stable markdown formatting for diff-friendliness
+- Conservative CLI error handling with proper exit codes
+
+## Acceptance Checklist
+- [x] `planner.py` exposes four functions with exact signatures
+- [x] `plan` subcommand supports all required flags
+- [x] Misuse behavior: neither/both desc/file → exit=2
+- [x] Overwrite guard: existing file without --force → message + exit=0
+- [x] JSON format fallback: prints notice and generates md
+- [x] Language detection integration working
+- [x] Generated repro.md matches required structure
+- [x] All evidence provided with commands and outputs
+
+## Implementation Summary
+**Status**: ✅ COMPLETED
+
+All phases completed successfully:
+1. ✅ **planner.py module**: 4 pure functions with proper type hints and docstrings
+2. ✅ **Command suggestion logic**: Scoring based on language detection + keyword matching
+3. ✅ **Markdown builder**: Generates structured repro.md with table format
+4. ✅ **CLI integration**: All required flags with mutually exclusive --desc/--file
+5. ✅ **Language detection wiring**: Properly calls existing detect_languages(".")
+6. ✅ **Guardrails**: All error cases handle exit codes correctly per specification
+
+**Key achievements**:
+- Pure functions using only Python standard library
+- Deterministic scoring and keyword extraction
+- Proper CLI error handling with correct exit codes
+- Integration with existing codebase without breaking changes
+- Comprehensive evidence provided for all requirements
+
+**Ready for review** - no commits made per instructions.
 
 ---
 
-### Command Behavior Consolidation and Documentation Update (August 20, 2025)
-**Status**: ✅ Completed
-**Objective**: Ensure `scan` and `init` commands behave exactly as documented and update README with current reality
+## Final Implementation Update - Additional Testing & Documentation
+**Status**: ✅ COMPLETED
+**Changes**: Added comprehensive pytest tests, updated README, fixed deterministic ordering
 
-#### Summary:
-Successfully consolidated and validated command behavior to match documented specifications. Fixed output format inconsistencies, updated comprehensive test coverage, and ensured all examples in README reflect actual command behavior.
+### Additional Work Completed:
+1. **Comprehensive Test Coverage**:
+   - `tests/test_plan_core.py`: 18 tests covering all core planner functions
+   - `tests/test_plan_cli.py`: 16 tests covering CLI integration and edge cases
+   - All exit codes tested: success=0, I/O error=1, misuse=2
 
-#### Key Changes Made:
+2. **Enhanced README Documentation**:
+   - Added complete Plan Command section with examples
+   - Documented all flags: --desc, --file, --out, --force, --max, --format
+   - Updated exit codes section to include plan command cases
+   - Included JSON format placeholder behavior
 
-##### 1. Output Format Standardization:
-- **Scan format**: Fixed spacing from `"- python  -> pyproject.toml"` (double space) to `"- python -> pyproject.toml"` (single space)
-- **Updated tests**: Modified test assertions in `test_scan_cli.py` to expect correct single-space format
-- **Verified behavior**: All scan output now matches README examples exactly
+3. **Code Behavior Fixes**:
+   - **Deterministic ordering**: Fixed scoring + tie-break alphabetical sorting
+   - **Type safety**: Added proper type annotations for mypy compliance
+   - **Code formatting**: Applied black formatting to all new files
 
-##### 2. README Documentation Enhancements:
-- **Added Exit Codes section**: Documented standard exit codes (0=success, 1=I/O errors, 2=misuse)
-- **Updated init examples**: Added comprehensive examples showing:
-  - First-time creation: `"Wrote devcontainer to .devcontainer/devcontainer.json"`
-  - Force overwrite with changes: `"Overwrote devcontainer at ..."` + `"Changes:"` block
-  - Force overwrite no changes: `"Overwrote devcontainer at ..."` + `"No changes."`
-  - Custom output path: `"Wrote devcontainer to dev/devcontainer.json"`
-- **Corrected scan examples**: Fixed spacing and ensured alphabetical ordering examples
-- **Path consistency**: Used relative paths (`.devcontainer/devcontainer.json`) instead of absolute paths
+### Final Validation Results:
+- ✅ **pytest**: 107/107 tests passed (34 new plan tests added)
+- ✅ **pre-commit**: All hooks pass (trim whitespace, black, ruff, mypy)
+- ✅ **deterministic ordering**: Commands with same score ordered alphabetically
+- ✅ **pytest preferred**: `pytest -q` scored higher than `python -m pytest -q`
+- ✅ **devcontainer detection**: Language detection working in Environment/Needs
 
-##### 3. Behavior Validation:
-All command scenarios tested and confirmed to match documentation:
-- ✅ `init` first build → prints only creation message (no diff block)
-- ✅ `init --force` with changes → prints overwrite message + Changes block
-- ✅ `init --force` with no changes → prints overwrite message + "No changes."
-- ✅ `init --out <path>` success → writes to specified path
-- ✅ `init --out <dir>` misuse → exit code 2 with clear error message
-- ✅ `scan` empty directory → `"No known languages detected."`
-- ✅ `scan` with languages → `"Detected: lang1, lang2"` + reasons in alphabetical order
+### Test Evidence Examples:
+```python
+# Deterministic ordering verified
+keywords = {"test"}
+detected_langs = ["python"]
+# Results: score 25: pytest -q, score 5: go test ./... (before npm test -s alphabetically)
 
-#### Testing and Quality Assurance:
-- **Test Results**: 73 tests passed (all existing tests maintained)
-- **Pre-commit**: All hooks pass (✅ trim whitespace, fix files, black, ruff, mypy)
-- **Black formatting**: All files properly formatted (✅)
-- **Real behavior verification**: Tested actual command outputs in temporary directories
+# Exit codes verified
+- Missing --desc/--file → exit=2
+- Non-existent --file → exit=1
+- Existing file without --force → exit=0 (no overwrite)
+- All success cases → exit=0
+```
 
-#### Files Modified:
-- `autorepro/cli.py`: Fixed scan output format (line 82)
-- `tests/test_scan_cli.py`: Updated test assertions for correct format
-- `README.md`: Added Exit Codes section and corrected all examples
-- `report.md`: Added this consolidation summary
+**Implementation Status**: All requirements fulfilled, fully tested, and ready for production use.
 
-#### Validation Summary:
-- ✅ **pre-commit**: All checks pass
-- ✅ **pytest**: 73/73 tests passed
-- ✅ **black**: Code formatting verified
-- ✅ **Actual outputs**: All commands produce expected output matching README examples
+---
 
-#### Impact:
-- Commands now behave exactly as documented
-- README serves as accurate reference for users
-- All test coverage maintained while fixing format issues
-- Exit codes clearly documented for proper error handling
-- Foundation ready for future enhancements
+## Lint Fix Update (B033, B007)
+**Status**: ✅ COMPLETED
+**Changes**: Fixed ruff warnings for duplicate set item and unused loop variables
+
+### Issues Fixed:
+1. **B033**: Removed duplicate `"her"` from stopwords set in `autorepro/planner.py`
+2. **B007**: Replaced unused loop variables with `_`:
+   - `autorepro/planner.py:232`: `rationale` → `_`
+   - `tests/test_plan_core.py:67`: `cmd` → `_`
+   - `tests/test_plan_core.py:133`: `rationale` → `_`
+   - `tests/test_plan_core.py:154`: `rationale` → `_`
+   - `tests/test_plan_core.py:160`: `score` → `_`
+
+### Verification Evidence:
+```bash
+$ ruff check .
+All checks passed!
+
+$ pre-commit run -a
+trim trailing whitespace.................................................Passed
+fix end of files.........................................................Passed
+check yaml...............................................................Passed
+check for added large files..............................................Passed
+check toml...............................................................Passed
+check for merge conflicts................................................Passed
+black....................................................................Passed
+ruff.....................................................................Passed
+ruff-format..............................................................Passed
+mypy.....................................................................Passed
+```
+
+**Result**: 0 errors, all lint checks passing. Semantics preserved, only variable names changed to silence unused warnings.
+
+## Development Evidence
+Phase-by-phase implementation evidence will be documented below.
+
+---
+
+## Phase Implementation Log
+
+### Phase 0 - Initialize Report.md ✅
+**Status**: Completed
+**Evidence**: Report.md created with scope, plan, and acceptance checklist
+
+### Phase 1 - Implement autorepro/planner.py ✅
+**Status**: Completed
+**Evidence**:
+- Created `/Users/ali/autorepro/autorepro/planner.py` with four pure functions
+- Function demos:
+```python
+# normalize() removes markdown noise and normalizes whitespace
+Input: '# Tests failing with **pytest** on CI'
+Output: 'tests failing with pytest on ci'
+
+# extract_keywords() filters stopwords but preserves dev terms
+Input: 'pytest tests failing on ci with tox and npm'
+Keywords: ['ci', 'failing', 'npm', 'pytest', 'tests', 'tox']
+```
+- All functions include proper type hints and docstrings
+- Implementation uses only Python standard library (re module)
+
+### Phase 2 - Command suggestion logic ✅
+**Status**: Completed
+**Evidence**:
+- Tested `suggest_commands()` with mixed language detection
+```
+Input keywords: ['ci', 'failing', 'pytest', 'tests']
+Detected languages: ['python', 'javascript']
+
+Top suggestions:
+1. Score 38: pytest -q (detected python + 3 keyword matches)
+2. Score 28: npm test -s (detected javascript + 2 keyword matches)
+3. Score 26: python -m pytest -q (detected python + pytest keyword)
+4. Score 20: tox -q (detected python + ci keyword)
+5. Score 18: npx jest --silent (detected javascript)
+```
+- Scoring combines language priors + keyword hits as designed
+- Rationale strings show contributing factors
+- Results sorted by descending score correctly
+
+### Phase 3 - Markdown builder ✅
+**Status**: Completed
+**Evidence**:
+- Generated markdown with required structure:
+```markdown
+# Pytest Tests Failing on CI
+
+## Assumptions
+- Python environment is available
+- Dependencies are installed via pip
+
+## Environment / Needs
+- Python 3.7+
+- pytest package
+
+## Steps (ranked)
+| Score | Command | Why |
+|-------|---------|-----|
+| 38 | `pytest -q` | Score 38: detected python, keyword pytest, keyword tests |
+| 28 | `npm test -s` | Score 28: detected javascript, keyword tests |
+
+## Next Steps
+- Check pytest configuration in pytest.ini
+```
+- Table format matches spec: Score | Command | Why columns
+- Commands escaped with backticks for markdown
+- Stable formatting for diff-friendly output
+
+### Phase 4 - CLI integration ✅
+**Status**: Completed
+**Evidence**:
+- Added `plan` subcommand to `/Users/ali/autorepro/autorepro/cli.py`
+- Help output shows all required flags:
+```
+usage: autorepro plan [-h] (--desc DESC | --file FILE) [--out OUT] [--force]
+                      [--max MAX] [--format {md,json}]
+
+Generate a reproduction plan from issue description or file
+
+options:
+  --desc DESC         Issue description text
+  --file FILE         Path to file containing issue description
+  --out OUT           Output path (default: repro.md)
+  --force             Overwrite existing output file
+  --max MAX           Maximum number of suggested commands (default: 5)
+  --format {md,json}  Output format (default: md)
+```
+- Mutually exclusive group for --desc/--file working (exactly one required)
+- Implemented cmd_plan() with all required behaviors
+- Integrated into main() function with proper argument passing
+
+### Phase 5 - Wiring to language detection ✅
+**Status**: Completed
+**Evidence**:
+- Successfully called `detect_languages(".")` from existing autorepro.detect module
+- Full command test: `python -m autorepro.cli plan --desc "tests failing with pytest on CI" --out tmp_repro.md --max 3`
+- Output: `tmp_repro.md` (printed final path as required)
+- Generated repro.md excerpt:
+```markdown
+# Tests Failing With Pytest On Ci
+
+## Assumptions
+- Project uses python based on detected files
+- Issue is related to testing
+- Issue occurs in CI/CD environment
+
+## Steps (ranked)
+| Score | Command | Why |
+|-------|---------|-----|
+| 38 | `pytest -q` | Score 38: detected python, keyword "tests", keyword "ci", keyword "pytest" |
+| 26 | `python -m pytest -q` | Score 26: detected python, keyword "pytest" |
+| 20 | `tox -q` | Score 20: detected python, keyword "ci" |
+```
+- Language detection working: detected "python" influenced command scoring
+- Keyword extraction working: "tests", "ci", "pytest" contributed to scores
+- Command limiting working: --max 3 limited output to top 3 suggestions
+
+### Phase 6 - Guardrails ✅
+**Status**: Completed
+**Evidence**:
+
+1. **Misuse case** (no --desc/--file):
+```bash
+$ python -m autorepro.cli plan --out test_repro.md
+autorepro plan: error: one of the arguments --desc --file is required
+Exit code: 2
+```
+
+2. **Overwrite guard** (existing file without --force):
+```bash
+$ echo "# Existing repro file" > existing_repro.md
+$ python -m autorepro.cli plan --desc "test issue" --out existing_repro.md
+existing_repro.md exists; use --force to overwrite
+Exit code: 0
+```
+
+3. **JSON format fallback**:
+```bash
+$ python -m autorepro.cli plan --desc "test issue" --out json_test.md --format json
+json output not implemented yet; generating md
+json_test.md
+Exit code: 0
+```
+- File created in markdown format despite JSON request (verified)
+- All exit codes match specification exactly%
