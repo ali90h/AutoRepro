@@ -79,7 +79,7 @@ def cmd_scan() -> int:
     # Print details for each language
     for lang, reasons in detected:
         reasons_str = ", ".join(reasons)
-        print(f"- {lang}  -> {reasons_str}")
+        print(f"- {lang} -> {reasons_str}")
 
     return 0
 

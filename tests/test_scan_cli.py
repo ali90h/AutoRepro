@@ -36,7 +36,7 @@ class TestScanCLI:
             lines = [line.strip() for line in captured.out.strip().splitlines()]
             assert len(lines) == 2
             assert lines[0] == "Detected: python"
-            assert lines[1] == "- python  -> pyproject.toml"
+            assert lines[1] == "- python -> pyproject.toml"
 
     def test_scan_multiple_languages(self, capsys):
         """Test scan command with multiple languages detected."""
@@ -55,9 +55,9 @@ class TestScanCLI:
             lines = [line.strip() for line in captured.out.strip().splitlines()]
             assert len(lines) == 4
             assert lines[0] == "Detected: go, node, python"
-            assert lines[1] == "- go  -> go.mod"
-            assert lines[2] == "- node  -> package.json, pnpm-lock.yaml"
-            assert lines[3] == "- python  -> pyproject.toml"
+            assert lines[1] == "- go -> go.mod"
+            assert lines[2] == "- node -> package.json, pnpm-lock.yaml"
+            assert lines[3] == "- python -> pyproject.toml"
 
     def test_scan_with_multiple_reasons(self, capsys):
         """Test scan command with multiple reasons for a language."""
@@ -74,7 +74,7 @@ class TestScanCLI:
             lines = [line.strip() for line in captured.out.strip().splitlines()]
             assert len(lines) == 2
             assert lines[0] == "Detected: python"
-            assert lines[1] == "- python  -> pyproject.toml, requirements.txt, setup.py"
+            assert lines[1] == "- python -> pyproject.toml, requirements.txt, setup.py"
 
     def test_scan_help(self, capsys):
         """Test scan help command."""
