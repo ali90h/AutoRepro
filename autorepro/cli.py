@@ -104,10 +104,17 @@ def cmd_init(force: bool = False, out: str | None = None) -> int:
                 file_existed = False
 
         # Write devcontainer with specified options
-        result_path = write_devcontainer(config, force=force, out=out)
+        result_path, diff_lines = write_devcontainer(config, force=force, out=out)
 
         if force and file_existed:
             print(f"Overwrote devcontainer at {result_path}")
+            if diff_lines is not None:
+                if diff_lines:
+                    print("Changes:")
+                    for line in diff_lines:
+                        print(line)
+                else:
+                    print("No changes.")
         else:
             print(f"Wrote devcontainer to {result_path}")
         return 0
