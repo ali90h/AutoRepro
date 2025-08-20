@@ -31,7 +31,7 @@ def default_devcontainer() -> dict:
             "ghcr.io/devcontainers/features/go:1": {"version": "1.22"},
         },
         "postCreateCommand": (
-            "python -m venv .venv && source .venv/bin/activate && pip install -e ."
+            "python -m venv .venv && source .venv/bin/activate && python -m pip install -e ."
         ),
     }
 
