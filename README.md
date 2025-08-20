@@ -7,7 +7,7 @@ AutoRepro is a developer tools project that transforms issue descriptions into c
 The current MVP scope includes three core commands:
 - **scan**: Detect languages/frameworks from file pointers (✅ implemented)
 - **init**: Create a developer container (✅ implemented)
-- **plan**: Derive an execution plan from issue description (coming soon)
+- **plan**: Derive an execution plan from issue description (✅ implemented)
 
 The project targets multilingualism (initially Python/JS/Go) and emphasizes simplicity, transparency, and automated testing. The ultimate goal is to produce tests that automatically fail and open Draft PRs containing them, improving contribution quality and speeding up maintenance on GitHub.
 
@@ -45,6 +45,9 @@ autorepro scan
 
 # Create a devcontainer.json file
 autorepro init
+
+# Generate a reproduction plan from issue description
+autorepro plan --desc "tests failing with pytest"
 ```
 
 ### Scan Command
@@ -124,13 +127,61 @@ Wrote devcontainer to dev/devcontainer.json
 - `--force`: Overwrite existing devcontainer.json file
 - `--out PATH`: Custom output path (default: .devcontainer/devcontainer.json)
 
+### Plan Command
+
+Generates structured reproduction plans from issue descriptions, combining keyword analysis with project language detection to suggest prioritized commands.
+
+```bash
+# Generate plan from description
+$ autorepro plan --desc "pytest tests failing on CI"
+repro.md
+
+# Generate plan from file
+$ autorepro plan --file issue.txt
+repro.md
+
+# Custom output path
+$ autorepro plan --desc "npm test issues" --out my_plan.md
+my_plan.md
+
+# Overwrite existing plan
+$ autorepro plan --desc "build failing" --force
+repro.md
+
+# Limit number of suggested commands
+$ autorepro plan --desc "tests timeout" --max 3
+repro.md
+
+# JSON format (produces md with notice)
+$ autorepro plan --desc "linting errors" --format json
+json output not implemented yet; generating md
+repro.md
+```
+
+**Status:** `plan` is implemented with intelligent command suggestions and markdown output.
+
+**Plan Behavior:**
+- **Input options**: `--desc "text"` or `--file path.txt` (mutually exclusive, one required)
+- **Language detection**: Uses `scan` results to weight command suggestions
+- **Keyword extraction**: Filters stopwords while preserving dev terms (pytest, npm, tox, etc.)
+- **Command scoring**: Combines language priors + keyword matches for ranking
+- **Structured output**: Title, Assumptions, Environment/Needs, Steps table, Next Steps
+
+**Options:**
+- `--desc TEXT`: Issue description text
+- `--file PATH`: Path to file containing issue description
+- `--out PATH`: Output path (default: repro.md)
+- `--force`: Overwrite existing output file
+- `--max N`: Maximum suggested commands (default: 5)
+- `--format md|json`: Output format (MVP: md only, json shows notice)
+
 ## Exit Codes
 
 AutoRepro uses standard exit codes to indicate success or failure:
 
 - **0**: Success (including "already exists" and overwrite operations)
 - **1**: Unexpected I/O or permission errors
-- **2**: Misuse (e.g., `--out` points to a directory)
+- **2**: Misuse (e.g., `--out` points to a directory, missing --desc/--file)
 
 ## Development
 

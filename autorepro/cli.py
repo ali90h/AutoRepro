@@ -2,6 +2,7 @@
 """AutoRepro CLI - Command line interface for AutoRepro."""
 
 import argparse
+import os
 import sys
 
 from autorepro import __version__
@@ -11,6 +12,12 @@ from autorepro.env import (
     DevcontainerMisuseError,
     default_devcontainer,
     write_devcontainer,
+)
+from autorepro.planner import (
+    build_repro_md,
+    extract_keywords,
+    normalize,
+    suggest_commands,
 )
 
 
@@ -27,7 +34,7 @@ devcontainers, and writes prioritized repro plans with explicit assumptions.
 MVP commands:
   scan    Detect languages/frameworks from file pointers
   init    Create a developer container
-  plan    Derive execution plan from issue description (coming soon)
+  plan    Derive execution plan from issue description
 
 For more information, visit: https://github.com/ali90h/AutoRepro
         """.strip(),
@@ -61,6 +68,47 @@ For more information, visit: https://github.com/ali90h/AutoRepro
         help="Custom output path (default: .devcontainer/devcontainer.json)",
     )
 
+    # plan subcommand
+    plan_parser = subparsers.add_parser(
+        "plan",
+        help="Derive execution plan from issue description",
+        description="Generate a reproduction plan from issue description or file",
+    )
+
+    # Mutually exclusive group for --desc and --file (exactly one required)
+    input_group = plan_parser.add_mutually_exclusive_group(required=True)
+    input_group.add_argument(
+        "--desc",
+        help="Issue description text",
+    )
+    input_group.add_argument(
+        "--file",
+        help="Path to file containing issue description",
+    )
+
+    plan_parser.add_argument(
+        "--out",
+        default="repro.md",
+        help="Output path (default: repro.md)",
+    )
+    plan_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite existing output file",
+    )
+    plan_parser.add_argument(
+        "--max",
+        type=int,
+        default=5,
+        help="Maximum number of suggested commands (default: 5)",
+    )
+    plan_parser.add_argument(
+        "--format",
+        choices=["md", "json"],
+        default="md",
+        help="Output format (default: md)",
+    )
+
     return parser
 
 
@@ -82,6 +130,120 @@ def cmd_scan() -> int:
         print(f"- {lang} -> {reasons_str}")
 
     return 0
+
+
+def cmd_plan(
+    desc: str | None = None,
+    file: str | None = None,
+    out: str = "repro.md",
+    force: bool = False,
+    max_commands: int = 5,
+    format_type: str = "md",
+) -> int:
+    """Handle the plan command."""
+
+    # Handle JSON format fallback (MVP: md only)
+    if format_type == "json":
+        print("json output not implemented yet; generating md")
+
+    # Read input text
+    try:
+        if desc is not None:
+            text = desc
+        elif file is not None:
+            with open(file, encoding="utf-8") as f:
+                text = f.read()
+        else:
+            # This should not happen due to argparse mutually_exclusive_group
+            print("Error: Either --desc or --file must be specified", file=sys.stderr)
+            return 2
+    except OSError as e:
+        print(f"Error reading file {file}: {e}", file=sys.stderr)
+        return 1
+
+    # Check for existing output file (unless --force)
+    if os.path.exists(out) and not force:
+        print(f"{out} exists; use --force to overwrite")
+        return 0
+
+    # Process the text
+    normalized_text = normalize(text)
+    keywords = extract_keywords(normalized_text)
+
+    # Get detected languages for weighting
+    detected_languages = detect_languages(".")
+    lang_names = [lang for lang, _ in detected_languages]
+
+    # Generate suggestions
+    suggestions = suggest_commands(keywords, lang_names)
+
+    # Limit to max_commands
+    limited_suggestions = suggestions[:max_commands]
+
+    # Generate title from first few words
+    title_words = normalized_text.split()[:6]
+    title = "Issue Reproduction Plan"
+    if title_words:
+        title = " ".join(title_words).title()
+        if len(title) > 50:
+            title = title[:50] + "..."
+
+    # Generate assumptions based on detected languages and keywords
+    assumptions = []
+    if lang_names:
+        lang_list = ", ".join(lang_names)
+        assumptions.append(f"Project uses {lang_list} based on detected files")
+    else:
+        assumptions.append("Standard development environment")
+
+    if "test" in keywords or "tests" in keywords or "testing" in keywords:
+        assumptions.append("Issue is related to testing")
+    if "ci" in keywords:
+        assumptions.append("Issue occurs in CI/CD environment")
+    if "install" in keywords or "setup" in keywords:
+        assumptions.append("Installation or setup may be involved")
+
+    if not assumptions:
+        assumptions.append("Issue can be reproduced locally")
+
+    # Generate environment needs based on detected languages
+    needs = []
+    for lang in lang_names:
+        if lang == "python":
+            needs.append("Python 3.7+")
+            if "pytest" in keywords:
+                needs.append("pytest package")
+            if "tox" in keywords:
+                needs.append("tox package")
+        elif lang == "node" or lang == "javascript":
+            needs.append("Node.js 16+")
+            needs.append("npm or yarn")
+        elif lang == "go":
+            needs.append("Go 1.19+")
+
+    if not needs:
+        needs.append("Standard development environment")
+
+    # Generate next steps
+    next_steps = [
+        "Run the suggested commands in order of priority",
+        "Check logs and error messages for patterns",
+        "Review environment setup if commands fail",
+        "Document any additional reproduction steps found",
+    ]
+
+    # Build the reproduction markdown
+    md_content = build_repro_md(title, assumptions, limited_suggestions, needs, next_steps)
+
+    # Write output file
+    try:
+        with open(out, "w", encoding="utf-8") as f:
+            f.write(md_content)
+        print(out)  # Print final path on success
+        return 0
+    except OSError as e:
+        print(f"Error writing file {out}: {e}", file=sys.stderr)
+        return 1
 
 
 def cmd_init(force: bool = False, out: str | None = None) -> int:
@@ -134,6 +296,15 @@ def main() -> int:
         return cmd_scan()
     elif args.command == "init":
         return cmd_init(force=args.force, out=args.out)
+    elif args.command == "plan":
+        return cmd_plan(
+            desc=args.desc,
+            file=args.file,
+            out=args.out,
+            force=args.force,
+            max_commands=args.max,
+            format_type=args.format,
+        )
 
     parser.print_help()
     return 0
