@@ -63,9 +63,10 @@ class TestWriteDevcontainer:
         config = {"name": "test", "features": {}}
         output_file = tmp_path / ".devcontainer" / "devcontainer.json"
 
-        result_path = write_devcontainer(config, out=str(output_file))
+        result_path, diff_lines = write_devcontainer(config, out=str(output_file))
 
         assert result_path == output_file
+        assert diff_lines is None  # New file, no diff
         assert output_file.exists()
 
         # Verify content
@@ -78,10 +79,11 @@ class TestWriteDevcontainer:
         monkeypatch.chdir(tmp_path)
         config = {"name": "test"}
 
-        result_path = write_devcontainer(config)
+        result_path, diff_lines = write_devcontainer(config)
 
         default_file = tmp_path / ".devcontainer" / "devcontainer.json"
         assert result_path == default_file
+        assert diff_lines is None  # New file, no diff
         assert default_file.exists()
 
     def test_write_devcontainer_idempotent_without_force(self, tmp_path):
@@ -103,9 +105,10 @@ class TestWriteDevcontainer:
         output_file.write_text("existing content")
 
         config = {"name": "test"}
-        result_path = write_devcontainer(config, force=True, out=str(output_file))
+        result_path, diff_lines = write_devcontainer(config, force=True, out=str(output_file))
 
         assert result_path == output_file
+        assert diff_lines is not None  # Overwritten file, should have diff info
         with open(output_file) as f:
             written_config = json.load(f)
         assert written_config == config
@@ -115,9 +118,10 @@ class TestWriteDevcontainer:
         output_file = tmp_path / "deep" / "nested" / "path" / "devcontainer.json"
         config = {"name": "test"}
 
-        result_path = write_devcontainer(config, out=str(output_file))
+        result_path, diff_lines = write_devcontainer(config, out=str(output_file))
 
         assert result_path == output_file
+        assert diff_lines is None  # New file, no diff
         assert output_file.exists()
 
     def test_write_devcontainer_invalid_path_error(self, tmp_path):
@@ -151,9 +155,10 @@ class TestWriteDevcontainer:
         config = {"name": "test", "features": {"b": 2, "a": 1}}
         output_file = tmp_path / "devcontainer.json"
 
-        result_path = write_devcontainer(config, out=str(output_file))
+        result_path, diff_lines = write_devcontainer(config, out=str(output_file))
 
         assert result_path == output_file
+        assert diff_lines is None  # New file, no diff
         content = output_file.read_text()
 
         # Check formatting

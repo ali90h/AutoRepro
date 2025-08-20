@@ -36,7 +36,83 @@ def default_devcontainer() -> dict:
     }
 
 
-def write_devcontainer(content: dict, force: bool = False, out: str | None = None) -> Path:
+def _shorten_value(value_str: str, max_length: int = 80) -> str:
+    """
+    Shorten a JSON string representation if it's too long.
+    Show first/last portions with length indicator for long values.
+    """
+    if len(value_str) <= max_length:
+        return value_str
+
+    # For very long values, show first/last 40 characters with ellipsis and length
+    first_part = value_str[:40]
+    last_part = value_str[-40:]
+    return f"{first_part}...{last_part} (length: {len(value_str)})"
+
+
+def json_diff(old: dict, new: dict) -> list[str]:
+    """
+    Return a list of human-readable change lines comparing `old` vs `new`,
+    using dot-paths (e.g., features.go.version) and action prefixes:
+      + path: <new>
+      - path: <old>
+      ~ path: <old> -> <new>
+    Rules:
+    - Walk nested dicts recursively (ignore key ordering).
+    - For scalars, consider changed if values differ.
+    - For lists/other non-dict types: treat as scalar; if unequal, emit `~`.
+    - Use JSON-like rendering for values: json.dumps(value, ensure_ascii=False).
+    - Paths use dot-notation; do not include indices (lists treated as scalar values).
+    - Long values are shortened for display with first/last 40 chars and length indicator.
+    - Return lines **sorted by path** for deterministic output.
+    """
+
+    def _walk_diff(old_dict, new_dict, prefix=""):
+        """Recursively walk through dictionaries to find differences."""
+        changes = []
+
+        # Get all keys from both dictionaries
+        all_keys = set(old_dict.keys()) | set(new_dict.keys())
+
+        for key in all_keys:
+            # Quote keys that contain dots or other special characters
+            safe_key = f'["{key}"]' if "." in str(key) else str(key)
+            current_path = f"{prefix}.{safe_key}" if prefix else safe_key
+
+            if key not in old_dict:
+                # Key added
+                new_val = json.dumps(new_dict[key], ensure_ascii=False)
+                new_val = _shorten_value(new_val)
+                changes.append(f"+ {current_path}: {new_val}")
+            elif key not in new_dict:
+                # Key removed
+                old_val = json.dumps(old_dict[key], ensure_ascii=False)
+                old_val = _shorten_value(old_val)
+                changes.append(f"- {current_path}: {old_val}")
+            else:
+                old_val = old_dict[key]
+                new_val = new_dict[key]
+
+                # If both are dictionaries, recurse
+                if isinstance(old_val, dict) and isinstance(new_val, dict):
+                    changes.extend(_walk_diff(old_val, new_val, current_path))
+                # Otherwise, treat as scalars and compare
+                elif old_val != new_val:
+                    old_json = json.dumps(old_val, ensure_ascii=False)
+                    new_json = json.dumps(new_val, ensure_ascii=False)
+                    old_json = _shorten_value(old_json)
+                    new_json = _shorten_value(new_json)
+                    changes.append(f"~ {current_path}: {old_json} -> {new_json}")
+
+        return changes
+
+    changes = _walk_diff(old, new)
+    return sorted(changes)  # Sort by path for deterministic output
+
+
+def write_devcontainer(
+    content: dict, force: bool = False, out: str | None = None
+) -> tuple[Path, list[str] | None]:
     """
     Write devcontainer configuration to file with atomic and idempotent behavior.
 
@@ -46,7 +122,10 @@ def write_devcontainer(content: dict, force: bool = False, out: str | None = Non
         out: Custom output path (default: .devcontainer/devcontainer.json)
 
     Returns:
-        Path: The path where the file was written
+        tuple[Path, list[str] | None]: The path where the file was written and diff information.
+        - If file was newly created: (path, None)
+        - If file existed and force is False: (path, None) - caller handles "already exists"
+        - If file existed and force is True: (path, diff_lines) - diff_lines may be empty
 
     Raises:
         DevcontainerExistsError: File exists and force=False
@@ -89,6 +168,8 @@ def write_devcontainer(content: dict, force: bool = False, out: str | None = Non
     except (OSError, PermissionError) as e:
         raise OSError(f"Permission denied: {output_path.parent}") from e
 
+    diff_lines = None
+
     if file_exists:
         if not force:
             raise DevcontainerExistsError(output_path)
@@ -96,16 +177,37 @@ def write_devcontainer(content: dict, force: bool = False, out: str | None = Non
         # Check write permissions on existing file
         if not os.access(output_path, os.W_OK):
             raise PermissionError(f"Permission denied: {output_path}")
+
+        # Read existing file and compute diff
+        try:
+            with open(output_path, encoding="utf-8") as f:
+                old_content = json.load(f)
+            diff_lines = json_diff(old_content, content)
+        except (OSError, json.JSONDecodeError):
+            # If we can't read the old file as JSON, treat it as a complete replacement
+            diff_lines = []
     else:
         # Check write permissions on parent directory for new file
         if not os.access(output_path.parent, os.W_OK):
             raise PermissionError(f"Permission denied: {output_path.parent}")
 
+    # Create content with proper formatting
+    json_content = json.dumps(content, indent=2, sort_keys=True) + "\n"
+
+    # Check if content is actually different before writing
+    if file_exists:
+        try:
+            with open(output_path, encoding="utf-8") as f:
+                existing_content = f.read()
+            if existing_content == json_content:
+                # No actual changes, return without writing to preserve mtime
+                return output_path, diff_lines
+        except (OSError, UnicodeDecodeError):
+            # If we can't read the existing file, proceed with write
+            pass
+
     # Write file atomically
     try:
-        # Create content with proper formatting
-        json_content = json.dumps(content, indent=2, sort_keys=True) + "\n"
-
         # Write to temporary file first, then move (atomic operation)
         temp_path = output_path.with_suffix(output_path.suffix + ".tmp")
 
@@ -116,7 +218,7 @@ def write_devcontainer(content: dict, force: bool = False, out: str | None = Non
             # Atomic move
             temp_path.rename(output_path)
 
-            return output_path
+            return output_path, diff_lines
 
         except Exception:
             # Clean up temp file if it exists
