@@ -1,7 +1,40 @@
 """AutoRepro planner module for generating reproduction plans from issue descriptions."""
 
 import re
-from typing import Any
+
+# Compiled regex patterns for keyword detection
+KEYWORD_PATTERNS = {
+    # Python keywords
+    "pytest": re.compile(r"\bpytest\b"),
+    "tox": re.compile(r"\btox\b"),
+    "unittest": re.compile(r"\bunittest\b"),
+    "poetry": re.compile(r"\bpoetry\b"),
+    "pipenv": re.compile(r"\bpipenv\b"),
+    # Node keywords (including multi-word phrases)
+    "jest": re.compile(r"\bjest\b"),
+    "vitest": re.compile(r"\bvitest\b"),
+    "mocha": re.compile(r"\bmocha\b"),
+    "playwright": re.compile(r"\bplaywright\b"),
+    "cypress": re.compile(r"\bcypress\b"),
+    "npm test": re.compile(r"\bnpm\s+test\b"),
+    "pnpm test": re.compile(r"\bpnpm\s+test\b"),
+    "yarn test": re.compile(r"\byarn\s+test\b"),
+    # Go keywords
+    "go test": re.compile(r"\bgo\s+test\b"),
+    "gotestsum": re.compile(r"\bgotestsum\b"),
+    # Electron keywords (including multi-word phrases)
+    "electron": re.compile(r"\belectron\b"),
+    "main process": re.compile(r"\bmain\s+process\b"),
+    "renderer": re.compile(r"\brenderer\b"),
+    "white screen": re.compile(r"\bwhite\s+screen\b"),
+    # Future-prep: Rust keywords
+    "cargo test": re.compile(r"\bcargo\s+test\b"),
+    # Future-prep: Java keywords (looking for build tool indicators)
+    "mvn": re.compile(r"\bmvn\b"),
+    "maven": re.compile(r"\bmaven\b"),
+    "gradle": re.compile(r"\bgradle\b"),
+    "gradlew": re.compile(r"\bgradlew\b"),
+}
 
 
 def normalize(text: str) -> str:
@@ -22,7 +55,7 @@ def normalize(text: str) -> str:
 
     # Remove markdown noise and light punctuation
     # Remove: # * ` ~ " ' < > [ ] ( ) { }
-    noise_chars = r'[#*`~"\'<>\[\](){}]'
+    noise_chars = r'[#*`~"\'<>]'
     text = re.sub(noise_chars, " ", text)
 
     # Strip leading/trailing whitespace and collapse internal whitespace
@@ -33,240 +66,225 @@ def normalize(text: str) -> str:
 
 def extract_keywords(text: str) -> set[str]:
     """
-    Extract keywords from normalized text using light heuristics.
+    Extract keywords from normalized text using regex patterns.
 
     Args:
-        text: Input text to extract keywords from
+        text: Input text (should be normalized) to extract keywords from
 
     Returns:
-        Set of relevant keywords, filtered for stopwords and length
+        Set of matched keyword labels exactly as defined in KEYWORD_PATTERNS
     """
     if not text:
         return set()
 
-    # Basic English stopwords
-    stopwords = {
-        "the",
-        "and",
-        "or",
-        "but",
-        "in",
-        "on",
-        "at",
-        "to",
-        "for",
-        "of",
-        "with",
-        "by",
-        "is",
-        "are",
-        "was",
-        "were",
-        "be",
-        "been",
-        "have",
-        "has",
-        "had",
-        "do",
-        "does",
-        "did",
-        "will",
-        "would",
-        "could",
-        "should",
-        "can",
-        "may",
-        "this",
-        "that",
-        "these",
-        "those",
-        "i",
-        "you",
-        "he",
-        "she",
-        "it",
-        "we",
-        "they",
-        "me",
-        "him",
-        "her",
-        "us",
-        "them",
-        "my",
-        "your",
-        "his",
-        "its",
-        "our",
-        "their",
-        "a",
-        "an",
-        "as",
-        "if",
-        "so",
-        "no",
-        "not",
-        "all",
-        "any",
-        "some",
-        "from",
-        "up",
-        "out",
-        "down",
-        "off",
-        "over",
-        "under",
-    }
+    # Apply regex patterns to find matching keywords
+    matched_keywords = set()
+    for keyword_label, pattern in KEYWORD_PATTERNS.items():
+        if pattern.search(text):
+            matched_keywords.add(keyword_label)
 
-    # Developer-shorthand terms to preserve
-    dev_terms = {
-        "pytest",
-        "tox",
-        "jest",
-        "vitest",
-        "playwright",
-        "npm",
-        "yarn",
-        "pnpm",
-        "go",
-        "gotest",
-        "make",
-        "electron",
-        "node",
-        "python",
-        "pyproject",
-        "requirements",
-        "package",
-        "json",
-        "test",
-        "tests",
-        "testing",
-        "ci",
-        "cd",
-        "build",
-        "run",
-        "install",
-        "setup",
-        "config",
-        "lint",
-        "format",
-    }
-
-    # Tokenize on non-alphanumeric characters
-    tokens = re.findall(r"\b[a-z0-9]+\b", text.lower())
-
-    # Filter tokens: keep if length >= 2 and not a stopword, or if it's a dev term
-    keywords = set()
-    for token in tokens:
-        if len(token) >= 2 and (token not in stopwords or token in dev_terms):
-            keywords.add(token)
-
-    return keywords
+    return matched_keywords
 
 
-def suggest_commands(keywords: set[str], detected_langs: list[str]) -> list[tuple[str, int, str]]:
+def suggest_commands(keywords: set[str], detected_langs: list[str]) -> list[tuple[str, int, str]]:  # type: ignore
     """
-    Suggest commands based on keywords and detected languages.
+    Suggest commands based on keywords and detected languages using precise scoring rules.
+
+    Scoring Rules:
+    - +3 for direct tool/framework match (keyword present for a command)
+    - +2 if language is detected for the same ecosystem
+    - +1 for more specific/stable spellings of a command
+    - Tie-breaker: alphabetical sorting by command string
 
     Args:
-        keywords: Set of extracted keywords
+        keywords: Set of extracted keywords from regex-based extraction
         detected_langs: List of detected languages from detect_languages()
 
     Returns:
-        List of (command, score, rationale) tuples sorted by descending score
+        List of (command, score, rationale) tuples sorted by (-score, command)
     """
+
+    # Map detected languages to ecosystems
+    ecosystem_mapping = {
+        "python": "python",
+        "javascript": "node",
+        "node": "node",
+        "go": "go",
+        "electron": "electron",
+        "rust": "rust",
+        "java": "java",
+    }
+
+    # MVP command universe with ecosystem and tool mappings
+    command_universe = {
+        # Python ecosystem
+        "pytest": {"ecosystem": "python", "tools": ["pytest"], "specificity": 0},
+        "pytest -q": {"ecosystem": "python", "tools": ["pytest"], "specificity": 1},
+        "python -m pytest -q": {"ecosystem": "python", "tools": ["pytest"], "specificity": 1},
+        "python -m unittest -v": {"ecosystem": "python", "tools": ["unittest"], "specificity": 1},
+        "tox -e py311": {"ecosystem": "python", "tools": ["tox"], "specificity": 1},
+        # Node ecosystem
+        "npm test": {"ecosystem": "node", "tools": ["npm test"], "specificity": 0},
+        "npm test -s": {"ecosystem": "node", "tools": ["npm test"], "specificity": 1},
+        "pnpm test": {"ecosystem": "node", "tools": ["pnpm test"], "specificity": 0},
+        "pnpm test -s": {"ecosystem": "node", "tools": ["pnpm test"], "specificity": 1},
+        "yarn test": {"ecosystem": "node", "tools": ["yarn test"], "specificity": 0},
+        "yarn test -s": {"ecosystem": "node", "tools": ["yarn test"], "specificity": 1},
+        "npx jest": {"ecosystem": "node", "tools": ["jest"], "specificity": 0},
+        "npx jest -w=1": {"ecosystem": "node", "tools": ["jest"], "specificity": 1},
+        "npx vitest run": {"ecosystem": "node", "tools": ["vitest"], "specificity": 1},
+        "npx mocha": {"ecosystem": "node", "tools": ["mocha"], "specificity": 1},
+        "npx playwright test": {"ecosystem": "node", "tools": ["playwright"], "specificity": 1},
+        "npx cypress run": {"ecosystem": "node", "tools": ["cypress"], "specificity": 1},
+        # Go ecosystem
+        "go test": {"ecosystem": "go", "tools": ["go test"], "specificity": 0},
+        "go test ./... -run .": {"ecosystem": "go", "tools": ["go test"], "specificity": 1},
+        "gotestsum": {"ecosystem": "go", "tools": ["gotestsum"], "specificity": 1},
+        # Electron ecosystem
+        "npx electron .": {"ecosystem": "electron", "tools": ["electron"], "specificity": 1},
+        # Rust ecosystem (only if keywords appear)
+        "cargo test": {"ecosystem": "rust", "tools": ["cargo test"], "specificity": 1},
+        # Java ecosystem (only if keywords appear)
+        "mvn -q -DskipITs test": {"ecosystem": "java", "tools": ["mvn", "maven"], "specificity": 1},
+        "./gradlew test": {"ecosystem": "java", "tools": ["gradle", "gradlew"], "specificity": 1},
+    }
+
+    # Determine which ecosystems to include (MVP + conditional)
+    ecosystems_to_include = {"python", "node", "go", "electron"}
+
+    # Add Rust if Rust keywords present
+    rust_keywords = {"cargo test"}
+    if rust_keywords.intersection(keywords):
+        ecosystems_to_include.add("rust")
+
+    # Add Java if Java keywords present
+    java_keywords = {"mvn", "maven", "gradle", "gradlew"}
+    if java_keywords.intersection(keywords):
+        ecosystems_to_include.add("java")
+
+    # Filter command universe to included ecosystems
+    active_commands = {
+        cmd: info
+        for cmd, info in command_universe.items()
+        if info["ecosystem"] in ecosystems_to_include
+    }
+
+    # Calculate scores for each command
+    command_scores = {}
+
+    for cmd, info in active_commands.items():
+        score = 0
+        matched_keywords = []
+        detected_ecosystems = []
+        bonuses_applied = []
+
+        # +3 for direct tool/framework match
+        for tool in info["tools"]:  # type: ignore
+            if tool in keywords:
+                score += 3
+                matched_keywords.append(tool)
+                bonuses_applied.append(f"direct: {tool} (+3)")
+
+        # +2 if language is detected for the same ecosystem
+        for lang in detected_langs:
+            lang_key = lang.lower()
+            if lang_key in ecosystem_mapping:
+                ecosystem = ecosystem_mapping[lang_key]
+                if ecosystem == info["ecosystem"]:
+                    score += 2
+                    detected_ecosystems.append(lang)
+                    bonuses_applied.append(f"lang: {lang} (+2)")
+
+        # +1 for more specific/stable spellings
+        if info["specificity"] > 0:  # type: ignore
+            score += 1
+            bonuses_applied.append("specific (+1)")
+
+        # Store command data
+        command_scores[cmd] = {
+            "score": score,
+            "matched_keywords": matched_keywords,
+            "detected_langs": detected_ecosystems,
+            "bonuses": bonuses_applied,
+        }
+
+    # Filter to only relevant commands (score > 0)
+    relevant_commands = {cmd: data for cmd, data in command_scores.items() if data["score"] > 0}  # type: ignore
+
+    # Conservative defaults if no relevant matches
+    if not relevant_commands:
+        relevant_commands = {
+            "pytest -q": {
+                "score": 1,
+                "matched_keywords": [],
+                "detected_langs": [],
+                "bonuses": ["default (+1)"],
+            },
+            "npm test -s": {
+                "score": 1,
+                "matched_keywords": [],
+                "detected_langs": [],
+                "bonuses": ["default (+1)"],
+            },
+            "go test ./... -run .": {
+                "score": 1,
+                "matched_keywords": [],
+                "detected_langs": [],
+                "bonuses": ["default (+1)"],
+            },
+        }
+
+    # Build final suggestions with detailed rationales
     suggestions = []
+    for cmd, data in relevant_commands.items():
+        score = data["score"]  # type: ignore
 
-    # Language-specific command mappings with base scores
-    lang_commands = {
-        "python": [
-            ("pytest -q", 20, "Python testing with pytest"),
-            ("python -m pytest -q", 18, "Python testing via module"),
-            ("tox -q", 15, "Python multi-environment testing"),
-        ],
-        "node": [
-            ("npm test -s", 20, "Node.js npm test runner"),
-            ("npx jest --silent", 18, "Jest testing framework"),
-            ("npx vitest run", 15, "Vitest testing framework"),
-            ("npx playwright test", 12, "Playwright end-to-end testing"),
-        ],
-        "javascript": [
-            ("npm test -s", 20, "JavaScript npm test runner"),
-            ("npx jest --silent", 18, "Jest testing framework"),
-            ("npx vitest run", 15, "Vitest testing framework"),
-        ],
-        "go": [
-            ("go test ./...", 20, "Go testing all packages"),
-            ("go test -v ./...", 15, "Go verbose testing"),
-        ],
-    }
+        # Build detailed rationale
+        rationale_parts = []
+        if data["matched_keywords"]:
+            kw_list = ", ".join(data["matched_keywords"])  # type: ignore
+            rationale_parts.append(f"matched keywords: {kw_list}")
+        if data["detected_langs"]:
+            lang_list = ", ".join(data["detected_langs"])  # type: ignore
+            rationale_parts.append(f"detected langs: {lang_list}")
+        if data["bonuses"]:
+            bonus_list = ", ".join(data["bonuses"])  # type: ignore
+            rationale_parts.append(f"bonuses: {bonus_list}")
 
-    # Keyword-specific boost mappings
-    keyword_boosts = {
-        "pytest": {"pytest -q": 10, "python -m pytest -q": 8},
-        "jest": {"npx jest --silent": 10},
-        "vitest": {"npx vitest run": 10},
-        "playwright": {"npx playwright test": 10},
-        "tox": {"tox -q": 10},
-        "test": {"pytest -q": 5, "npm test -s": 5, "go test ./...": 5},
-        "tests": {"pytest -q": 5, "npm test -s": 5, "go test ./...": 5},
-        "testing": {"pytest -q": 3, "npm test -s": 3, "go test ./...": 3},
-        "ci": {"pytest -q": 3, "npm test -s": 3, "go test ./...": 3, "tox -q": 5},
-        "npm": {"npm test -s": 8},
-        "yarn": {"npm test -s": 5},  # fallback to npm
-        "pnpm": {"npm test -s": 5},  # fallback to npm
-        "python": {"pytest -q": 5, "python -m pytest -q": 5},
-        "node": {"npm test -s": 5, "npx jest --silent": 3},
-        "go": {"go test ./...": 8},
-        "build": {"npm test -s": 2, "go test ./...": 2},
-        "install": {"npm test -s": 1, "pytest -q": 1},
-    }
-
-    # Collect all unique commands with base scores
-    command_scores: dict[str, dict[str, Any]] = {}
-
-    # Add language-based commands
-    for lang in detected_langs:
-        lang_key = lang.lower()
-        if lang_key in lang_commands:
-            for cmd, base_score, _ in lang_commands[lang_key]:
-                if cmd not in command_scores:
-                    command_scores[cmd] = {
-                        "score": base_score,
-                        "rationale_parts": [f"detected {lang}"],
-                    }
-                else:
-                    command_scores[cmd]["score"] += base_score // 2
-                    command_scores[cmd]["rationale_parts"].append(f"detected {lang}")
-
-    # Apply keyword boosts
-    for keyword in keywords:
-        if keyword in keyword_boosts:
-            for cmd, boost in keyword_boosts[keyword].items():
-                if cmd in command_scores:
-                    command_scores[cmd]["score"] += boost
-                    command_scores[cmd]["rationale_parts"].append(f'keyword "{keyword}"')
-                else:
-                    # Add new command based on keyword alone
-                    command_scores[cmd] = {
-                        "score": boost,
-                        "rationale_parts": [f'keyword "{keyword}"'],
-                    }
-
-    # Add conservative defaults if no strong signals
-    if not command_scores:
-        command_scores["pytest -q"] = {"score": 5, "rationale_parts": ["conservative default"]}
-        command_scores["npm test -s"] = {"score": 5, "rationale_parts": ["conservative default"]}
-
-    # Build final suggestions with rationales
-    for cmd, data in command_scores.items():
-        score = data["score"]
-        rationale = f"Score {score}: " + ", ".join(data["rationale_parts"])
+        rationale = "; ".join(rationale_parts) if rationale_parts else "no matches"
         suggestions.append((cmd, score, rationale))
 
     # Sort by descending score, then alphabetically by command for ties
     suggestions.sort(key=lambda x: (-x[1], x[0]))
 
     return suggestions
+
+
+def safe_truncate_60(text: str) -> str:
+    """
+    Safely truncate text to 60 Unicode code points, appending … if truncated.
+
+    Args:
+        text: Input text to truncate
+
+    Returns:
+        Text truncated to ≤60 Unicode code points with trailing whitespace trimmed.
+        Appends … if truncation occurred.
+    """
+    if not text:
+        return ""
+
+    # Trim trailing whitespace first
+    text = text.rstrip()
+
+    # If text is 60 chars or less, return as-is
+    if len(text) <= 60:
+        return text
+
+    # Truncate to 60 Unicode code points and append ellipsis
+    truncated = text[:60] + "…"
+
+    return truncated
 
 
 def build_repro_md(
@@ -280,33 +298,51 @@ def build_repro_md(
     Build a reproduction markdown document with standardized structure.
 
     Args:
-        title: Title for the reproduction document
-        assumptions: List of assumptions made
-        commands: List of (command, score, rationale) tuples
-        needs: List of environment/dependency needs
-        next_steps: List of next steps to take
+        title: Title for the reproduction document (will be safely truncated to 60 chars)
+        assumptions: List of assumptions made (defaults provided if empty)
+        commands: List of (command, score, rationale) tuples (sorted by score desc, alphabetical)
+        needs: List of environment/dependency needs (includes devcontainer status)
+        next_steps: List of next steps to take (defaults provided if empty)
 
     Returns:
-        Formatted markdown string
+        Formatted markdown string with canonical sections
     """
     lines = []
 
-    # Title
-    lines.append(f"# {title}")
+    # Title - safely truncated to 60 characters
+    safe_title = safe_truncate_60(title)
+    lines.append(f"# {safe_title}")
     lines.append("")
 
-    # Assumptions section
+    # Assumptions section - with defaults if empty
     lines.append("## Assumptions")
     lines.append("")
     if assumptions:
         for assumption in assumptions:
             lines.append(f"- {assumption}")
     else:
-        lines.append("- None specified")
+        # Default assumptions when none provided
+        lines.append("- OS: Linux (CI runner) — editable")
+        lines.append("- Python 3.11 / Node 20 unless otherwise stated")
+        lines.append(
+            "- Network available for package mirrors; real network tests may be isolated later"
+        )
     lines.append("")
 
-    # Environment/Needs section
-    lines.append("## Environment / Needs")
+    # Candidate Commands section - one line per command
+    lines.append("## Candidate Commands")
+    lines.append("")
+    if commands:
+        # Sort by score desc, then alphabetically by command for deterministic output
+        sorted_commands = sorted(commands, key=lambda x: (-x[1], x[0]))
+        for cmd, _, rationale in sorted_commands:
+            lines.append(f"{cmd} — {rationale}")
+    else:
+        lines.append("No commands suggested")
+    lines.append("")
+
+    # Needed Files/Env section - including devcontainer status
+    lines.append("## Needed Files/Env")
     lines.append("")
     if needs:
         for need in needs:
@@ -315,33 +351,17 @@ def build_repro_md(
         lines.append("- Standard development environment")
     lines.append("")
 
-    # Steps section with table
-    lines.append("## Steps (ranked)")
-    lines.append("")
-    lines.append("| Score | Command | Why |")
-    lines.append("|-------|---------|-----|")
-
-    if commands:
-        for cmd, score, rationale in commands:
-            # Escape pipe characters in command and rationale for markdown table
-            cmd_escaped = cmd.replace("|", "\\|")
-            rationale_escaped = rationale.replace("|", "\\|")
-            lines.append(f"| {score} | `{cmd_escaped}` | {rationale_escaped} |")
-    else:
-        lines.append("| - | No commands suggested | - |")
-
-    lines.append("")
-
-    # Next Steps section
+    # Next Steps section - with canonical defaults if empty
     lines.append("## Next Steps")
     lines.append("")
     if next_steps:
         for step in next_steps:
             lines.append(f"- {step}")
     else:
-        lines.append("- Run the suggested commands and analyze results")
-        lines.append("- Review logs for error patterns")
-        lines.append("- Adjust environment if needed")
+        # Default next steps when none provided
+        lines.append("- Run the highest-score command")
+        lines.append("- If it fails: switch to the second")
+        lines.append("- Record brief logs in report.md")
     lines.append("")
 
     return "\n".join(lines)

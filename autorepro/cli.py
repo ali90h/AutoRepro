@@ -181,12 +181,11 @@ def cmd_plan(
     limited_suggestions = suggestions[:max_commands]
 
     # Generate title from first few words
-    title_words = normalized_text.split()[:6]
+    title_words = normalized_text.split()[:8]  # Increased to allow more words before truncation
     title = "Issue Reproduction Plan"
     if title_words:
         title = " ".join(title_words).title()
-        if len(title) > 50:
-            title = title[:50] + "..."
+        # Note: safe_truncate_60 will be applied in build_repro_md()
 
     # Generate assumptions based on detected languages and keywords
     assumptions = []
