@@ -335,13 +335,15 @@ def cmd_plan(
                 for cmd, score, rationale in limited_suggestions
             ],
             "needs": needs if needs else ["Standard development environment"],
-            "next_steps": next_steps
-            if next_steps
-            else [
-                "Run the highest-score command",
-                "If it fails: switch to the second",
-                "Record brief logs in report.md",
-            ],
+            "next_steps": (
+                next_steps
+                if next_steps
+                else [
+                    "Run the highest-score command",
+                    "If it fails: switch to the second",
+                    "Record brief logs in report.md",
+                ]
+            ),
         }
 
         import json
