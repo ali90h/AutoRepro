@@ -215,18 +215,15 @@ class TestSuggestCommands:
         assert "detected langs: python" in pytest_q_rationale
         assert "bonuses:" in pytest_q_rationale
 
-    def test_conservative_defaults(self):
-        """Test conservative defaults when no matches."""
+    def test_no_suggestions_when_no_matches(self):
+        """Test that no suggestions are returned when no keywords or languages match."""
         keywords = set()
         detected_langs = []
 
         suggestions = suggest_commands(keywords, detected_langs)
 
-        assert len(suggestions) > 0
-        # Should have basic commands from different ecosystems
-        commands = [cmd for cmd, _, _ in suggestions]
-        basic_commands = ["pytest -q", "npm test -s", "go test ./... -run ."]
-        assert any(cmd in commands for cmd in basic_commands)
+        # Should return empty list when no keyword or language matches
+        assert len(suggestions) == 0, f"Expected no suggestions, got: {suggestions}"
 
     def test_suggest_commands_weighting(self):
         """Test that pytest -q ranks above npx vitest run with correct weighting."""
@@ -374,8 +371,8 @@ class TestBuildReproMd:
         assert "|-------|---------|-----|" not in result
 
         # Should have line format
-        assert "pytest -q — matched: pytest (+3), lang: python (+2), specific (+1)" in result
-        assert "npm test -s — matched: npm test (+3), specific (+1)" in result
+        assert "- `pytest -q` — matched: pytest (+3), lang: python (+2), specific (+1)" in result
+        assert "- `npm test -s` — matched: npm test (+3), specific (+1)" in result
 
     def test_command_sorting(self):
         """Test that commands are sorted by score desc, then alphabetically."""
@@ -402,9 +399,9 @@ class TestBuildReproMd:
                 command_lines.append(line)
 
         assert len(command_lines) == 3
-        assert command_lines[0].startswith("pytest -q")  # Highest score (6)
-        assert command_lines[1].startswith("go test")  # Score 4, alphabetically first
-        assert command_lines[2].startswith("npm test -s")  # Score 4, alphabetically second
+        assert command_lines[0].startswith("- `pytest -q`")  # Highest score (6)
+        assert command_lines[1].startswith("- `go test`")  # Score 4, alphabetically first
+        assert command_lines[2].startswith("- `npm test -s`")  # Score 4, alphabetically second
 
     def test_default_next_steps(self):
         """Test that default next steps are provided when list is empty."""

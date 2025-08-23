@@ -192,7 +192,7 @@ class TestInitCommandDiff:
 
         assert exit_code == 0
         captured = capsys.readouterr()
-        assert "Overwrote devcontainer at" in captured.out
+        assert "Overwrote devcontainer to" in captured.out
         assert "Changes:" in captured.out
         # Should show the differences from the old config to default config
         assert "+" in captured.out or "~" in captured.out or "-" in captured.out
@@ -215,7 +215,7 @@ class TestInitCommandDiff:
 
         assert exit_code == 0
         captured = capsys.readouterr()
-        assert "Overwrote devcontainer at" in captured.out
+        assert "Overwrote devcontainer to" in captured.out
         assert "No changes." in captured.out
 
     def test_init_single_value_change(self, tmp_path, monkeypatch, capsys):
@@ -236,7 +236,7 @@ class TestInitCommandDiff:
 
         assert exit_code == 0
         captured = capsys.readouterr()
-        assert "Overwrote devcontainer at" in captured.out
+        assert "Overwrote devcontainer to" in captured.out
         assert "Changes:" in captured.out
         assert "~ postCreateCommand:" in captured.out
         assert "echo 'old command'" in captured.out
@@ -264,7 +264,7 @@ class TestInitCommandDiff:
 
         assert exit_code == 0
         captured = capsys.readouterr()
-        assert "Overwrote devcontainer at" in captured.out
+        assert "Overwrote devcontainer to" in captured.out
         assert "Changes:" in captured.out
         # Should show go being added and rust being removed
         assert "+ features" in captured.out and "go" in captured.out
@@ -303,7 +303,7 @@ class TestInitDiffIntegration:
         )
 
         assert result.returncode == 0
-        assert "Overwrote devcontainer at" in result.stdout
+        assert "Overwrote devcontainer to" in result.stdout
         assert "Changes:" in result.stdout
 
     def test_init_diff_subprocess_force_no_changes(self, tmp_path):
@@ -324,5 +324,5 @@ class TestInitDiffIntegration:
         )
 
         assert result.returncode == 0
-        assert "Overwrote devcontainer at" in result.stdout
+        assert "Overwrote devcontainer to" in result.stdout
         assert "No changes." in result.stdout

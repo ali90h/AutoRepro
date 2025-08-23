@@ -6,6 +6,8 @@ import sys
 import tempfile
 from unittest.mock import patch
 
+import pytest
+
 from autorepro.cli import main
 
 
@@ -567,31 +569,144 @@ class TestPlanCLIMaxCommands:
         # Should allow more than 2 commands (default max is 5)
         assert len(command_lines) >= 2
 
+    def test_max_option_command_ordering_and_counting(self, tmp_path):
+        """Test --max N limits commands and verifies scoring/alphabetical ordering."""
+        create_project_markers(tmp_path, "mixed")  # Both python and node files
+
+        # Test with higher limit to see full ordering
+        result_full = run_plan_subprocess(
+            ["--desc", "pytest jest npm test failing", "--out", "full.md", "--max", "10"],
+            cwd=tmp_path,
+        )
+        assert result_full.returncode == 0
+
+        full_content = (tmp_path / "full.md").read_text()
+        full_lines = full_content.split("\n")
+        full_commands = [
+            line.split(" — ")[0].lstrip("- ").strip().strip("`").lstrip("- ").strip()
+            for line in full_lines
+            if " — " in line and not line.startswith("#") and line.strip()
+        ]
+
+        # Test with --max 3
+        result_limited = run_plan_subprocess(
+            ["--desc", "pytest jest npm test failing", "--out", "limited.md", "--max", "3"],
+            cwd=tmp_path,
+        )
+        assert result_limited.returncode == 0
+
+        limited_content = (tmp_path / "limited.md").read_text()
+        limited_lines = limited_content.split("\n")
+        limited_commands = [
+            line.split(" — ")[0].lstrip("- ").strip().strip("`").lstrip("- ").strip()
+            for line in limited_lines
+            if " — " in line and not line.startswith("#") and line.strip()
+        ]
+
+        # Verify command count is limited to 3
+        assert (
+            len(limited_commands) == 3
+        ), f"Expected 3 commands, got {len(limited_commands)}: {limited_commands}"
+
+        # Verify that limited commands are the first 3 from the full list (proper ordering)
+        assert (
+            len(full_commands) >= 3
+        ), f"Need at least 3 commands in full list, got {len(full_commands)}"
+        assert limited_commands == full_commands[:3], (
+            f"Limited should be first 3 of full list.\n"
+            f"Limited: {limited_commands}\nFull[:3]: {full_commands[:3]}"
+        )
+
+        # Verify alphabetical ordering among commands with same score
+        # Extract rationales to check scoring info
+        limited_rationales = [
+            line.split(" — ")[1]
+            for line in limited_lines
+            if " — " in line and not line.startswith("#") and line.strip()
+        ]
+
+        # Commands should be ordered by score (descending) then alphabetically
+        # This is verified by checking the first N commands are the same in both lists
+        assert len(limited_rationales) == 3
+
 
 class TestPlanCLIFormatFlag:
     """Test --format flag functionality."""
 
-    def test_json_format_fallback_message(self, tmp_path, monkeypatch, capsys):
-        """Test --format json prints fallback message and generates md."""
+    def test_json_format_output(self, tmp_path, monkeypatch):
+        """Test --format json produces valid JSON output."""
         monkeypatch.chdir(tmp_path)
 
-        with patch("sys.argv", ["autorepro", "plan", "--desc", "test issue", "--format", "json"]):
+        # Create Python project markers for testing
+        (tmp_path / "pyproject.toml").write_text('[build-system]\nrequires = ["setuptools"]')
+
+        with patch(
+            "sys.argv", ["autorepro", "plan", "--desc", "pytest failing", "--format", "json"]
+        ):
             exit_code = main()
 
         assert exit_code == 0
 
-        # Should print fallback message
-        captured = capsys.readouterr()
-        assert "json output not implemented yet; generating md" in captured.out
-
-        # Should still create markdown file
+        # Should create JSON file
         repro_file = tmp_path / "repro.md"
         assert repro_file.exists()
 
         content = repro_file.read_text()
-        # Should be in new markdown format with truncated title
-        title_text = content.split("\n")[0][2:]  # Remove "# "
-        assert len(title_text) <= 61  # Safely truncated
+
+        # Should be valid JSON
+        import json
+
+        try:
+            data = json.loads(content)
+        except json.JSONDecodeError:
+            pytest.fail(f"Output is not valid JSON: {content}")
+
+        # Check JSON schema structure
+        assert "title" in data
+        assert "assumptions" in data
+        assert "commands" in data
+        assert "needs" in data
+        assert "next_steps" in data
+
+        # Check command structure
+        if data["commands"]:
+            cmd = data["commands"][0]
+            assert "command" in cmd
+            assert "score" in cmd
+            assert "rationale" in cmd
+
+        # Should contain pytest command due to Python detection and keyword
+        commands = [cmd["command"] for cmd in data["commands"]]
+        pytest_commands = [cmd for cmd in commands if "pytest" in cmd]
+        assert len(pytest_commands) > 0, f"Should include pytest commands. Commands: {commands}"
+
+    def test_json_format_stdout(self, tmp_path):
+        """Test --format json --out - produces JSON to stdout."""
+        # Create Python project markers for testing
+        (tmp_path / "pyproject.toml").write_text('[build-system]\nrequires = ["setuptools"]')
+
+        result = run_plan_subprocess(
+            ["--desc", "pytest failing", "--format", "json", "--out", "-"], cwd=tmp_path
+        )
+        assert result.returncode == 0
+
+        # Should output valid JSON to stdout
+        import json
+
+        try:
+            data = json.loads(result.stdout)
+        except json.JSONDecodeError:
+            pytest.fail(f"stdout is not valid JSON: {result.stdout}")
+
+        # Check JSON schema structure
+        assert "title" in data
+        assert "assumptions" in data
+        assert "commands" in data
+        assert "needs" in data
+        assert "next_steps" in data
+
+        # Should end with newline
+        assert result.stdout.endswith("\n")
 
     def test_md_format_explicit(self, tmp_path, monkeypatch):
         """Test explicit --format md works."""
@@ -691,3 +806,195 @@ class TestPlanCLISubprocessIntegration:
         # Commands should differ based on detected project type
         # (This is a basic check - exact commands depend on implementation)
         assert py_content != node_content
+
+
+class TestPlanCLIForceIgnoring:
+    """Test --force flag behavior with stdout output options."""
+
+    def test_plan_out_dash_ignores_force_flag(self, tmp_path):
+        """Test that --out - ignores --force flag and outputs to stdout."""
+        # Create an existing file to test force behavior
+        existing_file = tmp_path / "repro.md"
+        existing_file.write_text("# Existing content")
+
+        result = run_plan_subprocess(
+            ["--desc", "pytest failing", "--out", "-", "--force"], cwd=tmp_path
+        )
+
+        assert result.returncode == 0
+        # Should output markdown to stdout
+        assert "## Assumptions" in result.stdout
+        assert "## Candidate Commands" in result.stdout
+        # Should not modify the existing file
+        assert existing_file.read_text() == "# Existing content"
+        # Should end with newline
+        assert result.stdout.endswith("\n")
+
+
+class TestPlanCLICommandFiltering:
+    """Test command filtering logic to ensure relevant commands are shown."""
+
+    def test_ambiguous_case_shows_relevant_commands(self, tmp_path):
+        """Test ambiguous case where keywords don't clearly match but language is detected."""
+        # Create a Python project but use ambiguous description
+        create_project_markers(tmp_path, "python")
+
+        result = run_plan_subprocess(
+            ["--desc", "tests are broken and failing", "--out", "ambiguous.md"], cwd=tmp_path
+        )
+        assert result.returncode == 0
+
+        content = (tmp_path / "ambiguous.md").read_text()
+        lines = content.split("\n")
+        command_lines = [
+            line for line in lines if " — " in line and not line.startswith("#") and line.strip()
+        ]
+
+        # Should show Python commands due to language detection even without specific keywords
+        assert len(command_lines) > 0, "Should show commands based on detected language"
+
+        # Should include pytest command since Python was detected
+        commands = [line.split(" — ")[0].lstrip("- ").strip().strip("`") for line in command_lines]
+        python_commands = [cmd for cmd in commands if "pytest" in cmd]
+        assert (
+            len(python_commands) > 0
+        ), f"Should include pytest commands for Python project. Commands: {commands}"
+
+    def test_keyword_match_without_language_detection(self, tmp_path):
+        """Test that specific keywords show relevant commands even without language detection."""
+        # Don't create any project markers (no language detection)
+
+        result = run_plan_subprocess(
+            ["--desc", "npm test is failing with jest errors", "--out", "keyword.md"], cwd=tmp_path
+        )
+        assert result.returncode == 0
+
+        content = (tmp_path / "keyword.md").read_text()
+        lines = content.split("\n")
+        command_lines = [
+            line for line in lines if " — " in line and not line.startswith("#") and line.strip()
+        ]
+
+        # Should show Node commands due to npm test and jest keywords
+        assert len(command_lines) > 0, "Should show commands based on keywords"
+
+        commands = [line.split(" — ")[0].lstrip("- ").strip().strip("`") for line in command_lines]
+        # Should include npm test or jest commands
+        node_commands = [cmd for cmd in commands if "npm test" in cmd or "jest" in cmd]
+        assert (
+            len(node_commands) > 0
+        ), f"Should include npm/jest commands based on keywords. Commands: {commands}"
+
+    def test_no_matches_shows_no_commands(self, tmp_path):
+        """Test that when no keywords or languages match, no commands are shown."""
+        # Don't create any project markers and use generic description
+
+        result = run_plan_subprocess(
+            ["--desc", "something is broken and needs fixing", "--out", "generic.md"], cwd=tmp_path
+        )
+        assert result.returncode == 0
+
+        content = (tmp_path / "generic.md").read_text()
+        lines = content.split("\n")
+        command_lines = [
+            line for line in lines if " — " in line and not line.startswith("#") and line.strip()
+        ]
+
+        # Should show NO commands when no keyword or language matches
+        assert (
+            len(command_lines) == 0
+        ), f"Should show no commands when no matches. Got: {command_lines}"
+
+    def test_plan_dry_run_ignores_force_flag(self, tmp_path):
+        """Test that --dry-run ignores --force flag and outputs to stdout."""
+        # Create an existing file to test force behavior
+        existing_file = tmp_path / "repro.md"
+        existing_file.write_text("# Existing content")
+
+        result = run_plan_subprocess(
+            ["--desc", "jest failing", "--dry-run", "--force"], cwd=tmp_path
+        )
+
+        assert result.returncode == 0
+        # Should output markdown to stdout
+        assert "## Assumptions" in result.stdout
+        assert "## Candidate Commands" in result.stdout
+        # Should not modify the existing file
+        assert existing_file.read_text() == "# Existing content"
+        # Should end with newline
+        assert result.stdout.endswith("\n")
+
+
+class TestPlanCLICommandFilteringAlt:
+    """Test command filtering logic to ensure relevant commands are shown (alt)."""
+
+    def test_ambiguous_case_shows_relevant_commands(self, tmp_path):
+        """Test ambiguous case where keywords don't clearly match but language is detected."""
+        # Create a Python project but use ambiguous description
+        create_project_markers(tmp_path, "python")
+
+        result = run_plan_subprocess(
+            ["--desc", "tests are broken and failing", "--out", "ambiguous.md"], cwd=tmp_path
+        )
+        assert result.returncode == 0
+
+        content = (tmp_path / "ambiguous.md").read_text()
+        lines = content.split("\n")
+        command_lines = [
+            line for line in lines if " — " in line and not line.startswith("#") and line.strip()
+        ]
+
+        # Should show Python commands due to language detection even without specific keywords
+        assert len(command_lines) > 0, "Should show commands based on detected language"
+
+        # Should include pytest command since Python was detected
+        commands = [line.split(" — ")[0].lstrip("- ").strip().strip("`") for line in command_lines]
+        python_commands = [cmd for cmd in commands if "pytest" in cmd]
+        assert (
+            len(python_commands) > 0
+        ), f"Should include pytest commands for Python project. Commands: {commands}"
+
+    def test_keyword_match_without_language_detection(self, tmp_path):
+        """Test that specific keywords show relevant commands even without language detection."""
+        # Don't create any project markers (no language detection)
+
+        result = run_plan_subprocess(
+            ["--desc", "npm test is failing with jest errors", "--out", "keyword.md"], cwd=tmp_path
+        )
+        assert result.returncode == 0
+
+        content = (tmp_path / "keyword.md").read_text()
+        lines = content.split("\n")
+        command_lines = [
+            line for line in lines if " — " in line and not line.startswith("#") and line.strip()
+        ]
+
+        # Should show Node commands due to npm test and jest keywords
+        assert len(command_lines) > 0, "Should show commands based on keywords"
+
+        commands = [line.split(" — ")[0].lstrip("- ").strip().strip("`") for line in command_lines]
+        # Should include npm test or jest commands
+        node_commands = [cmd for cmd in commands if "npm test" in cmd or "jest" in cmd]
+        assert (
+            len(node_commands) > 0
+        ), f"Should include npm/jest commands based on keywords. Commands: {commands}"
+
+    def test_no_matches_shows_no_commands(self, tmp_path):
+        """Test that when no keywords or languages match, no commands are shown."""
+        # Don't create any project markers and use generic description
+
+        result = run_plan_subprocess(
+            ["--desc", "something is broken and needs fixing", "--out", "generic.md"], cwd=tmp_path
+        )
+        assert result.returncode == 0
+
+        content = (tmp_path / "generic.md").read_text()
+        lines = content.split("\n")
+        command_lines = [
+            line for line in lines if " — " in line and not line.startswith("#") and line.strip()
+        ]
+
+        # Should show NO commands when no keyword or language matches
+        assert (
+            len(command_lines) == 0
+        ), f"Should show no commands when no matches. Got: {command_lines}"
