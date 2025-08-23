@@ -208,6 +208,11 @@ def cmd_plan(
             print(f"Error reading file {file}: {e}", file=sys.stderr)
             return 1
 
+        # Check if output path points to a directory (misuse error)
+        if not print_to_stdout and out and os.path.isdir(out):
+            print(f"Error: Output path is a directory: {out}")
+            return 2
+
         # Check for existing output file (unless --force or stdout output)
         if not print_to_stdout and os.path.exists(out) and not force:
             print(f"{out} exists; use --force to overwrite")
@@ -345,6 +350,11 @@ def cmd_init(
             json_content = json.dumps(config, indent=2, sort_keys=True) + "\n"
             print(json_content, end="")
             return 0
+
+        # Check if output path points to a directory (misuse error)
+        if out and os.path.isdir(out):
+            print(f"Error: Output path is a directory: {out}")
+            return 2
 
         # Check if file exists and handle idempotent behavior (unless --force)
         if out and os.path.exists(out) and not force:
