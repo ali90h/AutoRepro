@@ -1450,3 +1450,151 @@ def test_plan_node_keywords(self, tmp_path):
 ```
 
 **Implementation Status**: All requirements fulfilled. Enhanced scoring system, canonical format, comprehensive testing, and full quality assurance completed. Ready for production use with significantly improved accuracy and deterministic behavior.
+
+---
+
+## NEW CLI OPTIONS IMPLEMENTATION
+
+**Status**: ✅ COMPLETED
+**Date**: 2025-08-21
+
+### Task Summary
+Implemented new CLI output control options for both `init` and `plan` commands: `--dry-run`, `--out -`, and `--repo PATH`. These options provide enhanced flexibility for CI/CD integration, stdout piping, and cross-repository operations.
+
+### New Options Implemented
+
+1. **`--dry-run`**: Displays contents to stdout without writing files (Exit 0)
+   - Available for both `init` and `plan` commands
+   - Prevents file system modifications while showing generated content
+   - Useful for preview mode and CI pipeline validation
+
+2. **`--out -`**: Prints to stdout instead of creating a file (ignores --force)
+   - Available for both `init` and `plan` commands
+   - Enables Unix pipeline integration and scripted workflows
+   - Automatically detected when output path is `-`
+
+3. **`--repo PATH`**: Executes all logic on specified repository path
+   - Available for both `init` and `plan` commands
+   - Changes working directory during command execution
+   - Updates default paths: `<repo>/.devcontainer/devcontainer.json` and `<repo>/repro.md`
+   - Validates PATH exists as directory (Exit 2 if invalid)
+
+### Enhanced Behavior
+
+**File Existence Handling**:
+- If target file exists and no `--force` → message "already exists..." and Exit 0
+- Behavior preserved for both normal and `--repo` execution contexts
+
+**Error Handling**:
+- Invalid `--repo` path → Exit 2 with clear error message
+- All existing error conditions preserved with correct exit codes
+- Working directory properly restored after execution
+
+### Implementation Evidence
+
+**Test Results**:
+```bash
+# --dry-run option
+$ python -m autorepro.cli init --dry-run
+{JSON devcontainer config displayed}
+
+# --out - option
+$ python -m autorepro.cli plan --desc "pytest failing" --out -
+{Markdown content to stdout}
+
+# --repo option with language detection
+$ python -m autorepro.cli plan --desc "npm test failing" --repo /tmp/test_repo --dry-run
+{Shows Node.js commands based on package.json in test_repo}
+
+# Error handling
+$ python -m autorepro.cli plan --desc "test" --repo /nonexistent/path
+Error: --repo path does not exist or is not a directory: /nonexistent/path
+Exit code: 2
+
+# File existence behavior
+$ echo "# Test" > repro.md
+$ python -m autorepro.cli plan --desc "test failing" --out repro.md
+repro.md already exists; use --force to overwrite
+Exit code: 0
+```
+
+### Technical Implementation
+
+**Type Compatibility**:
+- Fixed Python 3.9 compatibility issues with Union type annotations
+- Updated function signatures in both `cli.py` and `env.py`
+- Preserved all existing function interfaces
+
+**Working Directory Management**:
+- Implemented proper `try/finally` blocks for directory restoration
+- Atomic working directory changes with rollback on error
+- Language detection and file operations execute in target directory
+
+**Code Quality**:
+- Maintained consistent error handling patterns
+- Preserved idempotent behavior and exit code specifications
+- Added comprehensive parameter validation
+
+### Key Design Features
+
+1. **Backward Compatibility**: All existing CLI behavior preserved unchanged
+2. **Error Resilience**: Proper working directory restoration even on exceptions
+3. **Unix Philosophy**: Stdout options enable pipeline integration
+4. **Cross-Repository**: `--repo` enables operations on external directories
+5. **Consistent UX**: Same option names and behaviors across init/plan commands
+
+### Function Signatures Updated
+
+```python
+def cmd_init(force: bool = False, out: Union[str, None] = None,
+             dry_run: bool = False, repo: Union[str, None] = None) -> int
+
+def cmd_plan(desc: Union[str, None] = None, file: Union[str, None] = None,
+             out: str = "repro.md", force: bool = False, max_commands: int = 5,
+             format_type: str = "md", dry_run: bool = False,
+             repo: Union[str, None] = None) -> int
+```
+
+### Validation Results
+
+- ✅ **--dry-run**: Both init and plan display content without writing
+- ✅ **--out -**: Both commands output to stdout, bypass file operations
+- ✅ **--repo PATH**: Working directory changes, language detection adapts
+- ✅ **Error Codes**: Exit 2 for invalid paths, Exit 0 for existing files
+- ✅ **Type Safety**: Python 3.9+ compatibility with Union annotations
+- ✅ **Directory Restoration**: Proper cleanup even on exceptions
+- ✅ **Integration**: New options work with all existing flags
+
+**Implementation Status**: All new CLI options successfully implemented with comprehensive testing and error handling. Enhanced output control capabilities ready for production use in CI/CD and scripted environments.
+
+### Test Results Summary
+
+**All tests passed ✅**
+
+```bash
+# Test 1: init --dry-run ⇒ JSON to stdout, no files
+✅ Outputs devcontainer JSON configuration
+
+# Test 2: init --out - ⇒ JSON to stdout, no files
+✅ Identical JSON output via stdout
+
+# Test 3: init --repo <tmp> ⇒ Writes to <tmp>/.devcontainer/devcontainer.json
+✅ Created /tmp/cli_test_repo/.devcontainer/devcontainer.json
+
+# Test 4: plan --dry-run --desc "pytest" ⇒ Markdown to stdout, no files
+✅ Outputs pytest commands with proper scoring and rationale
+
+# Test 5: plan --out - --desc "jest" ⇒ Markdown to stdout
+✅ Outputs jest commands via stdout redirection
+
+# Test 6: plan --repo <tmp> ⇒ Writes <tmp>/repro.md (respects --force)
+✅ Created /tmp/cli_test_repo/repro.md with Node.js commands
+✅ Without --force: "repro.md already exists; use --force to overwrite" (Exit 0)
+✅ With --force: Overwrites file successfully (Exit 0)
+
+# Test 7: Misuses
+✅ --repo /nonexistent/path ⇒ "Error: --repo path does not exist..." (Exit 2)
+✅ Missing --desc/--file ⇒ "error: one of the arguments --desc --file is required" (Exit 2)
+```
+
+**Result**: All new CLI options working as specified with correct exit codes and behaviors.
