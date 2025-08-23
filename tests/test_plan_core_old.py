@@ -102,19 +102,15 @@ class TestSuggestCommands:
         assert len(python_cmds) > 0
         assert len(js_cmds) > 0
 
-    def test_no_languages_conservative_defaults(self):
-        """Test that conservative defaults are provided when no languages detected."""
-        keywords = {"failing"}
+    def test_no_languages_no_tool_keywords_returns_empty(self):
+        """Test that no suggestions are returned when no languages detected and no tool keywords."""
+        keywords = {"failing"}  # "failing" is not a tool keyword
         detected_langs = []
 
         suggestions = suggest_commands(keywords, detected_langs)
 
-        assert len(suggestions) > 0
-        # Should have some basic test commands
-        commands = [cmd for cmd, _, _ in suggestions]
-        assert any("pytest" in cmd for cmd in commands) or any(
-            "npm test" in cmd for cmd in commands
-        )
+        # Should return empty list when no tool keywords match and no languages detected
+        assert len(suggestions) == 0, f"Expected no suggestions, got: {suggestions}"
 
     def test_scoring_descending_order(self):
         """Test that suggestions are sorted by descending score."""
@@ -204,8 +200,8 @@ class TestBuildReproMd:
         assert "|-------|---------|-----|" not in result
 
         # Check line format with em dash
-        assert "pytest -q — High priority test" in result
-        assert "npm test -s — Node test" in result
+        assert "- `pytest -q` — High priority test" in result
+        assert "- `npm test -s` — Node test" in result
 
     def test_empty_lists_handled_gracefully(self):
         """Test that empty lists are handled with defaults."""
@@ -227,7 +223,7 @@ class TestBuildReproMd:
         result = build_repro_md(title, [], commands, [], [])
 
         # In line format, pipes don't need escaping like in tables
-        assert "echo 'test|data' — Command with | pipe" in result
+        assert "- `echo 'test|data'` — Command with | pipe" in result
 
     def test_markdown_structure_stability(self):
         """Test that markdown structure is consistent and diff-friendly."""

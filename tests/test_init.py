@@ -334,7 +334,7 @@ class TestInitIntegration:
         )
 
         assert result.returncode == 0
-        assert "Overwrote devcontainer at" in result.stdout
+        assert "Overwrote devcontainer to" in result.stdout
 
     def test_init_cli_custom_out_via_subprocess(self, tmp_path):
         """Test init --out flag using subprocess."""
@@ -368,3 +368,125 @@ class TestInitIntegration:
         assert result.returncode == 0
         assert "already exists" in result.stdout or "already exists" in result.stderr
         assert "Use --force" in result.stdout or "Use --force" in result.stderr
+
+    def test_init_out_dash_ignores_force_flag(self, tmp_path):
+        """Test that --out - ignores --force flag and outputs to stdout."""
+        result = subprocess.run(
+            [sys.executable, "-m", "autorepro.cli", "init", "--out", "-", "--force"],
+            cwd=tmp_path,
+            capture_output=True,
+            text=True,
+        )
+
+        assert result.returncode == 0
+        # Should output JSON to stdout
+        assert result.stdout.strip().startswith("{")
+        assert result.stdout.strip().endswith("}")
+        # Should not create any files
+        devcontainer_file = tmp_path / ".devcontainer" / "devcontainer.json"
+        assert not devcontainer_file.exists()
+
+        # Parse JSON to verify it's valid
+        import json
+
+        config = json.loads(result.stdout)
+        assert config["name"] == "autorepro-dev"
+
+    def test_init_force_no_changes_preserves_mtime(self, tmp_path):
+        """Test that init --force preserves mtime when content is unchanged."""
+        import os
+        import time
+
+        # Create initial devcontainer
+        result1 = subprocess.run(
+            [sys.executable, "-m", "autorepro.cli", "init"],
+            cwd=tmp_path,
+            capture_output=True,
+            text=True,
+        )
+        assert result1.returncode == 0
+
+        devcontainer_file = tmp_path / ".devcontainer" / "devcontainer.json"
+        assert devcontainer_file.exists()
+
+        # Get initial mtime
+        mtime1 = os.path.getmtime(devcontainer_file)
+
+        # Wait to ensure different timestamp would be visible
+        time.sleep(0.1)
+
+        # Run init --force when content would be identical
+        result2 = subprocess.run(
+            [sys.executable, "-m", "autorepro.cli", "init", "--force"],
+            cwd=tmp_path,
+            capture_output=True,
+            text=True,
+        )
+        assert result2.returncode == 0
+
+        # mtime should be unchanged since content is identical
+        mtime2 = os.path.getmtime(devcontainer_file)
+        assert (
+            mtime2 == mtime1
+        ), f"mtime should be preserved when content is unchanged. mtime1={mtime1}, mtime2={mtime2}"
+
+    def test_init_dry_run_ignores_force_flag(self, tmp_path):
+        """Test that --dry-run ignores --force flag and outputs to stdout."""
+        result = subprocess.run(
+            [sys.executable, "-m", "autorepro.cli", "init", "--dry-run", "--force"],
+            cwd=tmp_path,
+            capture_output=True,
+            text=True,
+        )
+
+        assert result.returncode == 0
+        # Should output JSON to stdout
+        assert result.stdout.strip().startswith("{")
+        assert result.stdout.strip().endswith("}")
+        # Should not create any files
+        devcontainer_file = tmp_path / ".devcontainer" / "devcontainer.json"
+        assert not devcontainer_file.exists()
+
+        # Parse JSON to verify it's valid
+        import json
+
+        config = json.loads(result.stdout)
+        assert config["name"] == "autorepro-dev"
+
+    def test_init_force_no_changes_preserves_mtime_alt(self, tmp_path):
+        """Test that init --force preserves mtime when content is unchanged (alt)."""
+        import os
+        import time
+
+        # Create initial devcontainer
+        result1 = subprocess.run(
+            [sys.executable, "-m", "autorepro.cli", "init"],
+            cwd=tmp_path,
+            capture_output=True,
+            text=True,
+        )
+        assert result1.returncode == 0
+
+        devcontainer_file = tmp_path / ".devcontainer" / "devcontainer.json"
+        assert devcontainer_file.exists()
+
+        # Get initial mtime
+        mtime1 = os.path.getmtime(devcontainer_file)
+
+        # Wait to ensure different timestamp would be visible
+        time.sleep(0.1)
+
+        # Run init --force when content would be identical
+        result2 = subprocess.run(
+            [sys.executable, "-m", "autorepro.cli", "init", "--force"],
+            cwd=tmp_path,
+            capture_output=True,
+            text=True,
+        )
+        assert result2.returncode == 0
+
+        # mtime should be unchanged since content is identical
+        mtime2 = os.path.getmtime(devcontainer_file)
+        assert (
+            mtime2 == mtime1
+        ), f"mtime should be preserved when content is unchanged. mtime1={mtime1}, mtime2={mtime2}"

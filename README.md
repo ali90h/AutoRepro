@@ -48,7 +48,29 @@ autorepro init
 
 # Generate a reproduction plan from issue description
 autorepro plan --desc "tests failing with pytest"
+
+# Dry-run mode (outputs to stdout without creating files)
+autorepro plan --desc "npm test issues" --dry-run
+
+# Output to stdout instead of file (--out - ignores --force)
+autorepro plan --desc "build problems" --out -
+
+# Work with repository in different directory
+autorepro plan --desc "CI failing" --repo /path/to/project
+
+# Limit number of suggested commands
+autorepro plan --desc "test failures" --max 3
+
+# Read issue description from file
+autorepro plan --file issue.txt
+
+# Read file with repository context
+autorepro plan --file issue.txt --repo /path/to/project
 ```
+
+**Notes:**
+- When using `--out -` (stdout), the `--force` flag is ignored for both `init` and `plan` commands.
+- File paths in `--file` are resolved relative to current working directory first. If the file is not found and `--repo` is specified, it falls back to resolving relative to the repository directory.
 
 ### Scan Command
 
@@ -112,7 +134,19 @@ No changes.
 
 # Custom output location
 $ autorepro init --out dev/devcontainer.json
-Wrote devcontainer to dev/devcontainer.json
+Wrote devcontainer at dev/devcontainer.json
+
+# Output to stdout (ignores --force)
+$ autorepro init --out -
+{"name": "autorepro-dev", "features": {...}}
+
+# Preview mode without creating files
+$ autorepro init --dry-run
+{"name": "autorepro-dev", "features": {...}}
+
+# Execute on different repository
+$ autorepro init --repo /path/to/project
+Wrote devcontainer at /path/to/project/.devcontainer/devcontainer.json
 ```
 
 **Status:** `init` is implemented with idempotent behavior and proper exit codes.
@@ -126,6 +160,9 @@ Wrote devcontainer to dev/devcontainer.json
 **Options:**
 - `--force`: Overwrite existing devcontainer.json file
 - `--out PATH`: Custom output path (default: .devcontainer/devcontainer.json)
+- `--out -`: Output to stdout instead of creating a file (ignores --force)
+- `--dry-run`: Display contents to stdout without writing files
+- `--repo PATH`: Execute all logic on specified repository path
 
 ### Plan Command
 
@@ -152,10 +189,25 @@ repro.md
 $ autorepro plan --desc "tests timeout" --max 3
 repro.md
 
-# JSON format (produces md with notice)
+# JSON format output
 $ autorepro plan --desc "linting errors" --format json
-json output not implemented yet; generating md
-repro.md
+repro.md  # Contains JSON format
+
+# Preview to stdout without creating files
+$ autorepro plan --desc "pytest failing" --dry-run
+# Issue Reproduction Plan
+
+## Assumptions
+...
+
+# Output to stdout (ignores --force)
+$ autorepro plan --desc "npm test issues" --out -
+# Issue Reproduction Plan
+...
+
+# Execute on different repository
+$ autorepro plan --desc "build failing" --repo /path/to/project
+Wrote repro to /path/to/project/repro.md
 ```
 
 **Status:** `plan` is implemented with intelligent command suggestions and markdown output.
@@ -171,9 +223,12 @@ repro.md
 - `--desc TEXT`: Issue description text
 - `--file PATH`: Path to file containing issue description
 - `--out PATH`: Output path (default: repro.md)
+- `--out -`: Output to stdout instead of creating a file (ignores --force)
 - `--force`: Overwrite existing output file
 - `--max N`: Maximum suggested commands (default: 5)
-- `--format md|json`: Output format (MVP: md only, json shows notice)
+- `--format md|json`: Output format (default: md)
+- `--dry-run`: Display contents to stdout without writing files
+- `--repo PATH`: Execute all logic on specified repository path
 
 ## Exit Codes
 

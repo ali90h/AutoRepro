@@ -220,28 +220,8 @@ def suggest_commands(keywords: set[str], detected_langs: list[str]) -> list[tupl
         if has_keyword_match or has_lang_match or score >= 2:
             relevant_commands[cmd] = data
 
-    # Conservative defaults if no relevant matches
-    if not relevant_commands:
-        relevant_commands = {
-            "pytest -q": {
-                "score": 1,
-                "matched_keywords": [],
-                "detected_langs": [],
-                "bonuses": ["default (+1)"],
-            },
-            "npm test -s": {
-                "score": 1,
-                "matched_keywords": [],
-                "detected_langs": [],
-                "bonuses": ["default (+1)"],
-            },
-            "go test ./... -run .": {
-                "score": 1,
-                "matched_keywords": [],
-                "detected_langs": [],
-                "bonuses": ["default (+1)"],
-            },
-        }
+    # Only show commands if keyword OR detected language matches
+    # No fallback defaults - empty list if no matches
 
     # Build final suggestions with detailed rationales
     suggestions = []
@@ -345,7 +325,7 @@ def build_repro_md(
         # Sort by score desc, then alphabetically by command for deterministic output
         sorted_commands = sorted(commands, key=lambda x: (-x[1], x[0]))
         for cmd, _, rationale in sorted_commands:
-            lines.append(f"{cmd} — {rationale}")
+            lines.append(f"- `{cmd}` — {rationale}")
     else:
         lines.append("No commands suggested")
     lines.append("")

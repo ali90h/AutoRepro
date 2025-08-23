@@ -259,8 +259,8 @@ class TestPlanCLIMaxCommands:
 class TestPlanCLIFormatFlag:
     """Test --format flag functionality."""
 
-    def test_json_format_fallback_message(self, tmp_path, monkeypatch, capsys):
-        """Test --format json prints fallback message and generates md."""
+    def test_json_format_creates_json_file(self, tmp_path, monkeypatch, capsys):
+        """Test --format json creates JSON output file."""
         monkeypatch.chdir(tmp_path)
 
         with patch("sys.argv", ["autorepro", "plan", "--desc", "test issue", "--format", "json"]):
@@ -268,16 +268,26 @@ class TestPlanCLIFormatFlag:
 
         assert exit_code == 0
 
-        # Should print fallback message
+        # Should print success message
         captured = capsys.readouterr()
-        assert "json output not implemented yet; generating md" in captured.out
+        assert "Wrote repro to" in captured.out
 
-        # Should still create markdown file
+        # Should create file with JSON content
         repro_file = tmp_path / "repro.md"
         assert repro_file.exists()
 
+        # Content should be valid JSON
+        import json
+
         content = repro_file.read_text()
-        assert "# Test Issue" in content  # Should be markdown format
+        json_data = json.loads(content)
+        assert "title" in json_data
+        assert "assumptions" in json_data
+        assert "commands" in json_data
+
+        # Verify it's actually JSON format, not markdown
+        assert not content.startswith("#")  # No markdown headers
+        assert json_data["title"] == "Test Issue"
 
 
 class TestPlanCLIIntegration:
