@@ -29,7 +29,7 @@ The project targets multilingualism (initially Python/JS/Go) and emphasizes simp
 
 3. **Install the package in editable mode:**
    ```bash
-   pip install -e .
+   python -m pip install -e .
    ```
 
 ## Usage
@@ -146,7 +146,7 @@ $ autorepro init --dry-run
 
 # Execute on different repository
 $ autorepro init --repo /path/to/project
-Wrote devcontainer at /path/to/project/.devcontainer/devcontainer.json
+Wrote devcontainer to /path/to/project/.devcontainer/devcontainer.json
 ```
 
 **Status:** `init` is implemented with idempotent behavior and proper exit codes.
@@ -191,6 +191,7 @@ repro.md
 
 # JSON format output
 $ autorepro plan --desc "linting errors" --format json
+json output not implemented yet; generating md
 Wrote repro to repro.md
 
 # Preview to stdout without creating files
@@ -198,6 +199,11 @@ $ autorepro plan --desc "pytest failing" --dry-run
 # Issue Reproduction Plan
 
 ## Assumptions
+- Project uses python based on detected files
+
+## Candidate Commands
+- `pytest -q` — matched: pytest (+3), lang: python (+2), specific (+1)
+- `python -m pytest -q` — matched: pytest (+3), lang: python (+2)
 ...
 
 # Output to stdout (ignores --force)
@@ -212,16 +218,18 @@ Wrote repro to /path/to/project/repro.md
 
 **Status:** `plan` is implemented with intelligent command suggestions and markdown output.
 
+**Note:** JSON output not implemented yet; falling back to Markdown (a notice is printed).
+
 **Plan Behavior:**
 - **Input options**: `--desc "text"` or `--file path.txt` (mutually exclusive, one required)
 - **Language detection**: Uses `scan` results to weight command suggestions
 - **Keyword extraction**: Filters stopwords while preserving dev terms (pytest, npm, tox, etc.)
 - **Command scoring**: Combines language priors + keyword matches for ranking
-- **Structured output**: Title, Assumptions, Environment/Needs, Steps table, Next Steps
+- **Structured output**: Title, Assumptions, Environment/Needs, Candidate Commands (prioritized list), Next Steps
 
 **Options:**
 - `--desc TEXT`: Issue description text
-- `--file PATH`: Path to file containing issue description
+- `--file PATH`: Path to file containing issue description (resolved relative to CWD; falls back to --repo if not found)
 - `--out PATH`: Output path (default: repro.md)
 - `--out -`: Output to stdout instead of creating a file (ignores --force)
 - `--force`: Overwrite existing output file
@@ -254,16 +262,20 @@ pytest -v
 
 ```
 autorepro/
-├── README.md              # This file
-├── LICENSE                # Apache-2.0
-├── pyproject.toml         # Package configuration
-├── autorepro/             # Main package
+├── autorepro/
 │   ├── __init__.py
-│   └── cli.py            # Command line interface
-├── tests/                 # Test suite
-│   └── test_cli.py
-└── .github/workflows/     # CI/CD
-    └── ci.yml
+│   ├── cli.py
+│   ├── detect.py
+│   ├── env.py
+│   └── planner.py
+├── tests/
+│   ├── test_cli.py
+│   ├── test_detect.py
+│   ├── test_init.py
+│   ├── test_init_diff.py
+│   ├── test_plan_cli.py
+│   └── test_plan_core.py
+└── .github/workflows/ci.yml
 ```
 
 ## Requirements
