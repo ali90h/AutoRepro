@@ -18,6 +18,7 @@ from autorepro.env import (
     write_devcontainer,
 )
 from autorepro.planner import (
+    build_repro_json,
     build_repro_md,
     extract_keywords,
     normalize,
@@ -153,22 +154,28 @@ For more information, visit: https://github.com/ali90h/AutoRepro
 
 def cmd_scan() -> int:
     """Handle the scan command."""
-    detected = detect_languages(".")
+    try:
+        detected = detect_languages(".")
 
-    if not detected:
-        print("No known languages detected.")
+        if not detected:
+            print("No known languages detected.")
+            return 0
+
+        # Extract language names for header
+        languages = [lang for lang, _ in detected]
+        print(f"Detected: {', '.join(languages)}")
+
+        # Print details for each language
+        for lang, reasons in detected:
+            reasons_str = ", ".join(reasons)
+            print(f"- {lang} -> {reasons_str}")
+
         return 0
 
-    # Extract language names for header
-    languages = [lang for lang, _ in detected]
-    print(f"Detected: {', '.join(languages)}")
-
-    # Print details for each language
-    for lang, reasons in detected:
-        reasons_str = ", ".join(reasons)
-        print(f"- {lang} -> {reasons_str}")
-
-    return 0
+    except (OSError, PermissionError):
+        # I/O and permission errors - but scan should still succeed with empty result
+        print("No known languages detected.")
+        return 0
 
 
 def cmd_plan(
@@ -300,6 +307,18 @@ def cmd_plan(
 
     # Generate environment needs based on detected languages
     needs = []
+
+    # Check for devcontainer presence
+    if repo_path:
+        devcontainer_dir = repo_path / ".devcontainer/devcontainer.json"
+        devcontainer_root = repo_path / "devcontainer.json"
+    else:
+        devcontainer_dir = Path(".devcontainer/devcontainer.json")
+        devcontainer_root = Path("devcontainer.json")
+
+    if devcontainer_dir.exists() or devcontainer_root.exists():
+        needs.append("devcontainer: present")
+
     for lang in lang_names:
         if lang == "python":
             needs.append("Python 3.7+")
@@ -326,16 +345,13 @@ def cmd_plan(
 
     # Generate output content
     if format_type == "json":
-        # JSON Schema format
-        json_output = {
-            "title": safe_truncate_60(title),
-            "assumptions": assumptions if assumptions else ["Standard development environment"],
-            "commands": [
-                {"command": cmd, "score": score, "rationale": rationale}
-                for cmd, score, rationale in limited_suggestions
-            ],
-            "needs": needs if needs else ["Standard development environment"],
-            "next_steps": (
+        # Use the standardized JSON function
+        json_output = build_repro_json(
+            title=safe_truncate_60(title),
+            assumptions=assumptions if assumptions else ["Standard development environment"],
+            commands=limited_suggestions,
+            needs=needs if needs else ["Standard development environment"],
+            next_steps=(
                 next_steps
                 if next_steps
                 else [
@@ -344,11 +360,11 @@ def cmd_plan(
                     "Record brief logs in report.md",
                 ]
             ),
-        }
+        )
 
         import json
 
-        content = json.dumps(json_output, indent=2, sort_keys=True)
+        content = json.dumps(json_output, indent=2)
     else:
         # Build the reproduction markdown
         content = build_repro_md(title, assumptions, limited_suggestions, needs, next_steps)
@@ -477,29 +493,35 @@ def main(argv: list[str] | None = None) -> int:
         code = e.code
         return code if isinstance(code, int) else (0 if code is None else 2)
 
-    if args.command == "scan":
-        return cmd_scan()
-    elif args.command == "init":
-        return cmd_init(
-            force=args.force,
-            out=args.out,
-            dry_run=args.dry_run,
-            repo=args.repo,
-        )
-    elif args.command == "plan":
-        return cmd_plan(
-            desc=args.desc,
-            file=args.file,
-            out=args.out,
-            force=args.force,
-            max_commands=args.max,
-            format_type=args.format,
-            dry_run=args.dry_run,
-            repo=args.repo,
-        )
+    try:
+        if args.command == "scan":
+            return cmd_scan()
+        elif args.command == "init":
+            return cmd_init(
+                force=args.force,
+                out=args.out,
+                dry_run=args.dry_run,
+                repo=args.repo,
+            )
+        elif args.command == "plan":
+            return cmd_plan(
+                desc=args.desc,
+                file=args.file,
+                out=args.out,
+                force=args.force,
+                max_commands=args.max,
+                format_type=args.format,
+                dry_run=args.dry_run,
+                repo=args.repo,
+            )
 
-    parser.print_help()
-    return 0
+        parser.print_help()
+        return 0
+
+    except (OSError, PermissionError) as e:
+        # I/O and permission errors - exit 1
+        print(f"Error: {e}")
+        return 1
 
 
 if __name__ == "__main__":
