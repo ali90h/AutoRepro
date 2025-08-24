@@ -134,7 +134,7 @@ No changes.
 
 # Custom output location
 $ autorepro init --out dev/devcontainer.json
-Wrote devcontainer at dev/devcontainer.json
+Wrote devcontainer to dev/devcontainer.json
 
 # Output to stdout (ignores --force)
 $ autorepro init --out -
@@ -191,7 +191,7 @@ repro.md
 
 # JSON format output
 $ autorepro plan --desc "linting errors" --format json
-repro.md  # Contains JSON format
+Wrote repro to repro.md
 
 # Preview to stdout without creating files
 $ autorepro plan --desc "pytest failing" --dry-run

@@ -334,7 +334,7 @@ class TestInitIntegration:
         )
 
         assert result.returncode == 0
-        assert "Overwrote devcontainer to" in result.stdout
+        assert "Overwrote devcontainer at" in result.stdout
 
     def test_init_cli_custom_out_via_subprocess(self, tmp_path):
         """Test init --out flag using subprocess."""

@@ -441,7 +441,7 @@ def cmd_init(
         result_path, diff_lines = write_devcontainer(config, force=force, out=out)
 
         if force and diff_lines is not None:
-            print(f"Overwrote devcontainer to {result_path}")
+            print(f"Overwrote devcontainer at {result_path}")
             if diff_lines:
                 print("Changes:")
                 for line in diff_lines:
@@ -469,10 +469,10 @@ def cmd_init(
         return 1
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = create_parser()
     try:
-        args = parser.parse_args()
+        args = parser.parse_args(argv)
     except SystemExit as e:
         code = e.code
         return code if isinstance(code, int) else (0 if code is None else 2)

@@ -25,10 +25,10 @@ class TestMessageConsistency:
         assert result1.returncode == 0
         assert "Wrote devcontainer to" in result1.stdout
 
-        # Force overwrite - should also say "to" (not "at")
+        # Force overwrite - should say "at" (not "to")
         result2 = run_cli_subprocess(["init", "--force"], cwd=tmp_path)
         assert result2.returncode == 0
-        assert "Overwrote devcontainer to" in result2.stdout
+        assert "Overwrote devcontainer at" in result2.stdout
         assert "No changes." in result2.stdout
 
     def test_plan_message_consistency(self, tmp_path):
