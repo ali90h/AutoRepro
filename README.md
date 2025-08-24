@@ -191,8 +191,33 @@ repro.md
 
 # JSON format output
 $ autorepro plan --desc "linting errors" --format json
-json output not implemented yet; generating md
-Wrote repro to repro.md
+{
+  "title": "Linting Errors",
+  "assumptions": ["Project uses python based on detected files"],
+  "needs": {"devcontainer_present": false},
+  "commands": [
+    {
+      "cmd": "pytest -q",
+      "score": 6,
+      "rationale": "matched keywords: pytest; detected langs: python; bonuses: direct: pytest (+3), lang: python (+2), specific (+1)",
+      "matched_keywords": ["pytest"],
+      "matched_langs": ["python"]
+    }
+  ],
+  "next_steps": ["Run the suggested commands in order of priority", "Check logs and error messages for patterns"]
+}
+
+# JSON format to stdout (--out - ignores --force)
+$ autorepro plan --desc "pytest failing" --format json --out -
+{JSON output to stdout}
+
+# JSON format to file
+$ autorepro plan --desc "jest flaky" --format json --out repro.json
+Wrote repro to repro.json
+
+# JSON format with repository context
+$ autorepro plan --repo ./some/project --format json --out -
+{JSON output with language detection from specified project}
 
 # Preview to stdout without creating files
 $ autorepro plan --desc "pytest failing" --dry-run
@@ -216,9 +241,7 @@ $ autorepro plan --desc "build failing" --repo /path/to/project
 Wrote repro to /path/to/project/repro.md
 ```
 
-**Status:** `plan` is implemented with intelligent command suggestions and markdown output.
-
-**Note:** JSON output not implemented yet; falling back to Markdown (a notice is printed).
+**Status:** `plan` is implemented with intelligent command suggestions and supports both markdown and JSON output formats.
 
 **Plan Behavior:**
 - **Input options**: `--desc "text"` or `--file path.txt` (mutually exclusive, one required)
@@ -226,6 +249,7 @@ Wrote repro to /path/to/project/repro.md
 - **Keyword extraction**: Filters stopwords while preserving dev terms (pytest, npm, tox, etc.)
 - **Command scoring**: Combines language priors + keyword matches for ranking
 - **Structured output**: Title, Assumptions, Environment/Needs, Candidate Commands (prioritized list), Next Steps
+- **JSON format**: Includes parsed matched_keywords and matched_langs for each command, plus devcontainer_present boolean in needs
 
 **Options:**
 - `--desc TEXT`: Issue description text

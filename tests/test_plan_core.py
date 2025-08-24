@@ -1,6 +1,7 @@
 """Tests for the AutoRepro planner core functions (updated for new implementation)."""
 
 from autorepro.planner import (
+    build_repro_json,
     build_repro_md,
     extract_keywords,
     normalize,
@@ -497,3 +498,162 @@ class TestBuildReproMd:
         assert any("test-cmd" in line for line in lines), "Command content not found"
         assert any("Test requirement" in line for line in lines), "Need content not found"
         assert any("Test step" in line for line in lines), "Next step content not found"
+
+
+class TestBuildReproJson:
+    """Test the build_repro_json function."""
+
+    def test_basic_structure(self):
+        """Test that JSON output has the correct basic structure."""
+        title = "Test Issue"
+        assumptions = ["Test assumption"]
+        commands = [("pytest -q", 6, "matched: pytest (+3), lang: python (+2), specific (+1)")]
+        needs = ["Python 3.11+"]
+        next_steps = ["Run the command"]
+
+        result = build_repro_json(title, assumptions, commands, needs, next_steps)
+
+        # Check all required keys are present in correct order
+        expected_keys = ["title", "assumptions", "needs", "commands", "next_steps"]
+        assert list(result.keys()) == expected_keys
+
+        # Check basic types
+        assert isinstance(result["title"], str)
+        assert isinstance(result["assumptions"], list)
+        assert isinstance(result["needs"], dict)
+        assert isinstance(result["commands"], list)
+        assert isinstance(result["next_steps"], list)
+
+    def test_devcontainer_detection_present(self):
+        """Test that devcontainer present is correctly detected."""
+        needs = ["Python 3.11+", "devcontainer: present", "Node.js"]
+
+        result = build_repro_json("Test", [], [], needs, [])
+
+        assert result["needs"]["devcontainer_present"] is True
+
+    def test_devcontainer_detection_absent(self):
+        """Test that devcontainer absent is correctly detected."""
+        needs = ["Python 3.11+", "Node.js"]
+
+        result = build_repro_json("Test", [], [], needs, [])
+
+        assert result["needs"]["devcontainer_present"] is False
+
+    def test_command_parsing_matched_keywords(self):
+        """Test that matched keywords are correctly parsed from rationale."""
+        commands = [
+            ("pytest -q", 6, "matched keywords: pytest; detected langs: python"),
+            ("npm test", 4, "matched keywords: npm test; bonuses: direct (+3)"),
+        ]
+
+        result = build_repro_json("Test", [], commands, [], [])
+
+        assert len(result["commands"]) == 2
+
+        # Check first command
+        cmd1 = result["commands"][0]
+        assert cmd1["cmd"] == "pytest -q"
+        assert cmd1["score"] == 6
+        assert cmd1["matched_keywords"] == ["pytest"]
+
+        # Check second command
+        cmd2 = result["commands"][1]
+        assert cmd2["cmd"] == "npm test"
+        assert cmd2["score"] == 4
+        assert cmd2["matched_keywords"] == ["npm", "test"]
+
+    def test_command_parsing_matched_langs(self):
+        """Test that matched languages are correctly parsed from rationale."""
+        commands = [
+            ("pytest -q", 6, "matched keywords: pytest; detected langs: python"),
+            ("go test", 4, "detected langs: go; bonuses: lang: go (+2)"),
+        ]
+
+        result = build_repro_json("Test", [], commands, [], [])
+
+        assert len(result["commands"]) == 2
+
+        # Check first command
+        cmd1 = result["commands"][0]
+        assert cmd1["matched_langs"] == ["python"]
+
+        # Check second command
+        cmd2 = result["commands"][1]
+        assert cmd2["matched_langs"] == ["go"]
+
+    def test_command_parsing_no_matches(self):
+        """Test commands with no keyword or language matches."""
+        commands = [("some command", 1, "no specific matches")]
+
+        result = build_repro_json("Test", [], commands, [], [])
+
+        cmd = result["commands"][0]
+        assert cmd["matched_keywords"] == []
+        assert cmd["matched_langs"] == []
+
+    def test_command_parsing_multiple_keywords(self):
+        """Test parsing multiple keywords from rationale."""
+        commands = [
+            ("complex cmd", 5, "matched keywords: pytest, jest; detected langs: python, node"),
+        ]
+
+        result = build_repro_json("Test", [], commands, [], [])
+
+        cmd = result["commands"][0]
+        assert "pytest" in cmd["matched_keywords"]
+        assert "jest" in cmd["matched_keywords"]
+        assert "python" in cmd["matched_langs"]
+        assert "node" in cmd["matched_langs"]
+
+    def test_command_parsing_special_characters(self):
+        """Test that special characters are filtered from parsed keywords."""
+        commands = [
+            ("test cmd", 5, "matched keywords: py*test, n@pm; detected langs: py-thon, no_de"),
+        ]
+
+        result = build_repro_json("Test", [], commands, [], [])
+
+        cmd = result["commands"][0]
+        # Should keep alphanumeric, dashes, underscores
+        assert "pytest" in cmd["matched_keywords"]  # * filtered out
+        assert "npm" in cmd["matched_keywords"]  # @ filtered out
+        assert "py-thon" in cmd["matched_langs"]  # dash kept
+        assert "no_de" in cmd["matched_langs"]  # underscore kept
+
+    def test_empty_inputs(self):
+        """Test handling of empty inputs."""
+        result = build_repro_json("", [], [], [], [])
+
+        assert result["title"] == ""
+        assert result["assumptions"] == []
+        assert result["needs"] == {"devcontainer_present": False}
+        assert result["commands"] == []
+        assert result["next_steps"] == []
+
+    def test_deterministic_output(self):
+        """Test that output is deterministic."""
+        title = "Test"
+        assumptions = ["Assumption 1"]
+        commands = [("cmd1", 5, "matched keywords: test; bonuses: direct: test (+3)")]
+        needs = ["Need 1"]
+        next_steps = ["Step 1"]
+
+        result1 = build_repro_json(title, assumptions, commands, needs, next_steps)
+        result2 = build_repro_json(title, assumptions, commands, needs, next_steps)
+
+        assert result1 == result2
+
+    def test_key_order_preservation(self):
+        """Test that key order is preserved as specified."""
+        result = build_repro_json("Test", ["A"], [("cmd", 1, "reason")], ["need"], ["step"])
+
+        # Check top-level key order
+        expected_keys = ["title", "assumptions", "needs", "commands", "next_steps"]
+        assert list(result.keys()) == expected_keys
+
+        # Check command object key order
+        if result["commands"]:
+            cmd_keys = list(result["commands"][0].keys())
+            expected_cmd_keys = ["cmd", "score", "rationale", "matched_keywords", "matched_langs"]
+            assert cmd_keys == expected_cmd_keys

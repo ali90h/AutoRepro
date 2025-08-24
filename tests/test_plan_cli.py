@@ -671,12 +671,14 @@ class TestPlanCLIFormatFlag:
         # Check command structure
         if data["commands"]:
             cmd = data["commands"][0]
-            assert "command" in cmd
+            assert "cmd" in cmd
             assert "score" in cmd
             assert "rationale" in cmd
+            assert "matched_keywords" in cmd
+            assert "matched_langs" in cmd
 
         # Should contain pytest command due to Python detection and keyword
-        commands = [cmd["command"] for cmd in data["commands"]]
+        commands = [cmd["cmd"] for cmd in data["commands"]]
         pytest_commands = [cmd for cmd in commands if "pytest" in cmd]
         assert len(pytest_commands) > 0, f"Should include pytest commands. Commands: {commands}"
 

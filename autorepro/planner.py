@@ -276,6 +276,120 @@ def safe_truncate_60(text: str) -> str:
     return truncated
 
 
+def build_repro_json(
+    title: str,
+    assumptions: list[str],
+    commands: list[tuple[str, int, str]],  # (cmd, score, rationale)
+    needs: list[str],
+    next_steps: list[str],
+) -> dict:
+    """
+    Build a reproduction JSON object with standardized structure.
+
+    Args:
+        title: Title for the reproduction document
+        assumptions: List of assumptions made
+        commands: List of (command, score, rationale) tuples
+        needs: List of environment/dependency needs (includes devcontainer status)
+        next_steps: List of next steps to take
+
+    Returns:
+        JSON object with fixed key order containing title, assumptions, needs,
+        commands, and next_steps. Commands include parsed matched_keywords and
+        matched_langs from rationales.
+    """
+    # Parse devcontainer status from needs list
+    devcontainer_present = False
+    for need in needs:
+        if "devcontainer" in need.lower() and "present" in need.lower():
+            devcontainer_present = True
+            break
+
+    # Process commands to extract matched keywords and languages
+    processed_commands = []
+    for cmd, score, rationale in commands:
+        # Parse rationale conservatively
+        matched_keywords = []
+        matched_langs = []
+
+        # Extract matched keywords (tokens following "matched keywords:" up to next semicolon)
+        if "matched keywords:" in rationale:
+            parts = rationale.split("matched keywords:")
+            if len(parts) > 1:
+                # Get text after "matched keywords:" - handle multiple possibilities
+                rest_of_text = parts[1]
+
+                # Find the end of the matched section (before next semicolon)
+                # Look for patterns like "; detected langs:" or ";" to determine end
+                end_markers = ["; detected langs:", "; bonuses:", ";"]
+                matched_section = rest_of_text
+                for marker in end_markers:
+                    if marker in matched_section:
+                        matched_section = matched_section.split(marker)[0]
+                        break
+
+                # Split by commas first to handle multiple keywords
+                keyword_parts = matched_section.split(",")
+                for part in keyword_parts:
+                    # Clean each part and extract words
+                    part = part.strip()
+                    if part:
+                        # Split by spaces to handle multi-word keywords like "npm test"
+                        tokens = part.split()
+                        # Keep simple word characters, dashes, underscores, spaces for multi-word
+                        for token in tokens:
+                            clean_token = "".join(c for c in token if c.isalnum() or c in "-_")
+                            if clean_token and not clean_token.isdigit():  # Skip pure numbers
+                                matched_keywords.append(clean_token)
+
+        # Extract matched languages (tokens following "detected langs:" up to next semicolon)
+        if "detected langs:" in rationale:
+            parts = rationale.split("detected langs:")
+            if len(parts) > 1:
+                # Get text after "detected langs:" - handle multiple possibilities
+                rest_of_text = parts[1]
+
+                # Find the end of the lang section (before next semicolon)
+                end_markers = ["; bonuses:", ";"]
+                lang_section = rest_of_text
+                for marker in end_markers:
+                    if marker in lang_section:
+                        lang_section = lang_section.split(marker)[0]
+                        break
+
+                # Split by commas first to handle multiple languages
+                lang_parts = lang_section.split(",")
+                for part in lang_parts:
+                    # Clean each part and extract words
+                    part = part.strip()
+                    if part:
+                        # Split by spaces to handle multi-word if needed
+                        tokens = part.split()
+                        for token in tokens:
+                            clean_token = "".join(c for c in token if c.isalnum() or c in "-_")
+                            if clean_token and not clean_token.isdigit():  # Skip pure numbers
+                                matched_langs.append(clean_token)
+
+        processed_commands.append(
+            {
+                "cmd": cmd,
+                "score": score,
+                "rationale": rationale,
+                "matched_keywords": matched_keywords,
+                "matched_langs": matched_langs,
+            }
+        )
+
+    # Build JSON object with fixed key order (preserve insertion order)
+    return {
+        "title": title,
+        "assumptions": assumptions,
+        "needs": {"devcontainer_present": devcontainer_present},
+        "commands": processed_commands,
+        "next_steps": next_steps,
+    }
+
+
 def build_repro_md(
     title: str,
     assumptions: list[str],
