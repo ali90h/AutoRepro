@@ -10,7 +10,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from autorepro import __version__
-from autorepro.detect import detect_languages
+from autorepro.detect import collect_evidence, detect_languages
 from autorepro.env import (
     DevcontainerExistsError,
     DevcontainerMisuseError,
@@ -68,10 +68,20 @@ For more information, visit: https://github.com/ali90h/AutoRepro
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # scan subcommand
-    subparsers.add_parser(
+    scan_parser = subparsers.add_parser(
         "scan",
         help="Detect languages/frameworks from file pointers",
         description="Scan the current directory for language/framework indicators",
+    )
+    scan_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Output results in JSON format with scores and reasons",
+    )
+    scan_parser.add_argument(
+        "--show-scores",
+        action="store_true",
+        help="Show scores in text output (only effective without --json)",
     )
 
     # init subcommand
@@ -152,29 +162,59 @@ For more information, visit: https://github.com/ali90h/AutoRepro
     return parser
 
 
-def cmd_scan() -> int:
+def cmd_scan(json_output: bool = False, show_scores: bool = False) -> int:
     """Handle the scan command."""
     try:
-        detected = detect_languages(".")
+        if json_output:
+            # Use new weighted evidence collection for JSON output
+            evidence = collect_evidence(Path("."))
+            detected_languages = sorted(evidence.keys())
 
-        if not detected:
-            print("No known languages detected.")
+            # Build JSON output according to schema
+            json_result = {
+                "root": str(Path(".").resolve()),
+                "detected": detected_languages,
+                "languages": evidence,
+            }
+
+            import json
+
+            print(json.dumps(json_result, indent=2))
             return 0
+        else:
+            # Use legacy text output
+            detected = detect_languages(".")
 
-        # Extract language names for header
-        languages = [lang for lang, _ in detected]
-        print(f"Detected: {', '.join(languages)}")
+            if not detected:
+                print("No known languages detected.")
+                return 0
 
-        # Print details for each language
-        for lang, reasons in detected:
-            reasons_str = ", ".join(reasons)
-            print(f"- {lang} -> {reasons_str}")
+            # Extract language names for header
+            languages = [lang for lang, _ in detected]
+            print(f"Detected: {', '.join(languages)}")
 
-        return 0
+            # Print details for each language
+            for lang, reasons in detected:
+                reasons_str = ", ".join(reasons)
+                print(f"- {lang} -> {reasons_str}")
+
+                # Add score if --show-scores is enabled
+                if show_scores:
+                    evidence = collect_evidence(Path("."))
+                    if lang in evidence:
+                        print(f"  Score: {evidence[lang]['score']}")
+
+            return 0
 
     except (OSError, PermissionError):
         # I/O and permission errors - but scan should still succeed with empty result
-        print("No known languages detected.")
+        if json_output:
+            json_result = {"root": str(Path(".").resolve()), "detected": [], "languages": {}}
+            import json
+
+            print(json.dumps(json_result, indent=2))
+        else:
+            print("No known languages detected.")
         return 0
 
 
@@ -495,7 +535,10 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         if args.command == "scan":
-            return cmd_scan()
+            return cmd_scan(
+                json_output=getattr(args, "json", False),
+                show_scores=getattr(args, "show_scores", False),
+            )
         elif args.command == "init":
             return cmd_init(
                 force=args.force,
