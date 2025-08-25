@@ -74,26 +74,92 @@ autorepro plan --file issue.txt --repo /path/to/project
 
 ### Scan Command
 
-Detects repo languages and prints the reasons (marker files).
+Detects repo languages and prints the reasons (marker files). Supports both text and JSON output formats with weighted scoring.
 
 ```bash
-# Example output when multiple languages are detected
+# Default text output - shows detected languages and reasons
 $ autorepro scan
 Detected: node, python
 - node -> package.json
 - python -> pyproject.toml
 
-# Example output when no languages are detected
-$ autorepro scan
-No known languages detected.
+# Text output with scores
+$ autorepro scan --show-scores
+Detected: node, python
+- node -> package.json
+  Score: 3
+- python -> pyproject.toml
+  Score: 3
+
+# JSON output with detailed scoring and reasoning
+$ autorepro scan --json
+{
+  "root": "/absolute/path/to/project",
+  "detected": ["node", "python"],
+  "languages": {
+    "node": {
+      "score": 7,
+      "reasons": [
+        {
+          "pattern": "package.json",
+          "path": "./package.json",
+          "kind": "config",
+          "weight": 3
+        },
+        {
+          "pattern": "pnpm-lock.yaml",
+          "path": "./pnpm-lock.yaml",
+          "kind": "lock",
+          "weight": 4
+        }
+      ]
+    },
+    "python": {
+      "score": 5,
+      "reasons": [
+        {
+          "pattern": "pyproject.toml",
+          "path": "./pyproject.toml",
+          "kind": "config",
+          "weight": 3
+        },
+        {
+          "pattern": "*.py",
+          "path": "./main.py",
+          "kind": "source",
+          "weight": 1
+        }
+      ]
+    }
+  }
+}
+
+# No indicators found - empty results with exit code 0
+$ autorepro scan --json
+{
+  "root": "/path/to/empty/project",
+  "detected": [],
+  "languages": {}
+}
 ```
 
-**Status:** `scan` is implemented and prints per-language detection reasons (deterministic order; root-only).
+**Status:** `scan` is implemented with weighted scoring system and dual output formats (text/JSON).
+
+**Scan Options:**
+- `--json`: Output in JSON format with scores and detailed reasons
+- `--show-scores`: Add score lines to text output (ignored with --json)
+
+**Weighted Scoring System:**
+- **Lock files (weight 4)**: `pnpm-lock.yaml`, `yarn.lock`, `npm-shrinkwrap.json`, `package-lock.json`, `go.sum`, `Cargo.lock`
+- **Config/manifest files (weight 3)**: `pyproject.toml`, `go.mod`, `Cargo.toml`, `pom.xml`, `build.gradle*`, `*.csproj`, `*.sln`, `package.json`
+- **Setup/requirements (weight 2)**: `setup.py`, `requirements.txt`
+- **Source files (weight 1)**: `*.py`, `*.go`, `*.rs`, `*.java`, `*.cs`, `*.js`, `*.ts`, etc.
 
 **Scan Behavior:**
 - **Root-only**: Scans only the current directory (non-recursive)
 - **Deterministic ordering**: Languages and reasons are sorted alphabetically
-- **Detection patterns**: Uses both exact filenames and glob patterns to identify technologies
+- **Score accumulation**: Multiple indicators for same language add their weights together
+- **Exit code 0**: Always succeeds, even with no detections
 
 **Supported Languages:**
 - **C#**: `*.csproj`, `*.sln`, `*.cs`
@@ -102,10 +168,6 @@ No known languages detected.
 - **Node.js**: `package.json`, `yarn.lock`, `pnpm-lock.yaml`, `npm-shrinkwrap.json`
 - **Python**: `pyproject.toml`, `setup.py`, `requirements.txt`, `*.py`
 - **Rust**: `Cargo.toml`, `Cargo.lock`, `*.rs`
-
-**Known limitations (MVP):**
-- Source-file globs (e.g., `*.py`, `*.go`) may cause false positives in sparse repos; prefer root indicators (config/lockfiles).
-- Future direction: weight/score reasons and down-rank raw source globs in favor of strong root indicators (tracked on the roadmap).
 
 ### Init Command
 
