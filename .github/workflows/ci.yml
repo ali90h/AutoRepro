@@ -9,6 +9,10 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      TZ: UTC
+      LC_ALL: C.UTF-8
+      PYTHONHASHSEED: "0"
 
     steps:
     - name: Checkout code
@@ -40,6 +44,11 @@ jobs:
     - name: Run tests
       run: |
         python -m pytest -v
+
+    - name: Golden drift check
+      run: |
+        python scripts/regold.py --write
+        git diff --exit-code
 
     - name: Verify CLI functionality
       run: |

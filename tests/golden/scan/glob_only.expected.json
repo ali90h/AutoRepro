@@ -1,0 +1,1 @@
+{"detected":["python"],"languages":{"python":{"reasons":[{"kind":"source","path":"./a.py","pattern":"*.py","weight":1}],"score":1}},"root":"."}
