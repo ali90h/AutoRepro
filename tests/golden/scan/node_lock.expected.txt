@@ -1,0 +1,2 @@
+Detected: node
+- node -> pnpm-lock.yaml

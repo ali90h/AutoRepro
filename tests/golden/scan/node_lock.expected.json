@@ -1,0 +1,1 @@
+{"detected":["node"],"languages":{"node":{"reasons":[{"kind":"lock","path":"./pnpm-lock.yaml","pattern":"pnpm-lock.yaml","weight":4}],"score":4}},"root":"."}

@@ -342,7 +342,32 @@ pytest
 
 # Run tests with verbose output
 pytest -v
+
+# Run golden tests specifically
+pytest tests/test_golden_plan.py tests/test_golden_scan.py
 ```
+
+### Golden Tests
+
+Golden tests ensure that `plan` and `scan` commands produce consistent outputs. These tests compare actual command outputs against stored "golden" fixture files.
+
+**Location:** `tests/golden/`
+- `plan/`: Contains `.desc.txt` input files and `.expected.md`/`.expected.json` output files
+- `scan/`: Contains `.expected.txt`/`.expected.json` output files for different project configurations
+
+**Updating Golden Files:**
+
+Use the `scripts/regold.py` tool to regenerate expected outputs:
+
+```bash
+# Preview changes (dry run)
+python scripts/regold.py
+
+# Actually update golden files
+python scripts/regold.py --write
+```
+
+**Important:** Always review changes carefully before committing updated golden files. The regold tool regenerates outputs based on current implementation, so verify that changes are intentional.
 
 ### Project Structure
 

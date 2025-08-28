@@ -1,0 +1,1 @@
+{"detected":["node","python"],"languages":{"node":{"reasons":[{"kind":"lock","path":"./pnpm-lock.yaml","pattern":"pnpm-lock.yaml","weight":4}],"score":4},"python":{"reasons":[{"kind":"config","path":"./pyproject.toml","pattern":"pyproject.toml","weight":3}],"score":3}},"root":"."}

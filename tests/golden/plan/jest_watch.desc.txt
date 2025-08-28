@@ -1,0 +1,1 @@
+npm test failing on jest watch mode with timeout errors
