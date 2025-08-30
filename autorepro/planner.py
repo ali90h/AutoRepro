@@ -86,7 +86,9 @@ def extract_keywords(text: str) -> set[str]:
     return matched_keywords
 
 
-def suggest_commands(keywords: set[str], detected_langs: list[str]) -> list[tuple[str, int, str]]:  # type: ignore
+def suggest_commands(
+    keywords: set[str], detected_langs: list[str], min_score: int = 2
+) -> list[tuple[str, int, str]]:  # type: ignore
     """
     Suggest commands based on keywords and detected languages using precise scoring rules.
 
@@ -208,16 +210,14 @@ def suggest_commands(keywords: set[str], detected_langs: list[str]) -> list[tupl
             "bonuses": bonuses_applied,
         }
 
-    # Filter to only relevant commands (improved filtering)
-    # Only show commands with: direct keyword match (+3) OR language detection (+2) OR score >= 2
+    # Filter commands by min_score, but preserve keyword/language matches
+    # Commands are included if score >= min_score
     relevant_commands = {}
     for cmd, data in command_scores.items():
         score = data["score"]  # type: ignore
-        has_keyword_match = bool(data["matched_keywords"])  # type: ignore
-        has_lang_match = bool(data["detected_langs"])  # type: ignore
 
-        # Include if: direct keyword match OR language match OR score >= 2
-        if has_keyword_match or has_lang_match or score >= 2:
+        # Include if score meets the minimum threshold
+        if score >= min_score:
             relevant_commands[cmd] = data
 
     # Only show commands if keyword OR detected language matches

@@ -158,6 +158,17 @@ For more information, visit: https://github.com/ali90h/AutoRepro
         "--repo",
         help="Execute logic on specified repository path",
     )
+    plan_parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Exit with code 1 if no commands make the cut after filtering",
+    )
+    plan_parser.add_argument(
+        "--min-score",
+        type=int,
+        default=2,
+        help="Drop commands with score < N (default: 2)",
+    )
 
     return parser
 
@@ -227,6 +238,8 @@ def cmd_plan(
     format_type: str = "md",
     dry_run: bool = False,
     repo: str | None = None,
+    strict: bool = False,
+    min_score: int = 2,
 ) -> int:
     """Handle the plan command."""
 
@@ -315,7 +328,18 @@ def cmd_plan(
     lang_names = [lang for lang, _ in detected_languages]
 
     # Generate suggestions
-    suggestions = suggest_commands(keywords, lang_names)
+    suggestions = suggest_commands(keywords, lang_names, min_score)
+
+    # Check for strict mode - exit 1 if no commands after filtering
+    if strict and not suggestions:
+        print(f"no candidate commands above min-score={min_score}", file=sys.stderr)
+        return 1
+
+    # Count filtered commands for warning
+    total_commands = len(suggest_commands(keywords, lang_names, min_score=0))
+    filtered_count = total_commands - len(suggestions)
+    if filtered_count > 0:
+        print(f"filtered {filtered_count} low-score suggestions", file=sys.stderr)
 
     # Limit to max_commands
     limited_suggestions = suggestions[:max_commands]
@@ -344,6 +368,14 @@ def cmd_plan(
 
     if not assumptions:
         assumptions.append("Issue can be reproduced locally")
+
+    # Add filtering note to assumptions if commands were filtered and user explicitly set min-score
+    # Only show filtering notes when user explicitly used --min-score (not default) or --strict
+    min_score_explicit = min_score != 2  # 2 is the default value
+    if filtered_count > 0 and (min_score_explicit or strict):
+        assumptions.append(
+            f"Filtered {filtered_count} low-scoring command suggestions (min-score={min_score})"
+        )
 
     # Generate environment needs based on detected languages
     needs = []
@@ -556,6 +588,8 @@ def main(argv: list[str] | None = None) -> int:
                 format_type=args.format,
                 dry_run=args.dry_run,
                 repo=args.repo,
+                strict=args.strict,
+                min_score=args.min_score,
             )
 
         parser.print_help()

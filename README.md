@@ -301,6 +301,31 @@ $ autorepro plan --desc "npm test issues" --out -
 # Execute on different repository
 $ autorepro plan --desc "build failing" --repo /path/to/project
 Wrote repro to /path/to/project/repro.md
+
+# Quality gates: filter low-scoring commands
+$ autorepro plan --desc "pytest failing" --min-score 3
+repro.md
+
+# Strict mode: fail if no high-quality suggestions
+$ autorepro plan --desc "random issue" --min-score 5 --strict
+no candidate commands above min-score=5
+
+# Quality gates with JSON output
+$ autorepro plan --desc "jest tests" --format json --min-score 4
+{
+  "title": "Jest Tests",
+  "assumptions": [
+    "Project uses node based on detected files",
+    "Filtered 8 low-scoring command suggestions (min-score=4)"
+  ],
+  "commands": [
+    {
+      "cmd": "npx jest -w=1",
+      "score": 6,
+      "rationale": "matched keywords: jest; detected langs: node; bonuses: direct: jest (+3), lang: node (+2), specific (+1)"
+    }
+  ]
+}
 ```
 
 **Status:** `plan` is implemented with intelligent command suggestions and supports both markdown and JSON output formats.
@@ -321,6 +346,8 @@ Wrote repro to /path/to/project/repro.md
 - `--force`: Overwrite existing output file
 - `--max N`: Maximum suggested commands (default: 5)
 - `--format md|json`: Output format (default: md)
+- `--min-score N`: Drop commands with score < N (default: 2)
+- `--strict`: Exit with code 1 if no commands make the cut after filtering
 - `--dry-run`: Display contents to stdout without writing files
 - `--repo PATH`: Execute all logic on specified repository path
 
@@ -329,7 +356,7 @@ Wrote repro to /path/to/project/repro.md
 AutoRepro uses standard exit codes to indicate success or failure:
 
 - **0**: Success (including "already exists" and overwrite operations)
-- **1**: Unexpected I/O or permission errors
+- **1**: Unexpected I/O or permission errors, or strict failure (no commands ≥ min-score with --strict)
 - **2**: Misuse (e.g., `--out` points to a directory, missing --desc/--file)
 
 ## Development
