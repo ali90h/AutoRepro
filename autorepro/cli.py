@@ -10,6 +10,7 @@ import os
 import shlex
 import subprocess
 import sys
+from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
@@ -38,7 +39,7 @@ def ensure_trailing_newline(content: str) -> str:
 
 
 @contextmanager
-def temp_chdir(path: Path):
+def temp_chdir(path: Path) -> Generator[None, None, None]:
     """Temporarily change to the given directory, then restore original working directory."""
     original_cwd = Path.cwd()
     try:
@@ -800,7 +801,7 @@ def cmd_exec(
         return 1
 
     if index >= len(suggestions):
-        log.error(f"Index {index} out of range (0-{len(suggestions)-1})")
+        log.error(f"Index {index} out of range (0-{len(suggestions) - 1})")
         return 2
 
     selected_command = suggestions[index]
