@@ -74,38 +74,52 @@ class TestCLIIntegration:
     def test_cli_help_via_subprocess(self):
         """Test CLI help using subprocess to simulate real usage."""
         # Test -h flag
-        result = subprocess.run(
-            [sys.executable, "-m", "autorepro.cli", "-h"],
-            capture_output=True,
-            text=True,
-        )
+        args_str = ", ".join(f"'{arg}'" for arg in ["-h"])
+        cmd = [
+            sys.executable,
+            "-c",
+            "import sys; sys.path.insert(0, '.'); from autorepro.cli import main; "
+            f"sys.exit(main([{args_str}]))",
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True)
         assert result.returncode == 0
         assert "autorepro" in result.stdout.lower() or "autorepro" in result.stderr.lower()
 
         # Test --help flag
-        result = subprocess.run(
-            [sys.executable, "-m", "autorepro.cli", "--help"],
-            capture_output=True,
-            text=True,
-        )
+        args_str = ", ".join(f"'{arg}'" for arg in ["--help"])
+        cmd = [
+            sys.executable,
+            "-c",
+            "import sys; sys.path.insert(0, '.'); from autorepro.cli import main; "
+            f"sys.exit(main([{args_str}]))",
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True)
         assert result.returncode == 0
         assert "autorepro" in result.stdout.lower() or "autorepro" in result.stderr.lower()
 
     def test_cli_no_args_via_subprocess(self):
         """Test CLI without arguments using subprocess."""
-        result = subprocess.run(
-            [sys.executable, "-m", "autorepro.cli"], capture_output=True, text=True
-        )
+        args_str = ", ".join(f"'{arg}'" for arg in [])
+        cmd = [
+            sys.executable,
+            "-c",
+            "import sys; sys.path.insert(0, '.'); from autorepro.cli import main; "
+            f"sys.exit(main([{args_str}]))",
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True)
         assert result.returncode == 0
         assert "autorepro" in result.stdout.lower() or "autorepro" in result.stderr.lower()
 
     def test_cli_version_via_subprocess(self):
         """Test CLI version flag using subprocess."""
-        result = subprocess.run(
-            [sys.executable, "-m", "autorepro.cli", "--version"],
-            capture_output=True,
-            text=True,
-        )
+        args_str = ", ".join(f"'{arg}'" for arg in ["--version"])
+        cmd = [
+            sys.executable,
+            "-c",
+            "import sys; sys.path.insert(0, '.'); from autorepro.cli import main; "
+            f"sys.exit(main([{args_str}]))",
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True)
         assert result.returncode == 0
         assert "0.0.1" in result.stdout or "0.0.1" in result.stderr
 
@@ -115,33 +129,42 @@ class TestCLIErrorHandling:
 
     def test_unknown_option_returns_exit_code_2(self):
         """Test that unknown options return exit code 2 and show error message."""
-        result = subprocess.run(
-            [sys.executable, "-m", "autorepro.cli", "--unknown-option"],
-            capture_output=True,
-            text=True,
-        )
+        args_str = ", ".join(f"'{arg}'" for arg in ["--unknown-option"])
+        cmd = [
+            sys.executable,
+            "-c",
+            "import sys; sys.path.insert(0, '.'); from autorepro.cli import main; "
+            f"sys.exit(main([{args_str}]))",
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True)
         assert result.returncode == 2
         error_output = result.stdout + result.stderr
         assert "unrecognized arguments" in error_output.lower()
 
     def test_invalid_short_option_returns_exit_code_2(self):
         """Test that invalid short options return exit code 2."""
-        result = subprocess.run(
-            [sys.executable, "-m", "autorepro.cli", "-x"],
-            capture_output=True,
-            text=True,
-        )
+        args_str = ", ".join(f"'{arg}'" for arg in ["-x"])
+        cmd = [
+            sys.executable,
+            "-c",
+            "import sys; sys.path.insert(0, '.'); from autorepro.cli import main; "
+            f"sys.exit(main([{args_str}]))",
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True)
         assert result.returncode == 2
         error_output = result.stdout + result.stderr
         assert "unrecognized arguments" in error_output.lower()
 
     def test_multiple_unknown_args_returns_exit_code_2(self):
         """Test that multiple unknown arguments return exit code 2."""
-        result = subprocess.run(
-            [sys.executable, "-m", "autorepro.cli", "unknown", "args"],
-            capture_output=True,
-            text=True,
-        )
+        args_str = ", ".join(f"'{arg}'" for arg in ["unknown", "args"])
+        cmd = [
+            sys.executable,
+            "-c",
+            "import sys; sys.path.insert(0, '.'); from autorepro.cli import main; "
+            f"sys.exit(main([{args_str}]))",
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True)
         assert result.returncode == 2
         error_output = (result.stderr or result.stdout).lower()
         # argparse may say either "unrecognized arguments" (unknown options)

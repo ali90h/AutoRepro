@@ -1,6 +1,21 @@
 """AutoRepro planner module for generating reproduction plans from issue descriptions."""
 
 import re
+from typing import TypedDict
+
+from .rules import get_rules
+
+
+class CommandCandidate(TypedDict):
+    """Type for command candidate with scoring metadata."""
+
+    cmd: str
+    score: int
+    matched_keywords: list[str]
+    detected_langs: list[str]
+    bonuses: list[str]
+    source: str
+
 
 # Compiled regex patterns for keyword detection
 KEYWORD_PATTERNS = {
@@ -105,7 +120,6 @@ def suggest_commands(
     Returns:
         List of (command, score, rationale) tuples sorted by (-score, command)
     """
-
     # Map detected languages to ecosystems
     ecosystem_mapping = {
         "python": "python",
@@ -117,39 +131,10 @@ def suggest_commands(
         "java": "java",
     }
 
-    # MVP command universe with ecosystem and tool mappings
-    command_universe = {
-        # Python ecosystem
-        "pytest": {"ecosystem": "python", "tools": ["pytest"], "specificity": 0},
-        "pytest -q": {"ecosystem": "python", "tools": ["pytest"], "specificity": 1},
-        "python -m pytest -q": {"ecosystem": "python", "tools": ["pytest"], "specificity": 1},
-        "python -m unittest -v": {"ecosystem": "python", "tools": ["unittest"], "specificity": 1},
-        "tox -e py311": {"ecosystem": "python", "tools": ["tox"], "specificity": 1},
-        # Node ecosystem
-        "npm test": {"ecosystem": "node", "tools": ["npm test"], "specificity": 0},
-        "npm test -s": {"ecosystem": "node", "tools": ["npm test"], "specificity": 1},
-        "pnpm test": {"ecosystem": "node", "tools": ["pnpm test"], "specificity": 0},
-        "pnpm test -s": {"ecosystem": "node", "tools": ["pnpm test"], "specificity": 1},
-        "yarn test": {"ecosystem": "node", "tools": ["yarn test"], "specificity": 0},
-        "yarn test -s": {"ecosystem": "node", "tools": ["yarn test"], "specificity": 1},
-        "npx jest": {"ecosystem": "node", "tools": ["jest"], "specificity": 0},
-        "npx jest -w=1": {"ecosystem": "node", "tools": ["jest"], "specificity": 1},
-        "npx vitest run": {"ecosystem": "node", "tools": ["vitest"], "specificity": 1},
-        "npx mocha": {"ecosystem": "node", "tools": ["mocha"], "specificity": 1},
-        "npx playwright test": {"ecosystem": "node", "tools": ["playwright"], "specificity": 1},
-        "npx cypress run": {"ecosystem": "node", "tools": ["cypress"], "specificity": 1},
-        # Go ecosystem
-        "go test": {"ecosystem": "go", "tools": ["go test"], "specificity": 0},
-        "go test ./... -run .": {"ecosystem": "go", "tools": ["go test"], "specificity": 1},
-        "gotestsum": {"ecosystem": "go", "tools": ["gotestsum"], "specificity": 1},
-        # Electron ecosystem
-        "npx electron .": {"ecosystem": "electron", "tools": ["electron"], "specificity": 1},
-        # Rust ecosystem (only if keywords appear)
-        "cargo test": {"ecosystem": "rust", "tools": ["cargo test"], "specificity": 1},
-        # Java ecosystem (only if keywords appear)
-        "mvn -q -DskipITs test": {"ecosystem": "java", "tools": ["mvn", "maven"], "specificity": 1},
-        "./gradlew test": {"ecosystem": "java", "tools": ["gradle", "gradlew"], "specificity": 1},
-    }
+    # Get all rules from registry (built-in + plugins)
+    from .rules import BUILTIN_RULES
+
+    all_rules = get_rules()
 
     # Determine which ecosystems to include (MVP + conditional)
     ecosystems_to_include = {"python", "node", "go", "electron"}
@@ -164,87 +149,94 @@ def suggest_commands(
     if java_keywords.intersection(keywords):
         ecosystems_to_include.add("java")
 
-    # Filter command universe to included ecosystems
-    active_commands = {
-        cmd: info
-        for cmd, info in command_universe.items()
-        if info["ecosystem"] in ecosystems_to_include
-    }
+    # Collect active rules from included ecosystems with source tracking
+    active_rules = []
+    for ecosystem in ecosystems_to_include:
+        if ecosystem in all_rules:
+            for rule in all_rules[ecosystem]:
+                # Check if rule is from plugin or builtin
+                is_builtin = ecosystem in BUILTIN_RULES and rule in BUILTIN_RULES[ecosystem]
+                source = "builtin" if is_builtin else "plugin"
+                active_rules.append((rule, source))
 
-    # Calculate scores for each command
-    command_scores = {}
+    # Calculate scores for each rule
+    command_candidates: list[CommandCandidate] = []
 
-    for cmd, info in active_commands.items():
+    for rule, source in active_rules:
         score = 0
         matched_keywords = []
         detected_ecosystems = []
         bonuses_applied = []
 
         # +3 for direct tool/framework match
-        for tool in info["tools"]:  # type: ignore
-            if tool in keywords:
+        for keyword in rule.keywords:
+            if keyword in keywords:
                 score += 3
-                matched_keywords.append(tool)
-                bonuses_applied.append(f"direct: {tool} (+3)")
+                matched_keywords.append(keyword)
+                bonuses_applied.append(f"direct: {keyword} (+3)")
 
         # +2 if language is detected for the same ecosystem
         for lang in detected_langs:
             lang_key = lang.lower()
             if lang_key in ecosystem_mapping:
                 ecosystem = ecosystem_mapping[lang_key]
-                if ecosystem == info["ecosystem"]:
-                    score += 2
-                    detected_ecosystems.append(lang)
-                    bonuses_applied.append(f"lang: {lang} (+2)")
+                # Find which ecosystem this rule belongs to by checking all_rules
+                for eco, rules in all_rules.items():
+                    if rule in rules and eco == ecosystem:
+                        score += 2
+                        detected_ecosystems.append(lang)
+                        bonuses_applied.append(f"lang: {lang} (+2)")
+                        break
 
-        # +1 for more specific/stable spellings
-        if info["specificity"] > 0:  # type: ignore
-            score += 1
-            bonuses_applied.append("specific (+1)")
+        # Only apply bonuses if there are matches
+        if matched_keywords or detected_ecosystems:
+            # +1 for more specific/stable spellings (weight > 0)
+            if rule.weight > 0:
+                score += 1
+                bonuses_applied.append("specific (+1)")
 
-        # Store command data
-        command_scores[cmd] = {
-            "score": score,
-            "matched_keywords": matched_keywords,
-            "detected_langs": detected_ecosystems,
-            "bonuses": bonuses_applied,
-        }
+        # Store command candidate
+        command_candidates.append(
+            {
+                "cmd": rule.cmd,
+                "score": score,
+                "matched_keywords": sorted(matched_keywords),
+                "detected_langs": detected_ecosystems,
+                "bonuses": bonuses_applied,
+                "source": source,
+            }
+        )
 
-    # Filter commands by min_score, but preserve keyword/language matches
-    # Commands are included if score >= min_score
-    relevant_commands = {}
-    for cmd, data in command_scores.items():
-        score = data["score"]  # type: ignore
+    # Filter candidates by min_score
+    relevant_candidates = [c for c in command_candidates if c["score"] >= min_score]
 
-        # Include if score meets the minimum threshold
-        if score >= min_score:
-            relevant_commands[cmd] = data
-
-    # Only show commands if keyword OR detected language matches
-    # No fallback defaults - empty list if no matches
+    # Sort with plugin priority and enhanced tie-breaking
+    relevant_candidates.sort(
+        key=lambda c: (
+            -c["score"],  # Higher score first
+            0 if c["source"] == "plugin" else 1,  # Plugin first in case of tie
+            -len(c["matched_keywords"]),  # More matching keywords first
+            c["cmd"],  # Alphabetical order for final tie-breaking
+        )
+    )
 
     # Build final suggestions with detailed rationales
     suggestions = []
-    for cmd, data in relevant_commands.items():
-        score = data["score"]  # type: ignore
-
+    for candidate in relevant_candidates:
         # Build detailed rationale
         rationale_parts = []
-        if data["matched_keywords"]:
-            kw_list = ", ".join(data["matched_keywords"])  # type: ignore
+        if candidate["matched_keywords"]:
+            kw_list = ", ".join(candidate["matched_keywords"])
             rationale_parts.append(f"matched keywords: {kw_list}")
-        if data["detected_langs"]:
-            lang_list = ", ".join(data["detected_langs"])  # type: ignore
+        if candidate["detected_langs"]:
+            lang_list = ", ".join(candidate["detected_langs"])
             rationale_parts.append(f"detected langs: {lang_list}")
-        if data["bonuses"]:
-            bonus_list = ", ".join(data["bonuses"])  # type: ignore
+        if candidate["bonuses"]:
+            bonus_list = ", ".join(candidate["bonuses"])
             rationale_parts.append(f"bonuses: {bonus_list}")
 
         rationale = "; ".join(rationale_parts) if rationale_parts else "no matches"
-        suggestions.append((cmd, score, rationale))
-
-    # Sort by descending score, then alphabetically by command for ties
-    suggestions.sort(key=lambda x: (-x[1], x[0]))
+        suggestions.append((candidate["cmd"], candidate["score"], rationale))
 
     return suggestions
 
@@ -381,6 +373,7 @@ def build_repro_json(
         )
 
     # Build JSON object with fixed key order (preserve insertion order)
+    # Note: schema fields removed to maintain backward compatibility with golden tests
     return {
         "title": title,
         "assumptions": assumptions,

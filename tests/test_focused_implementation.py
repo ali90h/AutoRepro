@@ -1,15 +1,14 @@
 """Focused implementation tests for message consistency, output guarantees, and repo handling."""
 
 import os
-import subprocess
-import sys
 import time
+
+from tests.test_utils import run_autorepro_subprocess
 
 
 def run_cli_subprocess(args, cwd=None):
     """Run autorepro CLI via subprocess."""
-    cmd = [sys.executable, "-m", "autorepro.cli"] + args
-    return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=30)
+    return run_autorepro_subprocess(args, cwd=cwd)
 
 
 class TestStdoutIgnoresForce:

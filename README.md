@@ -4,10 +4,11 @@ AutoRepro is a developer tools project that transforms issue descriptions into c
 
 ## Features
 
-The current MVP scope includes three core commands:
+The current MVP scope includes four core commands:
 - **scan**: Detect languages/frameworks from file pointers (✅ implemented)
 - **init**: Create a developer container (✅ implemented)
 - **plan**: Derive an execution plan from issue description (✅ implemented)
+- **exec**: Execute the top plan command (✅ implemented)
 
 The project targets multilingualism (initially Python/JS/Go) and emphasizes simplicity, transparency, and automated testing. The ultimate goal is to produce tests that automatically fail and open Draft PRs containing them, improving contribution quality and speeding up maintenance on GitHub.
 
@@ -66,6 +67,15 @@ autorepro plan --file issue.txt
 
 # Read file with repository context
 autorepro plan --file issue.txt --repo /path/to/project
+
+# Execute the top suggested command
+autorepro exec --desc "pytest failing"
+
+# Execute with logging and timeout
+autorepro exec --desc "build issues" --jsonl exec.log --timeout 60
+
+# Dry-run to see what command would be executed
+autorepro exec --desc "npm test problems" --dry-run
 ```
 
 **Notes:**
@@ -334,7 +344,7 @@ $ autorepro plan --desc "jest tests" --format json --min-score 4
 - **Input options**: `--desc "text"` or `--file path.txt` (mutually exclusive, one required)
 - **Language detection**: Uses `scan` results to weight command suggestions
 - **Keyword extraction**: Filters stopwords while preserving dev terms (pytest, npm, tox, etc.)
-- **Command scoring**: Combines language priors + keyword matches for ranking
+- **Command scoring**: Combines language priors + keyword matches for ranking (plugin commands take precedence over built-in when tied)
 - **Structured output**: Title, Assumptions, Environment/Needs, Candidate Commands (prioritized list), Next Steps
 - **JSON format**: Includes parsed matched_keywords and matched_langs for each command, plus devcontainer_present boolean in needs
 
@@ -350,6 +360,27 @@ $ autorepro plan --desc "jest tests" --format json --min-score 4
 - `--strict`: Exit with code 1 if no commands make the cut after filtering
 - `--dry-run`: Display contents to stdout without writing files
 - `--repo PATH`: Execute all logic on specified repository path
+
+## Extending Rules
+
+AutoRepro supports extending command suggestions via plugins loaded through the `AUTOREPRO_PLUGINS` environment variable:
+
+**Plugin packages:** `AUTOREPRO_PLUGINS="pkg.module1,pkg.module2"`
+**Direct file paths:** `AUTOREPRO_PLUGINS="/path/to/plugin.py,other_plugin.py"`
+**Debug errors:** `AUTOREPRO_PLUGINS_DEBUG=1` (shows import failures instead of silent ignore)
+
+**Example plugin (`custom_rules.py`):**
+```python
+from autorepro.rules import Rule
+
+def provide_rules():
+    return {
+        "python": [Rule("pytest -k smoke", {"pytest", "smoke"}, 3, {"test"})],
+        "node": [Rule("npm run test:unit", {"unit", "test"}, 2, {"test"})]
+    }
+```
+
+Usage: `AUTOREPRO_PLUGINS="custom_rules.py" autorepro plan --desc "smoke tests failing"`
 
 ## Exit Codes
 

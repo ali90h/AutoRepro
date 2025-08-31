@@ -398,12 +398,14 @@ class TestInitIntegration:
         import time
 
         # Create initial devcontainer
-        result1 = subprocess.run(
-            [sys.executable, "-m", "autorepro.cli", "init"],
-            cwd=tmp_path,
-            capture_output=True,
-            text=True,
-        )
+        args_str = ", ".join(f"'{arg}'" for arg in ["init"])
+        cmd = [
+            sys.executable,
+            "-c",
+            "import sys; sys.path.insert(0, '.'); from autorepro.cli import main; "
+            f"sys.exit(main([{args_str}]))",
+        ]
+        result1 = subprocess.run(cmd, cwd=tmp_path, capture_output=True, text=True)
         assert result1.returncode == 0
 
         devcontainer_file = tmp_path / ".devcontainer" / "devcontainer.json"
@@ -416,12 +418,14 @@ class TestInitIntegration:
         time.sleep(0.1)
 
         # Run init --force when content would be identical
-        result2 = subprocess.run(
-            [sys.executable, "-m", "autorepro.cli", "init", "--force"],
-            cwd=tmp_path,
-            capture_output=True,
-            text=True,
-        )
+        args_str = ", ".join(f"'{arg}'" for arg in ["init", "--force"])
+        cmd = [
+            sys.executable,
+            "-c",
+            "import sys; sys.path.insert(0, '.'); from autorepro.cli import main; "
+            f"sys.exit(main([{args_str}]))",
+        ]
+        result2 = subprocess.run(cmd, cwd=tmp_path, capture_output=True, text=True)
         assert result2.returncode == 0
 
         # mtime should be unchanged since content is identical
@@ -459,12 +463,14 @@ class TestInitIntegration:
         import time
 
         # Create initial devcontainer
-        result1 = subprocess.run(
-            [sys.executable, "-m", "autorepro.cli", "init"],
-            cwd=tmp_path,
-            capture_output=True,
-            text=True,
-        )
+        args_str = ", ".join(f"'{arg}'" for arg in ["init"])
+        cmd = [
+            sys.executable,
+            "-c",
+            "import sys; sys.path.insert(0, '.'); from autorepro.cli import main; "
+            f"sys.exit(main([{args_str}]))",
+        ]
+        result1 = subprocess.run(cmd, cwd=tmp_path, capture_output=True, text=True)
         assert result1.returncode == 0
 
         devcontainer_file = tmp_path / ".devcontainer" / "devcontainer.json"
@@ -477,12 +483,14 @@ class TestInitIntegration:
         time.sleep(0.1)
 
         # Run init --force when content would be identical
-        result2 = subprocess.run(
-            [sys.executable, "-m", "autorepro.cli", "init", "--force"],
-            cwd=tmp_path,
-            capture_output=True,
-            text=True,
-        )
+        args_str = ", ".join(f"'{arg}'" for arg in ["init", "--force"])
+        cmd = [
+            sys.executable,
+            "-c",
+            "import sys; sys.path.insert(0, '.'); from autorepro.cli import main; "
+            f"sys.exit(main([{args_str}]))",
+        ]
+        result2 = subprocess.run(cmd, cwd=tmp_path, capture_output=True, text=True)
         assert result2.returncode == 0
 
         # mtime should be unchanged since content is identical

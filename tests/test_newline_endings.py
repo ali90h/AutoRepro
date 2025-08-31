@@ -1,13 +1,11 @@
 """Tests to ensure output ends with newline."""
 
-import subprocess
-import sys
+from tests.test_utils import run_autorepro_subprocess
 
 
 def run_cli_subprocess(args, cwd=None):
     """Helper to run autorepro CLI via subprocess."""
-    cmd = [sys.executable, "-m", "autorepro.cli"] + args
-    return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=30)
+    return run_autorepro_subprocess(args, cwd=cwd)
 
 
 class TestNewlineEndings:

@@ -1,11 +1,9 @@
 """Tests for the AutoRepro plan strict mode and quality gates (T-010)."""
 
-import subprocess
-import sys
-
 import pytest
 
 from autorepro.planner import suggest_commands
+from tests.test_utils import run_autorepro_subprocess
 
 
 def run_plan_subprocess(args, cwd=None, timeout=30):
@@ -20,8 +18,7 @@ def run_plan_subprocess(args, cwd=None, timeout=30):
     Returns:
         subprocess.CompletedProcess with returncode, stdout, stderr
     """
-    cmd = [sys.executable, "-m", "autorepro.cli", "plan"] + args
-    return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout)
+    return run_autorepro_subprocess(["plan"] + args, cwd=cwd, timeout=timeout)
 
 
 def create_project_markers(tmp_path, project_type="python"):
@@ -194,36 +191,18 @@ class TestPlanCLIExitCodes:
 
     def test_module_execution_strict_failure(self, tmp_path):
         """Test python -m autorepro.cli plan returns exit code 1 for strict failure."""
-        cmd = [
-            sys.executable,
-            "-m",
-            "autorepro.cli",
-            "plan",
-            "--desc",
-            "random",
-            "--min-score",
-            "5",
-            "--strict",
-        ]
-        result = subprocess.run(cmd, cwd=tmp_path, capture_output=True)
+        result = run_autorepro_subprocess(
+            ["plan", "--desc", "random", "--min-score", "5", "--strict"], cwd=tmp_path
+        )
         assert result.returncode == 1
 
     def test_module_execution_strict_success(self, tmp_path):
         """Test python -m autorepro.cli plan returns exit code 0 for strict success."""
         create_project_markers(tmp_path, "python")
 
-        cmd = [
-            sys.executable,
-            "-m",
-            "autorepro.cli",
-            "plan",
-            "--desc",
-            "pytest",
-            "--min-score",
-            "2",
-            "--strict",
-        ]
-        result = subprocess.run(cmd, cwd=tmp_path, capture_output=True)
+        result = run_autorepro_subprocess(
+            ["plan", "--desc", "pytest", "--min-score", "2", "--strict"], cwd=tmp_path
+        )
         assert result.returncode == 0
 
 
