@@ -1,8 +1,9 @@
 """AutoRepro planner module for generating reproduction plans from issue descriptions."""
 
 import re
-from typing import TypedDict
+from typing import Any, TypedDict
 
+from . import __version__
 from .rules import get_rules
 
 
@@ -103,7 +104,7 @@ def extract_keywords(text: str) -> set[str]:
 
 def suggest_commands(
     keywords: set[str], detected_langs: list[str], min_score: int = 2
-) -> list[tuple[str, int, str]]:  # type: ignore
+) -> list[tuple[str, int, str]]:
     """
     Suggest commands based on keywords and detected languages using precise scoring rules.
 
@@ -274,7 +275,7 @@ def build_repro_json(
     commands: list[tuple[str, int, str]],  # (cmd, score, rationale)
     needs: list[str],
     next_steps: list[str],
-) -> dict:
+) -> dict[str, Any]:
     """
     Build a reproduction JSON object with standardized structure.
 
@@ -373,8 +374,10 @@ def build_repro_json(
         )
 
     # Build JSON object with fixed key order (preserve insertion order)
-    # Note: schema fields removed to maintain backward compatibility with golden tests
     return {
+        "schema_version": 1,
+        "tool": "autorepro",
+        "tool_version": __version__,
         "title": title,
         "assumptions": assumptions,
         "needs": {"devcontainer_present": devcontainer_present},

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+from typing import Any
 
 
 class DevcontainerExistsError(Exception):
@@ -23,7 +24,7 @@ class DevcontainerMisuseError(Exception):
         super().__init__(message)
 
 
-def default_devcontainer() -> dict:
+def default_devcontainer() -> dict[str, str | dict[str, dict[str, str]]]:
     """Return the default devcontainer configuration."""
     return {
         "name": "autorepro-dev",
@@ -52,7 +53,7 @@ def _shorten_value(value_str: str, max_length: int = 80) -> str:
     return f"{first_part}...{last_part} (length: {len(value_str)})"
 
 
-def json_diff(old: dict, new: dict) -> list[str]:
+def json_diff(old: dict[str, Any], new: dict[str, Any]) -> list[str]:
     """
     Return a list of human-readable change lines comparing `old` vs `new`,
     using dot-paths (e.g., features.go.version) and action prefixes:
@@ -69,7 +70,9 @@ def json_diff(old: dict, new: dict) -> list[str]:
     - Return lines **sorted by path** for deterministic output.
     """
 
-    def _walk_diff(old_dict, new_dict, prefix=""):
+    def _walk_diff(
+        old_dict: dict[str, Any], new_dict: dict[str, Any], prefix: str = ""
+    ) -> list[str]:
         """Recursively walk through dictionaries to find differences."""
         changes = []
 
@@ -113,7 +116,7 @@ def json_diff(old: dict, new: dict) -> list[str]:
 
 
 def write_devcontainer(
-    content: dict, force: bool = False, out: str | None = None
+    content: dict[str, str | dict[str, dict[str, str]]], force: bool = False, out: str | None = None
 ) -> tuple[Path, list[str] | None]:
     """
     Write devcontainer configuration to file with atomic and idempotent behavior.
