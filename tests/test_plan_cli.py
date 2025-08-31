@@ -1,14 +1,13 @@
 """Tests for the AutoRepro plan CLI command (updated for new implementation)."""
 
 import os
-import subprocess
-import sys
 import tempfile
 from unittest.mock import patch
 
 import pytest
 
 from autorepro.cli import main
+from tests.test_utils import run_autorepro_subprocess
 
 
 def run_plan_subprocess(args, cwd=None, timeout=30):
@@ -23,8 +22,7 @@ def run_plan_subprocess(args, cwd=None, timeout=30):
     Returns:
         subprocess.CompletedProcess with returncode, stdout, stderr
     """
-    cmd = [sys.executable, "-m", "autorepro.cli", "plan"] + args
-    return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout)
+    return run_autorepro_subprocess(["plan"] + args, cwd=cwd, timeout=timeout)
 
 
 def create_project_markers(tmp_path, project_type="python"):
@@ -73,12 +71,7 @@ def run_cli(cwd, *args):
     Returns:
         subprocess.CompletedProcess with returncode, stdout, stderr
     """
-    return subprocess.run(
-        [sys.executable, "-m", "autorepro.cli", "plan", *args],
-        cwd=cwd,
-        text=True,
-        capture_output=True,
-    )
+    return run_autorepro_subprocess(["plan"] + list(args), cwd=cwd)
 
 
 class TestPlanCLIArgumentValidation:
@@ -111,15 +104,14 @@ class TestPlanCLIArgumentValidation:
         finally:
             os.unlink(temp_file)
 
-    def test_invalid_file_exit_1(self, capsys):
+    def test_invalid_file_exit_1(self, caplog):
         """Test that non-existent file returns exit code 1."""
         with patch("sys.argv", ["autorepro", "plan", "--file", "nonexistent.txt"]):
             exit_code = main()
 
         assert exit_code == 1
-        captured = capsys.readouterr()
-        error_output = captured.out + captured.err
-        assert "Error reading file" in error_output
+        # Check that error message appears in the log records
+        assert any("Error reading file" in record.message for record in caplog.records)
 
     def test_plan_requires_input(self, tmp_path, monkeypatch, capsys):
         """Test that plan command requires either --desc or --file input."""

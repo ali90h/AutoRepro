@@ -6,14 +6,12 @@ Tests the unified rule:
 3. Absolute paths are used as-is
 """
 
-import subprocess
-import sys
+from tests.test_utils import run_autorepro_subprocess
 
 
 def run_plan_subprocess(args, cwd=None):
     """Run autorepro plan via subprocess."""
-    cmd = [sys.executable, "-m", "autorepro.cli", "plan"] + args
-    return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=30)
+    return run_autorepro_subprocess(["plan"] + args, cwd=cwd)
 
 
 class TestFilePathResolution:

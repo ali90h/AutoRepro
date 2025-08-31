@@ -514,10 +514,24 @@ class TestBuildReproJson:
         result = build_repro_json(title, assumptions, commands, needs, next_steps)
 
         # Check all required keys are present in correct order
-        expected_keys = ["title", "assumptions", "needs", "commands", "next_steps"]
+        expected_keys = [
+            "schema_version",
+            "tool",
+            "tool_version",
+            "title",
+            "assumptions",
+            "needs",
+            "commands",
+            "next_steps",
+        ]
         assert list(result.keys()) == expected_keys
 
         # Check basic types
+        assert isinstance(result["schema_version"], int)
+        assert result["schema_version"] == 1
+        assert isinstance(result["tool"], str)
+        assert result["tool"] == "autorepro"
+        assert isinstance(result["tool_version"], str)
         assert isinstance(result["title"], str)
         assert isinstance(result["assumptions"], list)
         assert isinstance(result["needs"], dict)
@@ -649,7 +663,16 @@ class TestBuildReproJson:
         result = build_repro_json("Test", ["A"], [("cmd", 1, "reason")], ["need"], ["step"])
 
         # Check top-level key order
-        expected_keys = ["title", "assumptions", "needs", "commands", "next_steps"]
+        expected_keys = [
+            "schema_version",
+            "tool",
+            "tool_version",
+            "title",
+            "assumptions",
+            "needs",
+            "commands",
+            "next_steps",
+        ]
         assert list(result.keys()) == expected_keys
 
         # Check command object key order
@@ -657,3 +680,28 @@ class TestBuildReproJson:
             cmd_keys = list(result["commands"][0].keys())
             expected_cmd_keys = ["cmd", "score", "rationale", "matched_keywords", "matched_langs"]
             assert cmd_keys == expected_cmd_keys
+
+    def test_schema_versioning_fields(self):
+        """Test that schema versioning fields are present with correct values."""
+        from autorepro import __version__
+
+        result = build_repro_json("Test", ["A"], [("cmd", 1, "reason")], ["need"], ["step"])
+
+        # Check schema versioning fields are present and have correct values
+        assert "schema_version" in result
+        assert result["schema_version"] == 1
+        assert isinstance(result["schema_version"], int)
+
+        assert "tool" in result
+        assert result["tool"] == "autorepro"
+        assert isinstance(result["tool"], str)
+
+        assert "tool_version" in result
+        assert result["tool_version"] == __version__
+        assert isinstance(result["tool_version"], str)
+
+        # Ensure these fields are at the beginning of the JSON
+        keys_list = list(result.keys())
+        assert keys_list[0] == "schema_version"
+        assert keys_list[1] == "tool"
+        assert keys_list[2] == "tool_version"

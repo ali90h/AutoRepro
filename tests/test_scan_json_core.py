@@ -1,8 +1,12 @@
 """Tests for JSON scan functionality core logic."""
 
+import json
 import tempfile
+from io import StringIO
 from pathlib import Path
+from unittest.mock import patch
 
+from autorepro.cli import cmd_scan
 from autorepro.detect import collect_evidence
 
 
@@ -293,3 +297,49 @@ class TestScanJsonCore:
             # Verify paths are correct
             assert reasons[0]["path"] == "./pyproject.toml"
             assert reasons[1]["path"] == "./requirements.txt"
+
+    def test_scan_json_schema_versioning_fields(self):
+        """Test that scan --json output includes schema versioning fields."""
+        from autorepro import __version__
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+
+            # Create a Python file for detection
+            (tmpdir_path / "setup.py").write_text("from setuptools import setup")
+
+            # Change to temp directory and capture JSON output
+            with patch("os.getcwd", return_value=tmpdir):
+                with patch("sys.stdout", new_callable=StringIO) as mock_stdout:
+                    exit_code = cmd_scan(json_output=True)
+
+                    # Should succeed
+                    assert exit_code == 0
+
+                    # Parse JSON output
+                    json_output = mock_stdout.getvalue()
+                    result = json.loads(json_output)
+
+                    # Check schema versioning fields
+                    assert "schema_version" in result
+                    assert result["schema_version"] == 1
+                    assert isinstance(result["schema_version"], int)
+
+                    assert "tool" in result
+                    assert result["tool"] == "autorepro"
+                    assert isinstance(result["tool"], str)
+
+                    assert "tool_version" in result
+                    assert result["tool_version"] == __version__
+                    assert isinstance(result["tool_version"], str)
+
+                    # Check key order - schema versioning fields should come first
+                    keys_list = list(result.keys())
+                    assert keys_list[0] == "schema_version"
+                    assert keys_list[1] == "tool"
+                    assert keys_list[2] == "tool_version"
+
+                    # Check other required fields are still present
+                    assert "root" in result
+                    assert "detected" in result
+                    assert "languages" in result

@@ -1,14 +1,13 @@
 """Tests for --repo path stability and resolution functionality."""
 
 import os
-import subprocess
-import sys
+
+from tests.test_utils import run_autorepro_subprocess
 
 
 def run_cli_subprocess(args, cwd=None):
     """Helper to run autorepro CLI via subprocess."""
-    cmd = [sys.executable, "-m", "autorepro.cli"] + args
-    return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=30)
+    return run_autorepro_subprocess(args, cwd=cwd)
 
 
 def create_project_markers(tmp_path, project_type="python"):

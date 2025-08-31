@@ -276,12 +276,14 @@ class TestInitDiffIntegration:
 
     def test_init_diff_subprocess_first_create(self, tmp_path):
         """Test first-time create via subprocess shows no diff."""
-        result = subprocess.run(
-            [sys.executable, "-m", "autorepro.cli", "init"],
-            cwd=tmp_path,
-            capture_output=True,
-            text=True,
-        )
+        args_str = ", ".join(f"'{arg}'" for arg in ["init"])
+        cmd = [
+            sys.executable,
+            "-c",
+            "import sys; sys.path.insert(0, '.'); from autorepro.cli import main; "
+            f"sys.exit(main([{args_str}]))",
+        ]
+        result = subprocess.run(cmd, cwd=tmp_path, capture_output=True, text=True)
 
         assert result.returncode == 0
         assert "Wrote devcontainer to" in result.stdout
@@ -295,12 +297,14 @@ class TestInitDiffIntegration:
         devcontainer_file = devcontainer_dir / "devcontainer.json"
         devcontainer_file.write_text('{"name": "old-name"}')
 
-        result = subprocess.run(
-            [sys.executable, "-m", "autorepro.cli", "init", "--force"],
-            cwd=tmp_path,
-            capture_output=True,
-            text=True,
-        )
+        args_str = ", ".join(f"'{arg}'" for arg in ["init", "--force"])
+        cmd = [
+            sys.executable,
+            "-c",
+            "import sys; sys.path.insert(0, '.'); from autorepro.cli import main; "
+            f"sys.exit(main([{args_str}]))",
+        ]
+        result = subprocess.run(cmd, cwd=tmp_path, capture_output=True, text=True)
 
         assert result.returncode == 0
         assert "Overwrote devcontainer at" in result.stdout
@@ -316,12 +320,14 @@ class TestInitDiffIntegration:
         default_config = default_devcontainer()
         devcontainer_file.write_text(json.dumps(default_config, indent=2, sort_keys=True) + "\n")
 
-        result = subprocess.run(
-            [sys.executable, "-m", "autorepro.cli", "init", "--force"],
-            cwd=tmp_path,
-            capture_output=True,
-            text=True,
-        )
+        args_str = ", ".join(f"'{arg}'" for arg in ["init", "--force"])
+        cmd = [
+            sys.executable,
+            "-c",
+            "import sys; sys.path.insert(0, '.'); from autorepro.cli import main; "
+            f"sys.exit(main([{args_str}]))",
+        ]
+        result = subprocess.run(cmd, cwd=tmp_path, capture_output=True, text=True)
 
         assert result.returncode == 0
         assert "Overwrote devcontainer at" in result.stdout

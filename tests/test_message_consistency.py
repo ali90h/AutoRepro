@@ -5,14 +5,12 @@ Tests that:
 2. --out - prints only content and ignores --force
 """
 
-import subprocess
-import sys
+from tests.test_utils import run_autorepro_subprocess
 
 
 def run_cli_subprocess(args, cwd=None):
     """Run autorepro CLI via subprocess."""
-    cmd = [sys.executable, "-m", "autorepro.cli"] + args
-    return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=30)
+    return run_autorepro_subprocess(args, cwd=cwd)
 
 
 class TestMessageConsistency:

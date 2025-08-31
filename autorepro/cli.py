@@ -4,9 +4,14 @@
 from __future__ import annotations
 
 import argparse
+import json
+import logging
 import os
+import shlex
+import subprocess
 import sys
 from contextlib import contextmanager
+from datetime import datetime
 from pathlib import Path
 
 from autorepro import __version__
@@ -82,6 +87,19 @@ For more information, visit: https://github.com/ali90h/AutoRepro
         "--show-scores",
         action="store_true",
         help="Show scores in text output (only effective without --json)",
+    )
+    scan_parser.add_argument(
+        "-q",
+        "--quiet",
+        action="store_true",
+        help="Show errors only",
+    )
+    scan_parser.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        default=0,
+        help="Increase verbosity (-v, -vv)",
     )
 
     # init subcommand
@@ -169,6 +187,101 @@ For more information, visit: https://github.com/ali90h/AutoRepro
         default=2,
         help="Drop commands with score < N (default: 2)",
     )
+    plan_parser.add_argument(
+        "-q",
+        "--quiet",
+        action="store_true",
+        help="Show errors only",
+    )
+    plan_parser.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        default=0,
+        help="Increase verbosity (-v, -vv)",
+    )
+
+    # exec subcommand
+    exec_parser = subparsers.add_parser(
+        "exec",
+        help="Execute the top plan command",
+        description="Generate a plan and execute the selected command",
+    )
+
+    # Mutually exclusive group for --desc and --file (exactly one required)
+    exec_input_group = exec_parser.add_mutually_exclusive_group(required=True)
+    exec_input_group.add_argument(
+        "--desc",
+        help="Issue description text",
+    )
+    exec_input_group.add_argument(
+        "--file",
+        help="Path to file containing issue description",
+    )
+
+    exec_parser.add_argument(
+        "--repo",
+        help="Execute logic on specified repository path",
+    )
+    exec_parser.add_argument(
+        "--index",
+        type=int,
+        default=0,
+        help="Pick the N-th suggested command (default: 0 = top)",
+    )
+    exec_parser.add_argument(
+        "--timeout",
+        type=int,
+        default=120,
+        help="Command timeout in seconds (default: 120)",
+    )
+    exec_parser.add_argument(
+        "--env",
+        action="append",
+        default=[],
+        help="Set environment variable KEY=VAL (repeatable)",
+    )
+    exec_parser.add_argument(
+        "--env-file",
+        help="Load environment variables from file",
+    )
+    exec_parser.add_argument(
+        "--tee",
+        help="Append full stdout/stderr to log file",
+    )
+    exec_parser.add_argument(
+        "--jsonl",
+        help="Append JSON line record per run",
+    )
+    exec_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print chosen command only, don't execute",
+    )
+    exec_parser.add_argument(
+        "--min-score",
+        type=int,
+        default=2,
+        help="Drop commands with score < N (default: 2)",
+    )
+    exec_parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Exit with code 1 if no commands make the cut after filtering",
+    )
+    exec_parser.add_argument(
+        "-q",
+        "--quiet",
+        action="store_true",
+        help="Show errors only",
+    )
+    exec_parser.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        default=0,
+        help="Increase verbosity (-v, -vv)",
+    )
 
     return parser
 
@@ -183,6 +296,9 @@ def cmd_scan(json_output: bool = False, show_scores: bool = False) -> int:
 
             # Build JSON output according to schema
             json_result = {
+                "schema_version": 1,
+                "tool": "autorepro",
+                "tool_version": __version__,
                 "root": str(Path(".").resolve()),
                 "detected": detected_languages,
                 "languages": evidence,
@@ -220,7 +336,14 @@ def cmd_scan(json_output: bool = False, show_scores: bool = False) -> int:
     except (OSError, PermissionError):
         # I/O and permission errors - but scan should still succeed with empty result
         if json_output:
-            json_result = {"root": str(Path(".").resolve()), "detected": [], "languages": {}}
+            json_result = {
+                "schema_version": 1,
+                "tool": "autorepro",
+                "tool_version": __version__,
+                "root": str(Path(".").resolve()),
+                "detected": [],
+                "languages": {},
+            }
             import json
 
             print(json.dumps(json_result, indent=2))
@@ -299,10 +422,12 @@ def cmd_plan(
                         raise
         else:
             # This should not happen due to argparse mutually_exclusive_group
-            print("Error: Either --desc or --file must be specified", file=sys.stderr)
+            log = logging.getLogger("autorepro")
+            log.error("Error: Either --desc or --file must be specified")
             return 2
     except OSError as e:
-        print(f"Error reading file {file}: {e}", file=sys.stderr)
+        log = logging.getLogger("autorepro")
+        log.error(f"Error reading file {file}: {e}")
         return 1
 
     # Check if output path points to a directory (misuse error)
@@ -331,15 +456,16 @@ def cmd_plan(
     suggestions = suggest_commands(keywords, lang_names, min_score)
 
     # Check for strict mode - exit 1 if no commands after filtering
+    log = logging.getLogger("autorepro")
     if strict and not suggestions:
-        print(f"no candidate commands above min-score={min_score}", file=sys.stderr)
+        log.error(f"no candidate commands above min-score={min_score}")
         return 1
 
     # Count filtered commands for warning
     total_commands = len(suggest_commands(keywords, lang_names, min_score=0))
     filtered_count = total_commands - len(suggestions)
     if filtered_count > 0:
-        print(f"filtered {filtered_count} low-score suggestions", file=sys.stderr)
+        log.info(f"filtered {filtered_count} low-score suggestions")
 
     # Limit to max_commands
     limited_suggestions = suggestions[:max_commands]
@@ -458,7 +584,8 @@ def cmd_plan(
             print(f"Wrote repro to {out_path}")
             return 0
         except OSError as e:
-            print(f"Error writing file {out}: {e}", file=sys.stderr)
+            log = logging.getLogger("autorepro")
+            log.error(f"Error writing file {out}: {e}")
             return 1
 
 
@@ -548,13 +675,268 @@ def cmd_init(
 
     except DevcontainerMisuseError as e:
         # Misuse errors (e.g., --out points to directory) - exit 2
-        print(f"Error: {e.message}")
+        log = logging.getLogger("autorepro")
+        log.error(f"Error: {e.message}")
         return 2
 
     except (OSError, PermissionError) as e:
         # I/O and permission errors - exit 1
-        print(f"Error: {e}")
+        log = logging.getLogger("autorepro")
+        log.error(f"Error: {e}")
         return 1
+
+
+def parse_env_vars(env_list: list[str]) -> dict[str, str]:
+    """Parse environment variable assignments from KEY=VAL format."""
+    env_vars = {}
+    for env_str in env_list:
+        if "=" not in env_str:
+            raise ValueError(f"Invalid environment variable format: {env_str}")
+        key, value = env_str.split("=", 1)
+        env_vars[key] = value
+    return env_vars
+
+
+def load_env_file(env_file: str) -> dict[str, str]:
+    """Load environment variables from a file."""
+    env_vars = {}
+    try:
+        with open(env_file, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    key, value = line.split("=", 1)
+                    env_vars[key] = value
+    except OSError as e:
+        raise OSError(f"Failed to read env file {env_file}: {e}") from e
+    return env_vars
+
+
+def cmd_exec(
+    desc: str | None = None,
+    file: str | None = None,
+    repo: str | None = None,
+    index: int = 0,
+    timeout: int = 120,
+    env_vars: list[str] | None = None,
+    env_file: str | None = None,
+    tee_path: str | None = None,
+    jsonl_path: str | None = None,
+    dry_run: bool = False,
+    min_score: int = 2,
+    strict: bool = False,
+) -> int:
+    """Handle the exec command."""
+    log = logging.getLogger("autorepro")
+
+    # Validate and resolve --repo path if specified
+    repo_path = None
+    if repo is not None:
+        try:
+            repo_path = Path(repo).resolve()
+            if not repo_path.is_dir():
+                log.error(f"--repo path does not exist or is not a directory: {repo}")
+                return 2
+        except (OSError, ValueError):
+            log.error(f"--repo path does not exist or is not a directory: {repo}")
+            return 2
+
+    # Read input text (same logic as plan)
+    try:
+        if desc is not None:
+            text = desc
+        elif file is not None:
+            file_path = Path(file)
+            if file_path.is_absolute():
+                with open(file_path, encoding="utf-8") as f:
+                    text = f.read()
+            else:
+                try:
+                    with open(file_path, encoding="utf-8") as f:
+                        text = f.read()
+                except OSError:
+                    if repo_path:
+                        repo_file_path = repo_path / file
+                        with open(repo_file_path, encoding="utf-8") as f:
+                            text = f.read()
+                    else:
+                        raise
+        else:
+            log.error("Either --desc or --file must be specified")
+            return 2
+    except OSError as e:
+        log.error(f"Error reading file {file}: {e}")
+        return 1
+
+    # Process the text and generate suggestions (same as plan)
+    normalized_text = normalize(text)
+    keywords = extract_keywords(normalized_text)
+
+    # Get detected languages for weighting
+    if repo_path:
+        with temp_chdir(repo_path):
+            detected_languages = detect_languages(".")
+    else:
+        detected_languages = detect_languages(".")
+    lang_names = [lang for lang, _ in detected_languages]
+
+    # Generate suggestions
+    suggestions = suggest_commands(keywords, lang_names, min_score)
+
+    # Check for strict mode - exit 1 if no commands after filtering
+    if strict and not suggestions:
+        log.error(f"no candidate commands above min-score={min_score}")
+        return 1
+
+    # Count filtered commands for info logging
+    total_commands = len(suggest_commands(keywords, lang_names, min_score=0))
+    filtered_count = total_commands - len(suggestions)
+    if filtered_count > 0:
+        log.info(f"filtered {filtered_count} low-score suggestions")
+
+    # Select command by index
+    if not suggestions:
+        log.error("No commands to execute")
+        return 1
+
+    if index >= len(suggestions):
+        log.error(f"Index {index} out of range (0-{len(suggestions)-1})")
+        return 2
+
+    selected_command = suggestions[index]
+    command_str, score, rationale = selected_command
+
+    # Handle dry-run
+    if dry_run:
+        print(command_str)
+        return 0
+
+    # Prepare environment variables
+    env = os.environ.copy()
+
+    # Load from env file first
+    if env_file:
+        try:
+            file_env = load_env_file(env_file)
+            env.update(file_env)
+        except OSError as e:
+            log.error(str(e))
+            return 1
+
+    # Apply --env overrides
+    if env_vars:
+        try:
+            cmd_env = parse_env_vars(env_vars)
+            env.update(cmd_env)
+        except ValueError as e:
+            log.error(str(e))
+            return 2
+
+    # Determine execution directory
+    exec_dir = repo_path if repo_path else Path.cwd()
+
+    # Parse command for execution
+    try:
+        cmd_parts = shlex.split(command_str)
+    except ValueError as e:
+        log.error(f"Failed to parse command: {e}")
+        return 2
+
+    # Record start time and prepare for execution
+    start_time = datetime.now()
+    start_iso = start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    # Execute command
+    log.info(f"Executing: {command_str}")
+    timed_out = False
+    try:
+        result = subprocess.run(
+            cmd_parts,
+            cwd=exec_dir,
+            env=env,
+            timeout=timeout,
+            capture_output=True,
+            text=True,
+        )
+
+        # Calculate duration
+        end_time = datetime.now()
+        duration_ms = int((end_time - start_time).total_seconds() * 1000)
+
+        exit_code = result.returncode
+        stdout_full = result.stdout
+        stderr_full = result.stderr
+
+    except subprocess.TimeoutExpired:
+        end_time = datetime.now()
+        duration_ms = int((end_time - start_time).total_seconds() * 1000)
+        log.error(f"Command timed out after {timeout} seconds")
+        exit_code = 124  # Standard timeout exit code
+        stdout_full = ""
+        stderr_full = f"Command timed out after {timeout} seconds"
+        timed_out = True
+
+    except FileNotFoundError:
+        log.error(f"Command not found: {cmd_parts[0]}")
+        return 127
+    except OSError as e:
+        log.error(f"Failed to execute command: {e}")
+        return 1
+
+    # Handle tee output
+    if tee_path:
+        try:
+            tee_path_obj = Path(tee_path)
+            tee_path_obj.parent.mkdir(parents=True, exist_ok=True)
+            with open(tee_path_obj, "a", encoding="utf-8") as f:
+                f.write(f"=== {start_iso} - {command_str} ===\n")
+                f.write("STDOUT:\n")
+                f.write(stdout_full)
+                f.write("\nSTDERR:\n")
+                f.write(stderr_full)
+                f.write(f"\nExit code: {exit_code}\n")
+                f.write("=" * 50 + "\n\n")
+        except OSError as e:
+            log.error(f"Failed to write tee log: {e}")
+
+    # Handle JSONL output
+    if jsonl_path:
+        try:
+            jsonl_path_obj = Path(jsonl_path)
+            jsonl_path_obj.parent.mkdir(parents=True, exist_ok=True)
+
+            # Prepare previews (first 2000 chars)
+            stdout_preview = stdout_full[:2000] if stdout_full else ""
+            stderr_preview = stderr_full[:2000] if stderr_full else ""
+
+            jsonl_record = {
+                "schema_version": 1,
+                "tool": "autorepro",
+                "tool_version": __version__,
+                "cmd": command_str,
+                "index": index,
+                "cwd": str(exec_dir),
+                "start": start_iso,
+                "duration_ms": duration_ms,
+                "exit_code": exit_code,
+                "timed_out": timed_out,
+                "stdout_preview": stdout_preview,
+                "stderr_preview": stderr_preview,
+            }
+
+            with open(jsonl_path_obj, "a", encoding="utf-8") as f:
+                f.write(json.dumps(jsonl_record) + "\n")
+
+        except OSError as e:
+            log.error(f"Failed to write JSONL log: {e}")
+
+    # Print output to console (unless quiet)
+    if stdout_full:
+        print(stdout_full, end="")
+    if stderr_full:
+        print(stderr_full, file=sys.stderr, end="")
+
+    return exit_code
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -564,6 +946,22 @@ def main(argv: list[str] | None = None) -> int:
     except SystemExit as e:
         code = e.code
         return code if isinstance(code, int) else (0 if code is None else 2)
+
+    # Configure logging based on verbosity flags
+    if hasattr(args, "quiet") and args.quiet:
+        level = logging.ERROR
+    elif hasattr(args, "verbose"):
+        if args.verbose >= 2:
+            level = logging.DEBUG
+        elif args.verbose == 1:
+            level = logging.INFO
+        else:
+            level = logging.WARNING
+    else:
+        level = logging.WARNING
+
+    logging.basicConfig(level=level, format="%(message)s", stream=sys.stderr)
+    log = logging.getLogger("autorepro")
 
     try:
         if args.command == "scan":
@@ -591,13 +989,29 @@ def main(argv: list[str] | None = None) -> int:
                 strict=args.strict,
                 min_score=args.min_score,
             )
+        elif args.command == "exec":
+            return cmd_exec(
+                desc=args.desc,
+                file=args.file,
+                repo=args.repo,
+                index=args.index,
+                timeout=args.timeout,
+                env_vars=args.env,
+                env_file=args.env_file,
+                tee_path=args.tee,
+                jsonl_path=args.jsonl,
+                dry_run=args.dry_run,
+                min_score=args.min_score,
+                strict=args.strict,
+            )
 
         parser.print_help()
         return 0
 
     except (OSError, PermissionError) as e:
         # I/O and permission errors - exit 1
-        print(f"Error: {e}")
+        log = logging.getLogger("autorepro")
+        log.error(f"Error: {e}")
         return 1
 
 
