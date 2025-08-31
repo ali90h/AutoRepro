@@ -84,7 +84,16 @@ class TestPlanJSONFileOutput:
         assert isinstance(data, dict)
 
         # Must have required keys
-        expected_keys = ["title", "assumptions", "needs", "commands", "next_steps"]
+        expected_keys = [
+            "schema_version",
+            "tool",
+            "tool_version",
+            "title",
+            "assumptions",
+            "needs",
+            "commands",
+            "next_steps",
+        ]
         assert list(data.keys()) == expected_keys
 
     def test_json_file_output_with_force(self, tmp_path):
@@ -175,7 +184,16 @@ class TestPlanJSONStdoutOutput:
         data = json.loads(result.stdout)
         assert isinstance(data, dict)
 
-        expected_keys = ["title", "assumptions", "needs", "commands", "next_steps"]
+        expected_keys = [
+            "schema_version",
+            "tool",
+            "tool_version",
+            "title",
+            "assumptions",
+            "needs",
+            "commands",
+            "next_steps",
+        ]
         assert list(data.keys()) == expected_keys
         assert data["title"] == "Pytest Failing"
 
