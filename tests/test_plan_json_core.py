@@ -20,7 +20,16 @@ class TestBuildReproJsonStructure:
         assert isinstance(result, dict)
 
         # Check exact keys in exact order
-        expected_keys = ["title", "assumptions", "needs", "commands", "next_steps"]
+        expected_keys = [
+            "schema_version",
+            "tool",
+            "tool_version",
+            "title",
+            "assumptions",
+            "needs",
+            "commands",
+            "next_steps",
+        ]
         assert list(result.keys()) == expected_keys
 
         # Check types
@@ -39,7 +48,16 @@ class TestBuildReproJsonStructure:
         assert list(result1.keys()) == list(result2.keys())
 
         # Top-level key order
-        expected_keys = ["title", "assumptions", "needs", "commands", "next_steps"]
+        expected_keys = [
+            "schema_version",
+            "tool",
+            "tool_version",
+            "title",
+            "assumptions",
+            "needs",
+            "commands",
+            "next_steps",
+        ]
         assert list(result1.keys()) == expected_keys
 
     def test_commands_have_correct_structure(self):
