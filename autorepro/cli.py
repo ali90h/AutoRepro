@@ -287,20 +287,28 @@ For more information, visit: https://github.com/ali90h/AutoRepro
     return parser
 
 
-def cmd_scan(json_output: bool = False, show_scores: bool = False) -> int:
+def cmd_scan(json_output: bool = False, show_scores: bool = False, verbose: bool = False) -> int:
     """Handle the scan command."""
+    log = logging.getLogger("autorepro")
+    root = Path(".").resolve()
+
     try:
         if json_output:
             # Use new weighted evidence collection for JSON output
             evidence = collect_evidence(Path("."))
             detected_languages = sorted(evidence.keys())
 
+            # Add verbose logging
+            if verbose:
+                detected_str = ", ".join(detected_languages) or "none"
+                log.info(f"scanned {root} → detected: {detected_str}")
+
             # Build JSON output according to schema
             json_result = {
                 "schema_version": 1,
                 "tool": "autorepro",
                 "tool_version": __version__,
-                "root": str(Path(".").resolve()),
+                "root": str(root),
                 "detected": detected_languages,
                 "languages": evidence,
             }
@@ -312,6 +320,15 @@ def cmd_scan(json_output: bool = False, show_scores: bool = False) -> int:
         else:
             # Use legacy text output
             detected = detect_languages(".")
+
+            # Add verbose logging for text mode
+            if verbose:
+                if detected:
+                    languages = [lang for lang, _ in detected]
+                    detected_str = ", ".join(languages)
+                else:
+                    detected_str = "none"
+                log.info(f"scanned {root} → detected: {detected_str}")
 
             if not detected:
                 print("No known languages detected.")
@@ -336,12 +353,15 @@ def cmd_scan(json_output: bool = False, show_scores: bool = False) -> int:
 
     except (OSError, PermissionError):
         # I/O and permission errors - but scan should still succeed with empty result
+        if verbose:
+            log.info(f"scanned {root} → detected: none")
+
         if json_output:
             json_result = {
                 "schema_version": 1,
                 "tool": "autorepro",
                 "tool_version": __version__,
-                "root": str(Path(".").resolve()),
+                "root": str(root),
                 "detected": [],
                 "languages": {},
             }
@@ -969,6 +989,7 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_scan(
                 json_output=getattr(args, "json", False),
                 show_scores=getattr(args, "show_scores", False),
+                verbose=getattr(args, "verbose", 0) > 0,
             )
         elif args.command == "init":
             return cmd_init(
