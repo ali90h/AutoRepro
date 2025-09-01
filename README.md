@@ -4,11 +4,12 @@ AutoRepro is a developer tools project that transforms issue descriptions into c
 
 ## Features
 
-The current MVP scope includes four core commands:
+The current MVP scope includes five core commands:
 - **scan**: Detect languages/frameworks from file pointers (✅ implemented)
 - **init**: Create a developer container (✅ implemented)
 - **plan**: Derive an execution plan from issue description (✅ implemented)
 - **exec**: Execute the top plan command (✅ implemented)
+- **report**: Combine plan + run log + environment metadata into zip artifact (✅ implemented)
 
 The project targets multilingualism (initially Python/JS/Go) and emphasizes simplicity, transparency, and automated testing. The ultimate goal is to produce tests that automatically fail and open Draft PRs containing them, improving contribution quality and speeding up maintenance on GitHub.
 
@@ -76,11 +77,24 @@ autorepro exec --desc "build issues" --jsonl exec.log --timeout 60
 
 # Dry-run to see what command would be executed
 autorepro exec --desc "npm test problems" --dry-run
+
+# Create comprehensive report bundle for CI/issue tracking
+autorepro report --desc "pytest failing with timeout"
+
+# Generate report with execution logs
+autorepro report --desc "build errors" --exec --out /tmp/issue_report.zip
+
+# Preview report contents without creating zip
+autorepro report --desc "test failures" --out -
+
+# JSON format report with custom timeout
+autorepro report --desc "linting issues" --format json --exec --timeout 60
 ```
 
 **Notes:**
-- When using `--out -` (stdout), the `--force` flag is ignored for both `init` and `plan` commands.
-- File paths in `--file` are resolved relative to current working directory first. If the file is not found and `--repo` is specified, it falls back to resolving relative to the repository directory.
+- When using `--out -` (stdout): `--force` is ignored for `init` and `plan` commands, while `report` shows contents manifest instead of creating zip
+- File paths in `--file` are resolved relative to current working directory first. If the file is not found and `--repo` is specified, it falls back to resolving relative to the repository directory
+- `report` command success messages go to stderr (visible with `-v`), keeping stdout clean for pipes
 
 ### Scan Command
 
@@ -361,6 +375,89 @@ $ autorepro plan --desc "jest tests" --format json --min-score 4
 - `--dry-run`: Display contents to stdout without writing files
 - `--repo PATH`: Execute all logic on specified repository path
 
+### Report Command
+
+Creates comprehensive report bundles that combine reproduction plans, execution logs, and environment metadata into zip artifacts. Perfect for CI systems and issue tracking.
+
+```bash
+# Basic report generation
+$ autorepro report --desc "pytest failing with timeout"
+Report bundle created: out/repro_bundle.zip
+
+# Custom output location
+$ autorepro report --desc "build errors" --out /tmp/issue_123.zip
+
+# JSON format report
+$ autorepro report --desc "linting issues" --format json --out reports/lint_issue.zip
+
+# Report with command execution
+$ autorepro report --desc "test failures" --exec
+# Creates zip with repro.md, ENV.txt, run.log, runs.jsonl
+
+# Execute with custom command selection and timeout
+$ autorepro report --desc "CI tests timeout" --exec --index 1 --timeout 300
+
+# Preview contents without creating zip file
+$ autorepro report --desc "build problems" --out -
+CONTENTS:
+- repro.md
+- ENV.txt
+
+# Preview with execution logs
+$ autorepro report --desc "pytest issues" --exec --out -
+CONTENTS:
+- repro.md
+- ENV.txt
+- run.log
+- runs.jsonl
+
+# Strict mode - fail if no quality commands found
+$ autorepro report --desc "random issue" --strict --min-score 5
+no candidate commands above min-score=5
+# Exit code: 1, no zip created
+
+# Report from file input
+$ autorepro report --file issue_description.txt --exec --out bug_report.zip
+
+# Report with environment variables for execution
+$ autorepro report --desc "env-dependent test" --exec --env "DEBUG=1" --env "TEST_ENV=ci"
+
+# Load environment from file
+$ autorepro report --desc "database tests" --exec --env-file .env.test
+```
+
+**Status:** `report` is implemented with comprehensive bundling and CI integration features.
+
+**Report Bundle Contents:**
+- **repro.md** or **repro.json**: Reproduction plan (based on --format)
+- **ENV.txt**: Environment metadata (Python version, platform, scan synopsis)
+- **run.log**: Command execution log (only with --exec)
+- **runs.jsonl**: Structured execution metadata (only with --exec)
+
+**Report Behavior:**
+- **Strict mode**: When `--strict` and no commands ≥ min-score exist, prints error to stderr and exits code 1 without creating zip
+- **Manifest preview**: `--out -` prints contents list to stdout without creating zip file
+- **Sorted contents**: Files in zip are alphabetically ordered for consistency
+- **Clean logging**: Success messages go to stderr (use `-v` to see), stdout stays clean for pipes
+
+**Options:**
+- `--desc TEXT`: Issue description text
+- `--file PATH`: Path to file containing issue description
+- `--repo PATH`: Execute all logic on specified repository path
+- `--format md|json`: Output format for plan (default: md)
+- `--out PATH`: Output zip file path (default: out/repro_bundle.zip)
+- `--out -`: Preview contents manifest to stdout (no zip created)
+- `--dry-run`: Show what would be packaged without creating zip file
+- `--min-score N`: Drop commands with score < N (default: 2)
+- `--strict`: Exit with code 1 if no commands make the cut after filtering
+- `--exec`: Execute the best command before packaging
+- `--index N`: Pick the N-th suggested command when using --exec (default: 0 = top)
+- `--timeout N`: Command timeout in seconds when using --exec (default: 120)
+- `--env KEY=VAL`: Set environment variable when using --exec (repeatable)
+- `--env-file PATH`: Load environment variables from file when using --exec
+- `--tee PATH`: Append full stdout/stderr to log file when using --exec
+- `--jsonl PATH`: Append JSON line record per run when using --exec
+
 ## Extending Rules
 
 AutoRepro supports extending command suggestions via plugins loaded through the `AUTOREPRO_PLUGINS` environment variable:
@@ -389,6 +486,10 @@ AutoRepro uses standard exit codes to indicate success or failure:
 - **0**: Success (including "already exists" and overwrite operations)
 - **1**: Unexpected I/O or permission errors, or strict failure (no commands ≥ min-score with --strict)
 - **2**: Misuse (e.g., `--out` points to a directory, missing --desc/--file)
+
+**Special cases:**
+- `exec` command: Returns the subprocess exit code on successful execution
+- `report --exec`: Returns the subprocess exit code while still creating the zip bundle (unless strict mode prevents execution)
 
 ## Development
 
