@@ -4,12 +4,13 @@ AutoRepro is a developer tools project that transforms issue descriptions into c
 
 ## Features
 
-The current MVP scope includes five core commands:
+The current MVP scope includes six core commands:
 - **scan**: Detect languages/frameworks from file pointers (✅ implemented)
 - **init**: Create a developer container (✅ implemented)
 - **plan**: Derive an execution plan from issue description (✅ implemented)
 - **exec**: Execute the top plan command (✅ implemented)
 - **report**: Combine plan + run log + environment metadata into zip artifact (✅ implemented)
+- **pr**: Create Draft PR from reproduction plan (✅ implemented)
 
 The project targets multilingualism (initially Python/JS/Go) and emphasizes simplicity, transparency, and automated testing. The ultimate goal is to produce tests that automatically fail and open Draft PRs containing them, improving contribution quality and speeding up maintenance on GitHub.
 
@@ -89,6 +90,18 @@ autorepro report --desc "test failures" --out -
 
 # JSON format report with custom timeout
 autorepro report --desc "linting issues" --format json --exec --timeout 60
+
+# Create Draft PR from reproduction plan
+autorepro pr --desc "pytest failing on CI"
+
+# Update existing draft PR with new content
+autorepro pr --desc "pytest failing" --update-if-exists
+
+# Create ready (non-draft) PR with custom base branch
+autorepro pr --desc "build issues" --ready --base develop
+
+# Create PR with labels and assignees
+autorepro pr --desc "test failures" --label bug --label testing --assignee testuser
 ```
 
 **Notes:**
@@ -457,6 +470,132 @@ $ autorepro report --desc "database tests" --exec --env-file .env.test
 - `--env-file PATH`: Load environment variables from file when using --exec
 - `--tee PATH`: Append full stdout/stderr to log file when using --exec
 - `--jsonl PATH`: Append JSON line record per run when using --exec
+
+### PR Command (Draft PR Bootstrap)
+
+Automatically creates GitHub Draft PRs from reproduction plans using the GitHub CLI. Streamlines the process from issue description to structured PR ready for review.
+
+```bash
+# Basic Draft PR creation
+$ autorepro pr --desc "pytest failing on CI"
+Created draft PR from branch feature/fix-tests
+
+# Update existing draft PR from same branch
+$ autorepro pr --desc "updated reproduction steps" --update-if-exists
+Updated draft PR #42
+
+# Ready PR (not draft) with custom base branch
+$ autorepro pr --desc "build system issues" --ready --base develop
+Created ready PR from branch fix/build-system
+
+# PR with labels and team assignment
+$ autorepro pr --desc "flaky test in CI" --label bug --label testing --assignee devteam --reviewer maintainer
+
+# Custom title and body from file
+$ autorepro pr --desc "issue description" --title "fix: resolve test flakiness" --body pr-template.md
+
+# JSON format source with custom repository
+$ autorepro pr --desc "memory leak investigation" --format json --repo-slug owner/repo
+
+# Testing mode - see what would happen without creating PR
+$ autorepro pr --desc "test issue" --dry-run
+Would run: gh pr create --title "chore(repro): Test Issue [draft]" --body-file /tmp/body.md --base main --head feature-branch --draft
+
+# Skip pushing for testing environments
+$ autorepro pr --desc "local test" --skip-push --dry-run
+```
+
+**Status:** `pr` is implemented with full GitHub CLI integration for automated PR workflows.
+
+**PR Creation Process:**
+1. **Repository Detection**: Automatically detects GitHub repository from git remotes
+2. **Plan Generation**: Creates reproduction plan internally if not using custom title/body
+3. **Branch Management**: Ensures current branch exists on origin (pushes if needed)
+4. **PR Creation**: Uses GitHub CLI to create structured Draft PR
+5. **Update Support**: Can update existing draft PRs from the same branch
+
+**Generated PR Structure:**
+- **Title**: `chore(repro): <PlanTitle> [draft]` (no `[draft]` suffix when `--ready`)
+- **Body**: Structured markdown with plan title, assumptions, and top 3 candidate commands
+- **Footer Note**: References CI artifact availability (from T-015 report integration)
+
+**PR Behavior:**
+- **Draft by Default**: Creates draft PRs unless `--ready` specified
+- **Auto-Push**: Pushes current branch to origin unless `--skip-push` used
+- **Update Mode**: `--update-if-exists` updates existing draft PR instead of creating new
+- **Error Recovery**: Provides helpful error messages with suggested fixes
+
+**Options:**
+- `--desc TEXT`: Issue description text
+- `--file PATH`: Path to file containing issue description
+- `--repo PATH`: Execute all logic on specified repository path
+- `--title TEXT`: Custom PR title (default: auto-generated from plan)
+- `--body FILE|-`: Custom PR body file or stdin (default: auto-generated from plan)
+- `--format md|json`: Source format for auto-generating PR body (default: md)
+- `--base BRANCH`: Target branch for PR (default: main)
+- `--draft`: Create as draft PR (default: true)
+- `--ready`: Create as ready PR (not draft)
+- `--update-if-exists`: Update existing draft PR from same branch instead of creating new
+- `--label LABEL`: Add label to PR (repeatable)
+- `--assignee USER`: Assign user to PR (repeatable)
+- `--reviewer USER`: Request review from user (repeatable)
+- `--gh PATH`: Path to gh CLI tool (default: gh from PATH)
+- `--repo-slug owner/repo`: Repository slug to bypass git remote detection
+- `--skip-push`: Skip pushing branch to origin (useful for testing)
+- `--min-score N`: Drop commands with score < N (default: 2)
+- `--strict`: Exit with code 1 if no commands make the cut after filtering
+- `--dry-run`: Show GitHub CLI commands without executing
+
+**Testing Setup (Local/Offline):**
+
+For development and CI testing without real GitHub integration:
+
+```bash
+# Setup fake GitHub remote with local bare repo
+git init --bare /tmp/fake-origin.git
+git remote add origin /tmp/fake-origin.git
+git remote set-url --push origin /tmp/fake-origin.git
+git remote set-url origin https://github.com/owner/repo.git  # fake fetch URL
+
+# Create fake gh CLI tool
+mkdir -p /tmp/fakebin
+cat > /tmp/fakebin/gh << 'EOF'
+#!/bin/bash
+echo "Fake gh called with: $@" >&2
+case "$1 $2" in
+  "pr list") echo '[]' ;;
+  "pr create") echo "https://github.com/owner/repo/pull/123" ;;
+  "pr edit") echo "Updated PR #123" ;;
+  *) exit 1 ;;
+esac
+EOF
+chmod +x /tmp/fakebin/gh
+
+# Test with fake environment
+PATH="/tmp/fakebin:$PATH" autorepro pr --desc "test issue" --repo-slug owner/repo --skip-push --dry-run
+```
+
+**Error Messages & Recovery:**
+
+The PR command provides helpful error messages with suggested solutions:
+
+```bash
+# Repository detection failure
+Failed to detect GitHub repository: Unable to parse GitHub URL
+Try: git remote add origin https://github.com/owner/repo.git
+Or use: --repo-slug owner/repo to specify manually
+
+# Push failure
+Push to origin failed: Permission denied
+Try: git push -u origin feature-branch
+Or check: gh auth status
+Or use: --skip-push for testing without pushing
+
+# Branch not on remote with --skip-push
+Branch feature-branch does not exist on origin
+Push required: git push -u origin feature-branch
+Or remove --skip-push to auto-push
+```
 
 ## Extending Rules
 

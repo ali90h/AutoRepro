@@ -31,6 +31,14 @@ from autorepro.planner import (
     safe_truncate_60,
     suggest_commands,
 )
+from autorepro.pr import (
+    build_pr_body,
+    build_pr_title,
+    create_or_update_pr,
+    detect_repo_slug,
+    ensure_pushed,
+    generate_plan_data,
+)
 from autorepro.report import collect_env_info, maybe_exec, pack_zip, write_plan
 
 
@@ -379,6 +387,125 @@ For more information, visit: https://github.com/ali90h/AutoRepro
         help="Show errors only",
     )
     report_parser.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        default=0,
+        help="Increase verbosity (-v, -vv)",
+    )
+
+    # pr subcommand
+    pr_parser = subparsers.add_parser(
+        "pr",
+        help="Create Draft PR from reproduction plan",
+        description="Automatically create GitHub Draft PR with reproduction plan content",
+    )
+
+    # Mutually exclusive group for --desc and --file (exactly one required)
+    pr_input_group = pr_parser.add_mutually_exclusive_group(required=True)
+    pr_input_group.add_argument(
+        "--desc",
+        help="Issue description text",
+    )
+    pr_input_group.add_argument(
+        "--file",
+        help="Path to file containing issue description",
+    )
+
+    pr_parser.add_argument(
+        "--repo",
+        help="Execute logic on specified repository path",
+    )
+    pr_parser.add_argument(
+        "--title",
+        help="Custom PR title (default: auto-generated from plan)",
+    )
+    pr_parser.add_argument(
+        "--body",
+        help="Custom PR body file or '-' for stdin (default: auto-generated from plan)",
+    )
+    pr_parser.add_argument(
+        "--format",
+        choices=["md", "json"],
+        default="md",
+        help="Source format for auto-generating PR body (default: md)",
+    )
+    pr_parser.add_argument(
+        "--base",
+        default="main",
+        help="Target branch for PR (default: main)",
+    )
+    pr_parser.add_argument(
+        "--draft",
+        action="store_true",
+        default=True,
+        help="Create as draft PR (default: true)",
+    )
+    pr_parser.add_argument(
+        "--ready",
+        action="store_true",
+        help="Create as ready PR (not draft)",
+    )
+    pr_parser.add_argument(
+        "--update-if-exists",
+        action="store_true",
+        help="Update existing draft PR from same branch instead of creating new",
+    )
+    pr_parser.add_argument(
+        "--label",
+        action="append",
+        default=[],
+        help="Add label to PR (repeatable)",
+    )
+    pr_parser.add_argument(
+        "--assignee",
+        action="append",
+        default=[],
+        help="Assign user to PR (repeatable)",
+    )
+    pr_parser.add_argument(
+        "--reviewer",
+        action="append",
+        default=[],
+        help="Request review from user (repeatable)",
+    )
+    pr_parser.add_argument(
+        "--gh",
+        default="gh",
+        help="Path to gh CLI tool (default: gh from PATH)",
+    )
+    pr_parser.add_argument(
+        "--repo-slug",
+        help="Repository slug (owner/repo) to bypass git remote detection",
+    )
+    pr_parser.add_argument(
+        "--skip-push",
+        action="store_true",
+        help="Skip pushing branch to origin (useful for testing or locked environments)",
+    )
+    pr_parser.add_argument(
+        "--min-score",
+        type=int,
+        default=2,
+        help="Drop commands with score < N (default: 2)",
+    )
+    pr_parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Exit with code 1 if no commands make the cut after filtering",
+    )
+    pr_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what GitHub CLI commands would be executed without running them",
+    )
+    pr_parser.add_argument(
+        "-q",
+        "--quiet",
+        action="store_true",
+        help="Show errors only",
+    )
+    pr_parser.add_argument(
         "-v",
         "--verbose",
         action="count",
@@ -1236,6 +1363,230 @@ def cmd_report(
         return 1
 
 
+def cmd_pr(
+    desc: str | None = None,
+    file: str | None = None,
+    repo: str | None = None,
+    title: str | None = None,
+    body: str | None = None,
+    format_type: str = "md",
+    base: str = "main",
+    draft: bool = True,
+    ready: bool = False,
+    update_if_exists: bool = False,
+    labels: list[str] | None = None,
+    assignees: list[str] | None = None,
+    reviewers: list[str] | None = None,
+    gh_path: str = "gh",
+    repo_slug: str | None = None,
+    skip_push: bool = False,
+    min_score: int = 2,
+    strict: bool = False,
+    dry_run: bool = False,
+) -> int:
+    """Handle the pr command."""
+    log = logging.getLogger("autorepro")
+
+    # Validate and resolve --repo path if specified
+    repo_path = None
+    if repo is not None:
+        try:
+            repo_path = Path(repo).resolve()
+            if not repo_path.is_dir():
+                log.error(f"--repo path does not exist or is not a directory: {repo}")
+                return 2
+        except (OSError, ValueError):
+            log.error(f"--repo path does not exist or is not a directory: {repo}")
+            return 2
+    else:
+        repo_path = Path.cwd()
+
+    # Prepare input for plan generation
+    desc_or_file = desc if desc is not None else file
+
+    try:
+        # Check repository slug detection
+        if repo_slug:
+            log.info(f"Using provided repository: {repo_slug}")
+        else:
+            try:
+                repo_slug = detect_repo_slug()
+                log.info(f"Detected repository: {repo_slug}")
+            except RuntimeError as e:
+                log.error(f"Failed to detect GitHub repository: {e}")
+                log.error("Try: git remote add origin https://github.com/owner/repo.git")
+                log.error("Or use: --repo-slug owner/repo to specify manually")
+                return 1
+
+        # Early strict mode checking (like in report command)
+        if strict:
+            # Read and process input text to check candidates
+            if desc_or_file and Path(desc_or_file).exists():
+                file_path = Path(desc_or_file)
+                if file_path.is_absolute():
+                    with open(file_path, encoding="utf-8") as f:
+                        text = f.read()
+                else:
+                    try:
+                        with open(file_path, encoding="utf-8") as f:
+                            text = f.read()
+                    except OSError:
+                        if repo_path != Path.cwd():
+                            repo_file_path = repo_path / desc_or_file
+                            with open(repo_file_path, encoding="utf-8") as f:
+                                text = f.read()
+                        else:
+                            raise
+            else:
+                text = desc_or_file or ""
+
+            # Check candidates for strict mode
+            original_cwd = Path.cwd()
+            os.chdir(repo_path)
+
+            try:
+                normalized_text = normalize(text)
+                keywords = extract_keywords(normalized_text)
+                detected_languages = detect_languages(".")
+                lang_names = [lang for lang, _ in detected_languages]
+
+                candidates = suggest_commands(keywords, lang_names, min_score)
+                if not candidates:
+                    log.error(f"no candidate commands above min-score={min_score}")
+                    return 1
+
+            finally:
+                os.chdir(original_cwd)
+
+        # Generate plan data if no custom title/body provided
+        custom_title = title
+        custom_body = body
+
+        if not custom_title or not custom_body:
+            log.info("Generating reproduction plan...")
+            plan_content, plan_format = generate_plan_data(
+                repo_path, desc_or_file, format_type, min_score
+            )
+
+        # Determine if creating draft (--ready overrides --draft)
+        is_draft = draft and not ready
+
+        # Build PR title
+        if custom_title:
+            pr_title = custom_title
+        else:
+            if format_type == "json":
+                import json
+
+                plan_data = json.loads(plan_content)
+                pr_title = build_pr_title(plan_data, is_draft)
+            else:
+                # Extract title from markdown
+                title_line = next(
+                    (line for line in plan_content.split("\n") if line.startswith("# ")),
+                    "# Issue Reproduction Plan",
+                )
+                plan_title = title_line[2:].strip()
+                suffix = " [draft]" if is_draft else ""
+                pr_title = f"chore(repro): {safe_truncate_60(plan_title)}{suffix}"
+
+        # Build PR body
+        if custom_body:
+            if custom_body == "-":
+                # Read from stdin
+                import sys
+
+                pr_body = sys.stdin.read()
+            else:
+                # Read from file
+                with open(custom_body, encoding="utf-8") as f:
+                    pr_body = f.read()
+        else:
+            pr_body = build_pr_body(plan_content, format_type)
+
+        # Get current branch
+        try:
+            result = subprocess.run(
+                ["git", "branch", "--show-current"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            current_branch = result.stdout.strip()
+
+            if not current_branch:
+                log.error("Not on a named branch")
+                return 1
+
+        except subprocess.CalledProcessError as e:
+            log.error(f"Failed to get current branch: {e}")
+            return 1
+
+        # Ensure branch is pushed
+        if not dry_run and not skip_push:
+            try:
+                pushed = ensure_pushed(current_branch)
+                if pushed:
+                    log.info(f"Pushed branch {current_branch} to origin")
+                else:
+                    log.info(f"Branch {current_branch} already up to date")
+            except RuntimeError as e:
+                log.error(f"Push to origin failed: {e}")
+                log.error(f"Try: git push -u origin {current_branch}")
+                log.error("Or check: gh auth status")
+                log.error("Or use: --skip-push for testing without pushing")
+                return 1
+        elif skip_push:
+            # Check if branch exists on remote when skipping push
+            try:
+                result = subprocess.run(
+                    ["git", "ls-remote", "--heads", "origin", current_branch],
+                    capture_output=True,
+                    text=True,
+                )
+                remote_exists = bool(result.stdout.strip())
+
+                if not remote_exists and not dry_run:
+                    log.error(f"Branch {current_branch} does not exist on origin")
+                    log.error(f"Push required: git push -u origin {current_branch}")
+                    log.error("Or remove --skip-push to auto-push")
+                    return 1
+
+            except subprocess.CalledProcessError:
+                if not dry_run:
+                    log.warning(f"Could not check if {current_branch} exists on origin")
+                    log.warning("PR creation may fail if branch is not pushed")
+
+        # Create or update PR
+        exit_code, created_new = create_or_update_pr(
+            title=pr_title,
+            body=pr_body,
+            base_branch=base,
+            head_branch=current_branch,
+            draft=is_draft,
+            labels=labels or [],
+            assignees=assignees or [],
+            reviewers=reviewers or [],
+            update_if_exists=update_if_exists,
+            gh_path=gh_path,
+            dry_run=dry_run,
+        )
+
+        if exit_code == 0 and not dry_run:
+            action = "Created" if created_new else "Updated"
+            pr_type = "draft" if is_draft else "ready"
+            log.info(f"{action} {pr_type} PR from branch {current_branch}")
+
+        return exit_code
+
+    except OSError as e:
+        log.error(f"I/O error: {e}")
+        return 1
+    except Exception as e:
+        log.error(f"Error creating PR: {e}")
+        return 1
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = create_parser()
     try:
@@ -1319,6 +1670,28 @@ def main(argv: list[str] | None = None) -> int:
                 env_file=getattr(args, "env_file", None),
                 tee_path=getattr(args, "tee", None),
                 jsonl_path=getattr(args, "jsonl", None),
+            )
+        elif args.command == "pr":
+            return cmd_pr(
+                desc=args.desc,
+                file=args.file,
+                repo=args.repo,
+                title=args.title,
+                body=args.body,
+                format_type=args.format,
+                base=args.base,
+                draft=args.draft,
+                ready=args.ready,
+                update_if_exists=getattr(args, "update_if_exists", False),
+                labels=getattr(args, "label", []),
+                assignees=getattr(args, "assignee", []),
+                reviewers=getattr(args, "reviewer", []),
+                gh_path=args.gh,
+                repo_slug=getattr(args, "repo_slug", None),
+                skip_push=getattr(args, "skip_push", False),
+                min_score=args.min_score,
+                strict=args.strict,
+                dry_run=args.dry_run,
             )
 
         parser.print_help()
