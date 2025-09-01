@@ -31,6 +31,7 @@ from autorepro.planner import (
     safe_truncate_60,
     suggest_commands,
 )
+from autorepro.report import collect_env_info, maybe_exec, pack_zip, write_plan
 
 
 def ensure_trailing_newline(content: str) -> str:
@@ -277,6 +278,107 @@ For more information, visit: https://github.com/ali90h/AutoRepro
         help="Show errors only",
     )
     exec_parser.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        default=0,
+        help="Increase verbosity (-v, -vv)",
+    )
+
+    # report subcommand
+    report_parser = subparsers.add_parser(
+        "report",
+        help="Combine plan + run log + environment metadata into zip artifact",
+        description=(
+            "Generate a comprehensive report bundle with plan, execution logs, "
+            "and environment info"
+        ),
+    )
+
+    # Mutually exclusive group for --desc and --file (exactly one required)
+    report_input_group = report_parser.add_mutually_exclusive_group(required=True)
+    report_input_group.add_argument(
+        "--desc",
+        help="Issue description text",
+    )
+    report_input_group.add_argument(
+        "--file",
+        help="Path to file containing issue description",
+    )
+
+    report_parser.add_argument(
+        "--repo",
+        help="Execute logic on specified repository path",
+    )
+    report_parser.add_argument(
+        "--min-score",
+        type=int,
+        default=2,
+        help="Drop commands with score < N (default: 2)",
+    )
+    report_parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Exit with code 1 if no commands make the cut after filtering",
+    )
+    report_parser.add_argument(
+        "--format",
+        choices=["md", "json"],
+        default="md",
+        help="Output format for plan (default: md)",
+    )
+    report_parser.add_argument(
+        "--out",
+        default="out/repro_bundle.zip",
+        help="Output zip file path (default: out/repro_bundle.zip)",
+    )
+    report_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be packaged without creating zip file",
+    )
+    report_parser.add_argument(
+        "--exec",
+        action="store_true",
+        help="Execute the best command before packaging",
+    )
+    report_parser.add_argument(
+        "--index",
+        type=int,
+        default=0,
+        help="Pick the N-th suggested command when using --exec (default: 0 = top)",
+    )
+    report_parser.add_argument(
+        "--timeout",
+        type=int,
+        default=120,
+        help="Command timeout in seconds when using --exec (default: 120)",
+    )
+    report_parser.add_argument(
+        "--env",
+        action="append",
+        default=[],
+        help="Set environment variable KEY=VAL when using --exec (repeatable)",
+    )
+    report_parser.add_argument(
+        "--env-file",
+        help="Load environment variables from file when using --exec",
+    )
+    report_parser.add_argument(
+        "--tee",
+        help="Append full stdout/stderr to log file when using --exec",
+    )
+    report_parser.add_argument(
+        "--jsonl",
+        help="Append JSON line record per run when using --exec",
+    )
+    report_parser.add_argument(
+        "-q",
+        "--quiet",
+        action="store_true",
+        help="Show errors only",
+    )
+    report_parser.add_argument(
         "-v",
         "--verbose",
         action="count",
@@ -960,6 +1062,180 @@ def cmd_exec(
     return exit_code
 
 
+def cmd_report(
+    desc: str | None = None,
+    file: str | None = None,
+    repo: str | None = None,
+    min_score: int = 2,
+    strict: bool = False,
+    format_type: str = "md",
+    out: str = "out/repro_bundle.zip",
+    dry_run: bool = False,
+    exec_enabled: bool = False,
+    index: int = 0,
+    timeout: int = 120,
+    env_vars: list[str] | None = None,
+    env_file: str | None = None,
+    tee_path: str | None = None,
+    jsonl_path: str | None = None,
+) -> int:
+    """Handle the report command."""
+    log = logging.getLogger("autorepro")
+
+    # Validate and resolve --repo path if specified
+    repo_path = None
+    if repo is not None:
+        try:
+            repo_path = Path(repo).resolve()
+            if not repo_path.is_dir():
+                log.error(f"--repo path does not exist or is not a directory: {repo}")
+                return 2
+        except (OSError, ValueError):
+            log.error(f"--repo path does not exist or is not a directory: {repo}")
+            return 2
+    else:
+        repo_path = Path.cwd()
+
+    # Check if output path points to a directory (misuse error)
+    out_path = Path(out)
+    if not out_path.suffix:
+        # If no extension, assume it's a directory and append default filename
+        out_path = out_path / "repro_bundle.zip"
+
+    if out_path.exists() and out_path.is_dir():
+        log.error(f"Output path is a directory: {out_path}")
+        return 2
+
+    # Prepare input for functions
+    desc_or_file = desc if desc is not None else file
+
+    try:
+        # Read and process input text to check candidates for strict mode
+        if desc_or_file and Path(desc_or_file).exists():
+            # Try to read as file
+            file_path = Path(desc_or_file)
+            if file_path.is_absolute():
+                with open(file_path, encoding="utf-8") as f:
+                    text = f.read()
+            else:
+                try:
+                    with open(file_path, encoding="utf-8") as f:
+                        text = f.read()
+                except OSError:
+                    if repo_path != Path.cwd():
+                        repo_file_path = repo_path / desc_or_file
+                        with open(repo_file_path, encoding="utf-8") as f:
+                            text = f.read()
+                    else:
+                        raise
+        else:
+            text = desc_or_file or ""
+
+        # Process text to get candidates for strict checking
+        original_cwd = Path.cwd()
+        os.chdir(repo_path)
+
+        try:
+            normalized_text = normalize(text)
+            keywords = extract_keywords(normalized_text)
+            detected_languages = detect_languages(".")
+            lang_names = [lang for lang, _ in detected_languages]
+
+            # Check candidates for strict mode
+            candidates = suggest_commands(keywords, lang_names, min_score)
+            if strict and not candidates:
+                log.error(f"no candidate commands above min-score={min_score}")
+                return 1
+
+        finally:
+            os.chdir(original_cwd)
+
+        # Generate plan
+        log.info("Generating reproduction plan...")
+        plan_path, plan_content = write_plan(repo_path, desc_or_file, format_type)
+
+        # Collect environment information
+        log.info("Collecting environment information...")
+        env_info = collect_env_info(repo_path)
+
+        # Prepare files for zip
+        files: dict[str, Path | str | bytes] = {}
+
+        # Add plan file
+        plan_filename = f"repro.{format_type}"
+        files[plan_filename] = plan_content
+
+        # Add environment info
+        files["ENV.txt"] = env_info
+
+        # Optionally execute command
+        exec_exit_code = 0
+        if exec_enabled:
+            log.info("Executing selected command...")
+            exec_opts = {
+                "exec": True,
+                "desc": desc,
+                "file": file,
+                "index": index,
+                "timeout": timeout,
+                "env": env_vars or [],
+                "env_file": env_file,
+                "tee": tee_path,
+                "jsonl": jsonl_path,
+                "min_score": min_score,
+                "strict": strict,
+            }
+
+            exec_exit_code, log_path, jsonl_log_path = maybe_exec(repo_path, exec_opts)
+
+            # Add execution logs to zip
+            if log_path and log_path.exists():
+                files["run.log"] = log_path
+            if jsonl_log_path and jsonl_log_path.exists():
+                files["runs.jsonl"] = jsonl_log_path
+
+        if dry_run:
+            print("Report bundle contents:")
+            for filename, content in files.items():
+                if isinstance(content, Path):
+                    print(f"  {filename} -> {content}")
+                else:
+                    size = len(content) if isinstance(content, str | bytes) else "unknown"
+                    print(f"  {filename} ({size} chars)")
+            return 0
+
+        # Handle --out - (stdout output)
+        if out == "-":
+            print("CONTENTS:")
+            for filename in files.keys():
+                print(f"- {filename}")
+            return 0
+
+        # Create zip bundle
+        pack_zip(out_path, files)
+
+        log.info(f"Report bundle created: {out_path}")
+
+        # Clean up temp files
+        if plan_path.exists():
+            plan_path.unlink()
+
+        # Return appropriate exit code
+        # If --exec was used, return subprocess exit code while still creating zip
+        # Requirements state: "If --exec is enabled: Return the subprocess code as the exit code"
+        if exec_enabled:
+            return exec_exit_code
+        else:
+            return 0
+
+    except OSError as e:
+        log.error(f"I/O error: {e}")
+        return 1
+    except Exception as e:
+        log.error(f"Error creating report bundle: {e}")
+        return 1
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = create_parser()
     try:
@@ -1025,6 +1301,24 @@ def main(argv: list[str] | None = None) -> int:
                 dry_run=args.dry_run,
                 min_score=args.min_score,
                 strict=args.strict,
+            )
+        elif args.command == "report":
+            return cmd_report(
+                desc=args.desc,
+                file=args.file,
+                repo=args.repo,
+                min_score=args.min_score,
+                strict=args.strict,
+                format_type=args.format,
+                out=args.out,
+                dry_run=args.dry_run,
+                exec_enabled=getattr(args, "exec", False),
+                index=getattr(args, "index", 0),
+                timeout=getattr(args, "timeout", 120),
+                env_vars=getattr(args, "env", []),
+                env_file=getattr(args, "env_file", None),
+                tee_path=getattr(args, "tee", None),
+                jsonl_path=getattr(args, "jsonl", None),
             )
 
         parser.print_help()

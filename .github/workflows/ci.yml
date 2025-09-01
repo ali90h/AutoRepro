@@ -54,3 +54,16 @@ jobs:
       run: |
         autorepro --help
         autorepro --version
+
+    - name: Build report artifact
+      continue-on-error: true
+      run: |
+        autorepro report --desc "CI repro bundle" --exec --timeout 60 --out autorepro_report.zip
+
+    - name: Upload artifact
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: autorepro-report
+        path: autorepro_report.zip
+        if-no-files-found: ignore
