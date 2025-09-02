@@ -30,6 +30,7 @@ from autorepro.issue import (
     add_issue_labels,
     build_cross_reference_links,
     create_issue,
+    create_issue_comment,
     generate_plan_for_issue,
     generate_report_metadata,
     render_issue_comment_md,
@@ -1970,8 +1971,14 @@ def cmd_pr(
         # We need the PR number for additional operations
         pr_number = None
 
-        # If we have enrichment features enabled, get PR number
-        if comment or update_pr_body or add_labels or any([comment, update_pr_body, add_labels]):
+        # If we have enrichment features enabled or cross-linking, get PR number
+        if (
+            comment
+            or update_pr_body
+            or add_labels
+            or link_issue
+            or any([comment, update_pr_body, add_labels, link_issue])
+        ):
             try:
                 # Get PR number from current branch
                 result = subprocess.run(
@@ -2025,18 +2032,20 @@ def cmd_pr(
             )
 
             try:
-                exit_code, updated_existing = upsert_pr_comment(
-                    pr_number,
-                    comment_body,
-                    replace_block=True,
-                    gh_path=gh_path,
-                    dry_run=dry_run,
-                )
+                if dry_run:
+                    print("Would update PR comment")
+                else:
+                    exit_code, updated_existing = upsert_pr_comment(
+                        pr_number,
+                        comment_body,
+                        replace_block=True,
+                        gh_path=gh_path,
+                        dry_run=dry_run,
+                    )
 
-                if exit_code != 0:
-                    return exit_code
+                    if exit_code != 0:
+                        return exit_code
 
-                if not dry_run:
                     action = "Updated" if updated_existing else "Created"
                     log.info(f"{action} autorepro comment on PR #{pr_number}")
 
@@ -2049,17 +2058,19 @@ def cmd_pr(
             log.info("Updating PR body with sync block...")
 
             try:
-                exit_code = upsert_pr_body_sync_block(
-                    pr_number,
-                    plan_content,
-                    gh_path=gh_path,
-                    dry_run=dry_run,
-                )
+                if dry_run:
+                    print("Would add sync block")
+                else:
+                    exit_code = upsert_pr_body_sync_block(
+                        pr_number,
+                        plan_content,
+                        gh_path=gh_path,
+                        dry_run=dry_run,
+                    )
 
-                if exit_code != 0:
-                    return exit_code
+                    if exit_code != 0:
+                        return exit_code
 
-                if not dry_run:
                     log.info(f"Updated sync block in PR #{pr_number} body")
 
             except Exception as e:
@@ -2070,15 +2081,45 @@ def cmd_pr(
         if add_labels and pr_number:
             label_list = [label.strip() for label in add_labels.split(",")]
             try:
-                exit_code = add_pr_labels(pr_number, label_list, gh_path, dry_run)
+                if dry_run:
+                    print(f"Would add labels: {', '.join(label_list)}")
+                else:
+                    exit_code = add_pr_labels(pr_number, label_list, gh_path, dry_run)
 
-                if exit_code == 0 and not dry_run:
-                    log.info(f"Added labels to PR #{pr_number}: {', '.join(label_list)}")
+                    if exit_code == 0:
+                        log.info(f"Added labels to PR #{pr_number}: {', '.join(label_list)}")
 
             except Exception as e:
                 log.error(f"Failed to add PR labels: {e}")
                 # Don't return error for label failures, just warn
                 log.warning("Continuing despite label addition failure")
+
+        # Handle cross-linking to issue
+        if link_issue and pr_number:
+            log.info(f"Creating cross-reference comment on issue #{link_issue}...")
+
+            # Create simple cross-reference comment
+            cross_ref_comment = (
+                f"Related PR: #{pr_number}\n\n"
+                f"This issue has a reproduction plan in PR #{pr_number}."
+            )
+
+            try:
+                if dry_run:
+                    print(f"Would create cross-reference comment on issue #{link_issue}")
+                else:
+                    exit_code = create_issue_comment(
+                        link_issue, cross_ref_comment, gh_path, dry_run
+                    )
+                    if exit_code == 0:
+                        log.info(f"Cross-linked to issue #{link_issue}")
+                    else:
+                        log.warning(f"Failed to cross-link to issue #{link_issue}")
+
+            except Exception as e:
+                log.error(f"Failed to create cross-reference comment: {e}")
+                # Don't return error for cross-link failures, just warn
+                log.warning("Continuing despite cross-link failure")
 
         return 0
 
