@@ -1864,6 +1864,8 @@ def cmd_pr(
             pr_title = custom_title
         else:
             if format_type == "json":
+                import json
+
                 plan_data = json.loads(plan_content)
                 pr_title = build_pr_title(plan_data, is_draft)
             else:
