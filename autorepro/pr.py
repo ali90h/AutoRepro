@@ -25,6 +25,12 @@ from .planner import (
     safe_truncate_60,
     suggest_commands,
 )
+from .sync import (
+    ReportMeta,
+    find_autorepro_content,
+    find_synced_block,
+    replace_synced_block,
+)
 
 
 def build_pr_title(plan_data: dict[str, Any], is_draft: bool = True) -> str:
@@ -573,3 +579,375 @@ def generate_plan_data(
 
     finally:
         os.chdir(original_cwd)
+
+
+# New PR Enrichment Functions for T-018
+
+
+def get_pr_details(pr_number: int, gh_path: str = "gh") -> dict[str, Any]:
+    """
+    Get PR details including comments and body.
+
+    Args:
+        pr_number: PR number to get details for
+        gh_path: Path to gh CLI tool
+
+    Returns:
+        PR data with comments and body
+
+    Raises:
+        RuntimeError: If gh command fails
+    """
+    try:
+        result = subprocess.run(
+            [
+                gh_path,
+                "pr",
+                "view",
+                str(pr_number),
+                "--json",
+                "comments,body,number,title",
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        pr_data = json.loads(result.stdout)
+        return pr_data
+
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"Failed to get PR details: {e}") from e
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"Invalid JSON response from gh: {e}") from e
+
+
+def create_pr_comment(
+    pr_number: int,
+    body: str,
+    gh_path: str = "gh",
+    dry_run: bool = False,
+) -> int:
+    """
+    Create a new comment on a PR.
+
+    Args:
+        pr_number: PR number to comment on
+        body: Comment body text
+        gh_path: Path to gh CLI tool
+        dry_run: If True, print command instead of executing
+
+    Returns:
+        Exit code (0 for success)
+
+    Raises:
+        RuntimeError: If comment creation fails
+    """
+    # Write body to temporary file
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
+        f.write(body)
+        body_file = f.name
+
+    try:
+        cmd = [
+            gh_path,
+            "pr",
+            "comment",
+            str(pr_number),
+            "--body-file",
+            body_file,
+        ]
+
+        if dry_run:
+            print(f"Would run: {' '.join(cmd)}")
+            return 0
+
+        subprocess.run(cmd, check=True, capture_output=True)
+        return 0
+
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"Failed to create PR comment: {e}") from e
+    finally:
+        # Clean up temp file
+        try:
+            os.unlink(body_file)
+        except OSError:
+            pass
+
+
+def update_pr_comment(
+    comment_id: int,
+    body: str,
+    gh_path: str = "gh",
+    dry_run: bool = False,
+) -> int:
+    """
+    Update an existing PR comment.
+
+    Args:
+        comment_id: Comment ID to update
+        body: New comment body text
+        gh_path: Path to gh CLI tool
+        dry_run: If True, print command instead of executing
+
+    Returns:
+        Exit code (0 for success)
+
+    Raises:
+        RuntimeError: If comment update fails
+    """
+    # Write body to temporary file
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
+        f.write(body)
+        body_file = f.name
+
+    try:
+        cmd = [
+            gh_path,
+            "api",
+            f"/repos/{{owner}}/{{repo}}/issues/comments/{comment_id}",
+            "--method",
+            "PATCH",
+            "--field",
+            f"body=@{body_file}",
+        ]
+
+        if dry_run:
+            print(f"Would run: {' '.join(cmd)}")
+            return 0
+
+        subprocess.run(cmd, check=True, capture_output=True)
+        return 0
+
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"Failed to update PR comment: {e}") from e
+    finally:
+        # Clean up temp file
+        try:
+            os.unlink(body_file)
+        except OSError:
+            pass
+
+
+def update_pr_body(
+    pr_number: int,
+    body: str,
+    gh_path: str = "gh",
+    dry_run: bool = False,
+) -> int:
+    """
+    Update PR body/description.
+
+    Args:
+        pr_number: PR number to update
+        body: New PR body text
+        gh_path: Path to gh CLI tool
+        dry_run: If True, print command instead of executing
+
+    Returns:
+        Exit code (0 for success)
+
+    Raises:
+        RuntimeError: If PR body update fails
+    """
+    # Write body to temporary file
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
+        f.write(body)
+        body_file = f.name
+
+    try:
+        cmd = [
+            gh_path,
+            "pr",
+            "edit",
+            str(pr_number),
+            "--body-file",
+            body_file,
+        ]
+
+        if dry_run:
+            print(f"Would run: {' '.join(cmd)}")
+            return 0
+
+        subprocess.run(cmd, check=True, capture_output=True)
+        return 0
+
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"Failed to update PR body: {e}") from e
+    finally:
+        # Clean up temp file
+        try:
+            os.unlink(body_file)
+        except OSError:
+            pass
+
+
+def add_pr_labels(
+    pr_number: int,
+    labels: list[str],
+    gh_path: str = "gh",
+    dry_run: bool = False,
+) -> int:
+    """
+    Add labels to a PR (idempotent).
+
+    Args:
+        pr_number: PR number to add labels to
+        labels: List of label names to add
+        gh_path: Path to gh CLI tool
+        dry_run: If True, print command instead of executing
+
+    Returns:
+        Exit code (0 for success)
+    """
+    if not labels:
+        return 0
+
+    cmd = [
+        gh_path,
+        "pr",
+        "edit",
+        str(pr_number),
+        "--add-label",
+        ",".join(labels),
+    ]
+
+    if dry_run:
+        print(f"Would run: {' '.join(cmd)}")
+        return 0
+
+    try:
+        subprocess.run(cmd, check=True, capture_output=True)
+        return 0
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"Failed to add PR labels: {e}") from e
+
+
+def upsert_pr_comment(
+    pr_number: int,
+    body: str,
+    *,
+    replace_block: bool = True,
+    gh_path: str = "gh",
+    dry_run: bool = False,
+) -> tuple[int, bool]:
+    """
+    Create or update PR comment with autorepro sync block.
+
+    Args:
+        pr_number: PR number to comment on
+        body: Comment body with sync block
+        replace_block: Whether to replace existing sync block or create new comment
+        gh_path: Path to gh CLI tool
+        dry_run: If True, print commands instead of executing
+
+    Returns:
+        Tuple of (exit_code, updated_existing)
+    """
+    log = logging.getLogger("autorepro")
+
+    try:
+        # Get existing PR details
+        pr_data = get_pr_details(pr_number, gh_path)
+        comments = pr_data.get("comments", [])
+        existing_comment = find_autorepro_content(comments)
+
+        if existing_comment and replace_block:
+            # Update existing comment
+            comment_id = existing_comment["id"]
+            log.info(f"Updating existing autorepro comment #{comment_id}")
+
+            exit_code = update_pr_comment(comment_id, body, gh_path, dry_run)
+            return exit_code, True
+        else:
+            # Create new comment
+            log.info(f"Creating new autorepro comment on PR #{pr_number}")
+            exit_code = create_pr_comment(pr_number, body, gh_path, dry_run)
+            return exit_code, False
+
+    except Exception as e:
+        log.error(f"Failed to upsert PR comment: {e}")
+        return 1, False
+
+
+def upsert_pr_body_sync_block(
+    pr_number: int,
+    plan_content: str,
+    *,
+    gh_path: str = "gh",
+    dry_run: bool = False,
+) -> int:
+    """
+    Add or update sync block in PR body/description.
+
+    Args:
+        pr_number: PR number to update
+        plan_content: Plan content to include in sync block
+        gh_path: Path to gh CLI tool
+        dry_run: If True, print commands instead of executing
+
+    Returns:
+        Exit code (0 for success)
+    """
+    log = logging.getLogger("autorepro")
+
+    try:
+        # Get current PR details
+        pr_data = get_pr_details(pr_number, gh_path)
+        current_body = pr_data.get("body", "")
+
+        # Check if sync block already exists
+        if find_synced_block(current_body):
+            # Replace existing sync block
+            updated_body = replace_synced_block(current_body, plan_content)
+            log.info(f"Updating existing sync block in PR #{pr_number} body")
+        else:
+            # Add new sync block at the end
+            collapsible_block = f"""
+
+---
+
+<details>
+<summary>📋 Reproduction Plan</summary>
+
+<!-- autorepro:begin plan schema=1 -->
+{plan_content.rstrip()}
+<!-- autorepro:end plan -->
+
+</details>"""
+            updated_body = current_body.rstrip() + collapsible_block
+            log.info(f"Adding new sync block to PR #{pr_number} body")
+
+        return update_pr_body(pr_number, updated_body, gh_path, dry_run)
+
+    except Exception as e:
+        log.error(f"Failed to update PR body sync block: {e}")
+        return 1
+
+
+def generate_report_metadata_for_pr(
+    desc_or_file: str | None,
+    format_type: str = "md",
+    repo_path: Path | None = None,
+) -> ReportMeta:
+    """
+    Generate report bundle and return metadata for PR comment.
+
+    Args:
+        desc_or_file: Issue description text or file path
+        format_type: Output format ('md' or 'json')
+        repo_path: Repository path (defaults to current directory)
+
+    Returns:
+        ReportMeta with filename, size, and path information
+    """
+    # Reuse the existing report generation logic from issue module
+    from .issue import generate_report_metadata
+
+    # Convert issue.ReportMeta to sync.ReportMeta
+    issue_meta = generate_report_metadata(desc_or_file, format_type, repo_path)
+    return ReportMeta(
+        filename=issue_meta.filename,
+        size_bytes=issue_meta.size_bytes,
+        path=issue_meta.path,
+    )

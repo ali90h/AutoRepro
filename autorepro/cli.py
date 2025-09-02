@@ -8,6 +8,7 @@ import json
 import logging
 import os
 import shlex
+import shutil
 import subprocess
 import sys
 from collections.abc import Generator
@@ -23,6 +24,17 @@ from autorepro.env import (
     default_devcontainer,
     write_devcontainer,
 )
+from autorepro.issue import (
+    IssueNotFoundError,
+    add_issue_assignees,
+    add_issue_labels,
+    build_cross_reference_links,
+    create_issue,
+    generate_plan_for_issue,
+    generate_report_metadata,
+    render_issue_comment_md,
+    upsert_issue_comment,
+)
 from autorepro.planner import (
     build_repro_json,
     build_repro_md,
@@ -32,14 +44,19 @@ from autorepro.planner import (
     suggest_commands,
 )
 from autorepro.pr import (
+    add_pr_labels,
     build_pr_body,
     build_pr_title,
     create_or_update_pr,
     detect_repo_slug,
     ensure_pushed,
     generate_plan_data,
+    generate_report_metadata_for_pr,
+    upsert_pr_body_sync_block,
+    upsert_pr_comment,
 )
 from autorepro.report import collect_env_info, maybe_exec, pack_zip, write_plan
+from autorepro.sync import render_sync_comment
 
 
 def ensure_trailing_newline(content: str) -> str:
@@ -394,6 +411,116 @@ For more information, visit: https://github.com/ali90h/AutoRepro
         help="Increase verbosity (-v, -vv)",
     )
 
+    # issue subcommand
+    issue_parser = subparsers.add_parser(
+        "issue",
+        help="Generate/update Issue comment with reproduction plan",
+        description="Create or update GitHub Issue comment with tagged reproduction plan content",
+    )
+
+    # Mutually exclusive group for --desc and --file (exactly one required)
+    issue_input_group = issue_parser.add_mutually_exclusive_group(required=True)
+    issue_input_group.add_argument(
+        "--desc",
+        help="Issue description text",
+    )
+    issue_input_group.add_argument(
+        "--file",
+        help="Path to file containing issue description",
+    )
+
+    issue_parser.add_argument(
+        "--format",
+        choices=["md", "json"],
+        default="md",
+        help="Output format for plan content (default: md)",
+    )
+    issue_parser.add_argument(
+        "--min-score",
+        type=int,
+        default=2,
+        help="Drop commands with score < N (default: 2)",
+    )
+    issue_parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Exit with code 1 if no commands make the cut after filtering",
+    )
+    issue_parser.add_argument(
+        "--max",
+        type=int,
+        default=5,
+        help="Maximum number of candidate commands within the plan (default: 5)",
+    )
+    issue_parser.add_argument(
+        "--issue",
+        type=int,
+        help="Issue number (required if you don't use --create-if-missing)",
+    )
+    issue_parser.add_argument(
+        "--create-if-missing",
+        action="store_true",
+        help="Open a new issue when no issue number is available",
+    )
+    issue_parser.add_argument(
+        "--title",
+        help="Issue title when creating new issue (used with --create-if-missing)",
+    )
+    issue_parser.add_argument(
+        "--labels",
+        help="Comma-separated labels to add/ensure (e.g., bug,repro,triage)",
+    )
+    issue_parser.add_argument(
+        "--assignees",
+        help="Comma-separated assignees (e.g., ali90h,octocat)",
+    )
+    issue_parser.add_argument(
+        "--link-pr",
+        type=int,
+        help="Link to specific PR number",
+    )
+    issue_parser.add_argument(
+        "--link-current-pr",
+        action="store_true",
+        help="Attempt to link to existing PR for current branch",
+    )
+    issue_parser.add_argument(
+        "--attach-report",
+        action="store_true",
+        help="Build report.zip and mention it in the comment (without uploading)",
+    )
+    issue_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what GitHub CLI commands would be executed without running them",
+    )
+    issue_parser.add_argument(
+        "--repo-slug",
+        help="Repository slug (owner/repo) to bypass git remote detection",
+    )
+    issue_parser.add_argument(
+        "--gh",
+        default="gh",
+        help="Path to gh CLI tool (default: gh from PATH)",
+    )
+    issue_parser.add_argument(
+        "--repo",
+        help="Execute logic on specified repository path",
+    )
+    issue_parser.add_argument(
+        "-q",
+        "--quiet",
+        action="store_true",
+        help="Show errors only",
+    )
+    issue_parser.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        default=0,
+        help="Increase verbosity (-v, -vv)",
+    )
+
     # pr subcommand
     pr_parser = subparsers.add_parser(
         "pr",
@@ -495,6 +622,39 @@ For more information, visit: https://github.com/ali90h/AutoRepro
         help="Exit with code 1 if no commands make the cut after filtering",
     )
     pr_parser.add_argument(
+        "--comment",
+        action="store_true",
+        help="Publish/update a comment containing the autorepro sync block",
+    )
+    pr_parser.add_argument(
+        "--update-pr-body",
+        action="store_true",
+        help="Update the PR description by adding/replacing sync block section",
+    )
+    pr_parser.add_argument(
+        "--link-issue",
+        type=int,
+        help="Add cross-reference link to specific issue number",
+    )
+    pr_parser.add_argument(
+        "--add-labels",
+        help="Comma-separated labels to add to PR (e.g., repro:ready,needs-triage)",
+    )
+    pr_parser.add_argument(
+        "--attach-report",
+        action="store_true",
+        help="Build report.zip and mention it in the comment (without uploading)",
+    )
+    pr_parser.add_argument(
+        "--summary",
+        help="Short one-liner context for reviewers (appears before sync block)",
+    )
+    pr_parser.add_argument(
+        "--no-details",
+        action="store_true",
+        help="Disable automatic collapsible details wrapper for long plans",
+    )
+    pr_parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Show what GitHub CLI commands would be executed without running them",
@@ -541,8 +701,6 @@ def cmd_scan(json_output: bool = False, show_scores: bool = False, verbose: bool
                 "detected": detected_languages,
                 "languages": evidence,
             }
-
-            import json
 
             print(json.dumps(json_result, indent=2))
             return 0
@@ -594,7 +752,6 @@ def cmd_scan(json_output: bool = False, show_scores: bool = False, verbose: bool
                 "detected": [],
                 "languages": {},
             }
-            import json
 
             print(json.dumps(json_result, indent=2))
         else:
@@ -810,8 +967,6 @@ def cmd_plan(
             ),
         )
 
-        import json
-
         content = json.dumps(json_output, indent=2)
     else:
         # Build the reproduction markdown
@@ -883,8 +1038,6 @@ def cmd_init(
 
     if print_to_stdout:
         # For stdout output, just generate and print the JSON content
-        import json
-
         json_content = json.dumps(config, indent=2, sort_keys=True)
         json_content = ensure_trailing_newline(json_content)
         print(json_content, end="")
@@ -1363,6 +1516,232 @@ def cmd_report(
         return 1
 
 
+def _ensure_gh_available() -> None:
+    """Check if GitHub CLI (gh) is available on PATH and exit if not."""
+    if shutil.which("gh") is None:
+        print("GitHub CLI (gh) not found on PATH.", file=sys.stderr)
+        raise SystemExit(1)
+
+
+def _run_gh(cmd: list[str], **kw) -> subprocess.CompletedProcess:
+    """
+    Run a GitHub CLI command with error handling.
+
+    Args:
+        cmd: Command arguments (without 'gh' prefix)
+        **kw: Additional keyword arguments for subprocess.run
+
+    Returns:
+        CompletedProcess result
+
+    Raises:
+        SystemExit: If gh command is not found
+    """
+    try:
+        return subprocess.run(["gh", *cmd], check=True, text=True, capture_output=True, **kw)
+    except FileNotFoundError as e:
+        print("GitHub CLI (gh) not found on PATH.", file=sys.stderr)
+        raise SystemExit(1) from e
+
+
+def cmd_issue(
+    desc: str | None = None,
+    file: str | None = None,
+    format_type: str = "md",
+    min_score: int = 2,
+    strict: bool = False,
+    max_commands: int = 5,
+    issue_number: int | None = None,
+    create_if_missing: bool = False,
+    title: str | None = None,
+    labels: str | None = None,
+    assignees: str | None = None,
+    link_pr: int | None = None,
+    link_current_pr: bool = False,
+    attach_report: bool = False,
+    dry_run: bool = False,
+    repo_slug: str | None = None,
+    gh_path: str = "gh",
+    repo: str | None = None,
+) -> int:
+    """Handle the issue command."""
+    _ensure_gh_available()
+    log = logging.getLogger("autorepro")
+
+    # Validate and resolve --repo path if specified
+    repo_path = None
+    if repo is not None:
+        try:
+            repo_path = Path(repo).resolve()
+            if not repo_path.is_dir():
+                log.error(f"--repo path does not exist or is not a directory: {repo}")
+                return 2
+        except (OSError, ValueError):
+            log.error(f"--repo path does not exist or is not a directory: {repo}")
+            return 2
+    else:
+        repo_path = Path.cwd()
+
+    # Validate issue number or create-if-missing requirement
+    if not issue_number and not create_if_missing:
+        log.error("Either --issue N or --create-if-missing must be specified")
+        return 2
+
+    # Prepare input for plan generation
+    desc_or_file = desc if desc is not None else file
+
+    try:
+        # Check repository slug detection if not provided
+        if repo_slug:
+            log.info(f"Using provided repository: {repo_slug}")
+        else:
+            try:
+                repo_slug = detect_repo_slug()
+                log.info(f"Detected repository: {repo_slug}")
+            except RuntimeError as e:
+                log.error(f"Failed to detect GitHub repository: {e}")
+                log.error("Try: git remote add origin https://github.com/owner/repo.git")
+                log.error("Or use: --repo-slug owner/repo to specify manually")
+                return 1
+
+        # Early strict mode checking (generate plan to check if commands exist)
+        if strict:
+            try:
+                plan_content = generate_plan_for_issue(
+                    desc_or_file, format_type, min_score, max_commands, repo_path
+                )
+
+                # Check if any commands were generated
+                if format_type == "json":
+                    try:
+                        plan_data = json.loads(plan_content)
+                        commands = plan_data.get("commands", [])
+                        if not commands:
+                            log.error(f"no candidate commands above min-score={min_score}")
+                            return 1
+                    except json.JSONDecodeError:
+                        log.error("Failed to parse generated plan for strict mode check")
+                        return 1
+                else:
+                    # For markdown, check if there are any command lines
+                    has_commands = any(
+                        line.strip().startswith("- `") for line in plan_content.split("\n")
+                    )
+                    if not has_commands:
+                        log.error(f"no candidate commands above min-score={min_score}")
+                        return 1
+            except Exception as e:
+                log.error(f"Failed to generate plan for strict mode check: {e}")
+                return 1
+
+        # Generate plan content
+        log.info("Generating reproduction plan...")
+        plan_content = generate_plan_for_issue(
+            desc_or_file, format_type, min_score, max_commands, repo_path
+        )
+
+        # Build cross-reference links
+        links = build_cross_reference_links(link_pr, link_current_pr, gh_path)
+
+        # Generate report metadata if requested
+        report_meta = None
+        if attach_report:
+            log.info("Generating report bundle...")
+            report_meta = generate_report_metadata(desc_or_file, format_type, repo_path)
+
+        # Render complete issue comment
+        comment_body = render_issue_comment_md(
+            plan_content,
+            format_type,
+            attach_report=report_meta,
+            links=links,
+        )
+
+        # Handle issue creation if needed
+        target_issue_number = issue_number
+        if not target_issue_number and create_if_missing:
+            log.info("Creating new issue...")
+
+            issue_title = title or (
+                f"chore(repro): {safe_truncate_60(desc_or_file or 'Reproduction Issue')}"
+            )
+
+            # Parse labels and assignees
+            issue_labels = labels.split(",") if labels else []
+            issue_assignees = assignees.split(",") if assignees else []
+
+            try:
+                target_issue_number = create_issue(
+                    title=issue_title,
+                    body="",  # Issue body will be in the comment
+                    labels=issue_labels,
+                    assignees=issue_assignees,
+                    gh_path=gh_path,
+                    dry_run=dry_run,
+                )
+
+                if not dry_run:
+                    log.info(f"Created issue #{target_issue_number}")
+
+            except RuntimeError as e:
+                log.error(f"Failed to create issue: {e}")
+                return 1
+
+        # Create or update issue comment
+        if target_issue_number:
+            try:
+                exit_code, updated_existing = upsert_issue_comment(
+                    target_issue_number,
+                    comment_body,
+                    replace_block=True,
+                    gh_path=gh_path,
+                    dry_run=dry_run,
+                )
+
+                if exit_code != 0:
+                    return exit_code
+
+                if not dry_run:
+                    action = "Updated" if updated_existing else "Created"
+                    log.info(f"{action} autorepro comment on issue #{target_issue_number}")
+
+            except IssueNotFoundError as e:
+                log.error(str(e))
+                return 1
+            except Exception as e:
+                log.error(f"Failed to create/update comment: {e}")
+                return 1
+
+        # Add labels and assignees if provided (for existing issues)
+        if target_issue_number and not create_if_missing:
+            if labels:
+                label_list = [label.strip() for label in labels.split(",")]
+                try:
+                    add_issue_labels(target_issue_number, label_list, gh_path, dry_run)
+                    if not dry_run:
+                        log.info(f"Added labels: {', '.join(label_list)}")
+                except RuntimeError as e:
+                    log.warning(f"Failed to add labels: {e}")
+
+            if assignees:
+                assignee_list = [assignee.strip() for assignee in assignees.split(",")]
+                try:
+                    add_issue_assignees(target_issue_number, assignee_list, gh_path, dry_run)
+                    if not dry_run:
+                        log.info(f"Added assignees: {', '.join(assignee_list)}")
+                except RuntimeError as e:
+                    log.warning(f"Failed to add assignees: {e}")
+
+        return 0
+
+    except OSError as e:
+        log.error(f"I/O error: {e}")
+        return 1
+    except Exception as e:
+        log.error(f"Error in issue command: {e}")
+        return 1
+
+
 def cmd_pr(
     desc: str | None = None,
     file: str | None = None,
@@ -1382,9 +1761,18 @@ def cmd_pr(
     skip_push: bool = False,
     min_score: int = 2,
     strict: bool = False,
+    # New T-018 parameters
+    comment: bool = False,
+    update_pr_body: bool = False,
+    link_issue: int | None = None,
+    add_labels: str | None = None,
+    attach_report: bool = False,
+    summary: str | None = None,
+    no_details: bool = False,
     dry_run: bool = False,
 ) -> int:
     """Handle the pr command."""
+    _ensure_gh_available()
     log = logging.getLogger("autorepro")
 
     # Validate and resolve --repo path if specified
@@ -1476,8 +1864,6 @@ def cmd_pr(
             pr_title = custom_title
         else:
             if format_type == "json":
-                import json
-
                 plan_data = json.loads(plan_content)
                 pr_title = build_pr_title(plan_data, is_draft)
             else:
@@ -1572,12 +1958,129 @@ def cmd_pr(
             dry_run=dry_run,
         )
 
-        if exit_code == 0 and not dry_run:
+        if exit_code != 0:
+            return exit_code
+
+        if not dry_run:
             action = "Created" if created_new else "Updated"
             pr_type = "draft" if is_draft else "ready"
             log.info(f"{action} {pr_type} PR from branch {current_branch}")
 
-        return exit_code
+        # T-018: New PR enrichment features
+        # We need the PR number for additional operations
+        pr_number = None
+
+        # If we have enrichment features enabled, get PR number
+        if comment or update_pr_body or add_labels or any([comment, update_pr_body, add_labels]):
+            try:
+                # Get PR number from current branch
+                result = subprocess.run(
+                    [
+                        gh_path,
+                        "pr",
+                        "list",
+                        "--head",
+                        current_branch,
+                        "--json",
+                        "number",
+                    ],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+
+                prs = json.loads(result.stdout)
+                if prs:
+                    pr_number = prs[0].get("number")
+                    if not dry_run:
+                        log.info(f"Working with PR #{pr_number}")
+
+            except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
+                log.error(f"Failed to get PR number: {e}")
+                return 1
+
+        # Generate cross-reference links
+        from autorepro.sync import build_cross_reference_links
+
+        links = build_cross_reference_links("pr", link_issue=link_issue)
+
+        # Generate report metadata if requested
+        report_meta = None
+        if attach_report and pr_number:
+            log.info("Generating report bundle...")
+            report_meta = generate_report_metadata_for_pr(desc_or_file, format_type, repo_path)
+
+        # Handle PR comment creation/update
+        if comment and pr_number:
+            log.info("Creating/updating PR comment with sync block...")
+
+            comment_body = render_sync_comment(
+                plan_content,
+                format_type,
+                context="pr",
+                attach_report=report_meta,
+                links=links,
+                summary=summary,
+                use_details=not no_details,
+            )
+
+            try:
+                exit_code, updated_existing = upsert_pr_comment(
+                    pr_number,
+                    comment_body,
+                    replace_block=True,
+                    gh_path=gh_path,
+                    dry_run=dry_run,
+                )
+
+                if exit_code != 0:
+                    return exit_code
+
+                if not dry_run:
+                    action = "Updated" if updated_existing else "Created"
+                    log.info(f"{action} autorepro comment on PR #{pr_number}")
+
+            except Exception as e:
+                log.error(f"Failed to create/update PR comment: {e}")
+                return 1
+
+        # Handle PR body sync block update
+        if update_pr_body and pr_number:
+            log.info("Updating PR body with sync block...")
+
+            try:
+                exit_code = upsert_pr_body_sync_block(
+                    pr_number,
+                    plan_content,
+                    gh_path=gh_path,
+                    dry_run=dry_run,
+                )
+
+                if exit_code != 0:
+                    return exit_code
+
+                if not dry_run:
+                    log.info(f"Updated sync block in PR #{pr_number} body")
+
+            except Exception as e:
+                log.error(f"Failed to update PR body sync block: {e}")
+                return 1
+
+        # Handle additional labels
+        if add_labels and pr_number:
+            label_list = [label.strip() for label in add_labels.split(",")]
+            try:
+                exit_code = add_pr_labels(pr_number, label_list, gh_path, dry_run)
+
+                if exit_code == 0 and not dry_run:
+                    log.info(f"Added labels to PR #{pr_number}: {', '.join(label_list)}")
+
+            except Exception as e:
+                log.error(f"Failed to add PR labels: {e}")
+                # Don't return error for label failures, just warn
+                log.warning("Continuing despite label addition failure")
+
+        return 0
 
     except OSError as e:
         log.error(f"I/O error: {e}")
@@ -1671,6 +2174,27 @@ def main(argv: list[str] | None = None) -> int:
                 tee_path=getattr(args, "tee", None),
                 jsonl_path=getattr(args, "jsonl", None),
             )
+        elif args.command == "issue":
+            return cmd_issue(
+                desc=args.desc,
+                file=args.file,
+                format_type=args.format,
+                min_score=args.min_score,
+                strict=args.strict,
+                max_commands=args.max,
+                issue_number=args.issue,
+                create_if_missing=args.create_if_missing,
+                title=args.title,
+                labels=args.labels,
+                assignees=args.assignees,
+                link_pr=args.link_pr,
+                link_current_pr=args.link_current_pr,
+                attach_report=args.attach_report,
+                dry_run=args.dry_run,
+                repo_slug=args.repo_slug,
+                gh_path=args.gh,
+                repo=args.repo,
+            )
         elif args.command == "pr":
             return cmd_pr(
                 desc=args.desc,
@@ -1691,6 +2215,14 @@ def main(argv: list[str] | None = None) -> int:
                 skip_push=getattr(args, "skip_push", False),
                 min_score=args.min_score,
                 strict=args.strict,
+                # New T-018 parameters
+                comment=args.comment,
+                update_pr_body=args.update_pr_body,
+                link_issue=args.link_issue,
+                add_labels=args.add_labels,
+                attach_report=args.attach_report,
+                summary=args.summary,
+                no_details=args.no_details,
                 dry_run=args.dry_run,
             )
 
