@@ -205,7 +205,7 @@ case "$1 $2" in
 {
   "number": 123,
   "title": "test: Jest failing in CI",
-  "body": "PR\n\n<!-- autorepro:begin plan schema=1 -->\n# Plan\n<!-- autorepro:end plan -->",
+  "body": "PR\\n\\n<!-- autorepro:begin plan schema=1 -->\\n# Plan\\n<!-- autorepro:end plan -->",
   "comments": []
 }
 EOF

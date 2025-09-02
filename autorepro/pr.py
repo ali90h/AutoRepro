@@ -619,7 +619,9 @@ def get_pr_details(pr_number: int, gh_path: str = "gh") -> dict[str, Any]:
     except subprocess.CalledProcessError as e:
         raise RuntimeError(f"Failed to get PR details: {e}") from e
     except json.JSONDecodeError as e:
-        raise RuntimeError(f"Invalid JSON response from gh: {e}") from e
+        # Include the raw output for debugging
+        raw_output = result.stdout[:200] + "..." if len(result.stdout) > 200 else result.stdout
+        raise RuntimeError(f"Invalid JSON response from gh: {e}. Raw output: {raw_output!r}") from e
 
 
 def create_pr_comment(
