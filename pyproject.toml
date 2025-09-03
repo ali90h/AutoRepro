@@ -105,3 +105,19 @@ extend-exclude = '''
   | dist
 )/
 '''
+
+[tool.coverage.run]
+branch = true
+source = ["autorepro"]
+omit = [
+"autorepro/__main__.py",
+"autorepro/render/*",
+"tests/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+"if __name__ == .__main__.:",
+"pragma: no cover",
+"raise NotImplementedError",
+]

@@ -4,8 +4,28 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from pathlib import Path
+from shutil import which
 from typing import Any
+
+
+def python_bin() -> str:
+    env_bin = os.environ.get("PYTHON_BIN")
+    if env_bin and Path(env_bin).exists():
+        return env_bin
+    venv = os.environ.get("VIRTUAL_ENV")
+    if venv:
+        cand = Path(venv) / ("Scripts" if os.name == "nt" else "bin") / "python"
+        if cand.exists():
+            return str(cand)
+    if Path(sys.executable).exists():
+        return sys.executable
+    for name in ("python3", "python"):
+        p = which(name)
+        if p:
+            return p
+    return "python"
 
 
 class DevcontainerExistsError(Exception):
