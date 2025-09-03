@@ -1,3 +1,4 @@
+# ruff: noqa: E501
 """Integration tests for T-018 PR Enrichment & Cross-Link functionality."""
 
 import os

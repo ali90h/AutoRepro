@@ -1110,7 +1110,7 @@ def cmd_pr(
         if file is not None:
             try:
                 with open(file, encoding="utf-8") as f:
-                    text = f.read()
+                    text = f.read()  # noqa: F841
             except OSError as e:
                 log.error(f"Error reading file {file}: {e}")
                 return 1
