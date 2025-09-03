@@ -1,0 +1,20 @@
+[importlinter]
+root_package = autorepro
+
+[contract: layers]
+name = Enforce layering
+type = layers
+layers =
+    autorepro.cli
+    autorepro.io
+    autorepro.core
+    autorepro.render
+    autorepro.utils
+
+[contract: no_tests_in_lib]
+name = Production code must not import tests
+type = forbidden
+source_modules =
+    autorepro
+forbidden_modules =
+    tests

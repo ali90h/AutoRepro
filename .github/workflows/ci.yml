@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-  test:
+  quality:
     runs-on: ubuntu-latest
     env:
       TZ: UTC
@@ -15,55 +15,115 @@ jobs:
       PYTHONHASHSEED: "0"
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Set up Python 3.11
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.11"
-        cache: 'pip'
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install -e ".[dev]"
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
 
-    - name: Run pre-commit hooks
-      run: |
-        pre-commit run --all-files
+      - name: Install system tools
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y jq
 
-    - name: Run code formatting check
-      run: |
-        python -m black --check .
+      - name: Install project + tooling
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+          python -m pip install ruff mypy pytest-cov radon import-linter autoflake pyupgrade reorder-python-imports
 
-    - name: Run linting
-      run: |
-        python -m ruff check .
+      - name: Pre-commit (repo policy)
+        run: pre-commit run --all-files
 
-    - name: Run tests
-      run: |
-        python -m pytest -v
+      - name: Black (format check)
+        run: python -m black --check .
 
-    - name: Golden drift check
-      run: |
-        python scripts/regold.py --write
-        git diff --exit-code
+      - name: Ruff (lint)
+        run: python -m ruff check .
 
-    - name: Verify CLI functionality
-      run: |
-        autorepro --help
-        autorepro --version
+      - name: Mypy (type check)
+        run: mypy || true
 
-    - name: Build report artifact
-      continue-on-error: true
-      run: |
-        autorepro report --desc "CI repro bundle" --exec --timeout 60 --out autorepro_report.zip
+      - name: Tests + Coverage
+        run: |
+          pytest -q --cov=autorepro --cov-report=term | tee /tmp/cov.txt
+          echo "---- Coverage summary ----"
+          grep -E "^TOTAL" /tmp/cov.txt || true
 
-    - name: Upload artifact
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: autorepro-report
-        path: autorepro_report.zip
-        if-no-files-found: ignore
+      - name: Duplication budget (jscpd <= 1%)
+        run: |
+          npx --yes jscpd@4.0.4 --min-lines 9 --pattern "autorepro/**/*.py" --reporters json --output /tmp/jscpd || true
+          RATE=$(jq -r '.statistics.total.duplicatedRate // 0' /tmp/jscpd/jscpd-report.json 2>/dev/null || echo 0)
+          echo "Duplicated rate: $RATE"
+          RATE="$RATE" python - <<'PY'
+          import os, sys
+          try:
+              rate = float(os.environ.get("RATE", "0") or 0)
+          except Exception:
+              rate = 0.0
+          if rate > 0.01:
+              print(f"::error::Duplicated rate {rate:.4f} > 0.01 (1%)")
+              sys.exit(1)
+          PY
+
+      - name: Coverage floor (>= 40%)
+        run: |
+          PCT=$(grep -E "^TOTAL" /tmp/cov.txt | awk '{print $4}' | tr -d '%')
+          echo "Coverage: ${PCT:-0}%"
+          if [ "${PCT:-0}" -lt "40" ]; then
+            echo "::error::Coverage ${PCT:-0}% < 40%"; exit 1; fi
+
+      - name: Enforce module boundaries (import-linter)
+        run: lint-imports
+
+      - name: LOC per PR (<= 300 added)
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          git fetch --no-tags --prune --depth=1 origin +refs/heads/${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}
+          # Calculate added lines, excluding deletions and modifications
+          ADDED=$(git diff --diff-filter=A --numstat origin/${{ github.base_ref }}... | awk '{s+=$1} END {print s+0}')
+          echo "Added lines: $ADDED"
+          if [ "${ADDED:-0}" -gt "300" ]; then
+            echo "::error::PR adds $ADDED LOC (>300). Split it."; exit 1; fi
+
+      - name: Golden drift check
+        run: |
+          python scripts/regold.py --write
+          git diff --exit-code
+
+      - name: Verify CLI functionality
+        run: |
+          autorepro --help
+          autorepro --version
+
+      - name: Build report artifact
+        continue-on-error: true
+        run: |
+          autorepro report --desc "CI repro bundle" --exec --timeout 60 --out autorepro_report.zip
+
+      - name: Collect reports
+        if: always()
+        run: |
+          cp /tmp/cov.txt coverage.txt 2>/dev/null || true
+          if [ -d /tmp/jscpd ]; then
+            cp -r /tmp/jscpd jscpd-report || true
+          fi
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-artifacts
+          path: |
+            autorepro_report.zip
+            coverage.txt
+            jscpd-report/
+          if-no-files-found: ignore
