@@ -52,9 +52,12 @@ jobs:
       - name: Mypy (type check)
         run: mypy || true
 
+      - name: Export PYTHON_BIN
+        run: echo "PYTHON_BIN=$(which python)" >> $GITHUB_ENV
+
       - name: Tests + Coverage
         run: |
-          pcoverage erase || true
+          coverage erase || true
           pytest --cov=autorepro --cov-branch --cov-report=term-missing:skip-covered
           coverage combine || true
           coverage report -m | tee /tmp/cov.txt
