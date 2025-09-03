@@ -23,13 +23,11 @@ from typing import Any
 from . import __version__
 from .detect import collect_evidence, detect_languages
 from .planner import (
-    build_repro_json,
-    build_repro_md,
     extract_keywords,
     normalize,
-    safe_truncate_60,
     suggest_commands,
 )
+from .utils.repro_bundle import generate_plan_content
 
 
 def collect_env_info(repo: Path) -> str:
@@ -108,121 +106,17 @@ def write_plan(repo: Path, desc_or_file: str | None, format_type: str) -> tuple[
         Tuple of (temp_file_path, content)
     """
 
-    # Determine if input is a file or description
-    if desc_or_file and Path(desc_or_file).exists():
-        # It's a file
-        try:
-            with open(desc_or_file, encoding="utf-8") as f:
-                text = f.read()
-        except OSError as e:
-            # Try repo-relative path
-            repo_file = repo / desc_or_file
-            if repo_file.exists():
-                with open(repo_file, encoding="utf-8") as f:
-                    text = f.read()
-            else:
-                raise OSError(f"Cannot read file {desc_or_file}") from e
-    else:
-        # It's a description
-        text = desc_or_file or ""
+    # Use shared plan content generation
+    content_str = generate_plan_content(desc_or_file, repo, format_type, min_score=2)
 
-    # Process text like in cmd_plan
-    original_cwd = Path.cwd()
-    try:
-        os.chdir(repo)
+    # Write to temporary file
+    extension = ".json" if format_type == "json" else ".md"
+    temp_file = Path(tempfile.mktemp(suffix=extension))
 
-        normalized_text = normalize(text)
-        keywords = extract_keywords(normalized_text)
+    with open(temp_file, "w", encoding="utf-8") as f:
+        f.write(content_str)
 
-        detected_languages = detect_languages(".")
-        lang_names = [lang for lang, _ in detected_languages]
-
-        suggestions = suggest_commands(keywords, lang_names, min_score=2)
-
-        # Generate title from first few words
-        title_words = normalized_text.split()[:8]
-        title = "Issue Reproduction Plan"
-        if title_words:
-            title = " ".join(title_words).title()
-
-        # Generate assumptions
-        assumptions = []
-        if lang_names:
-            lang_list = ", ".join(lang_names)
-            assumptions.append(f"Project uses {lang_list} based on detected files")
-        else:
-            assumptions.append("Standard development environment")
-
-        if "test" in keywords or "tests" in keywords or "testing" in keywords:
-            assumptions.append("Issue is related to testing")
-        if "ci" in keywords:
-            assumptions.append("Issue occurs in CI/CD environment")
-        if "install" in keywords or "setup" in keywords:
-            assumptions.append("Installation or setup may be involved")
-
-        if not assumptions:
-            assumptions.append("Issue can be reproduced locally")
-
-        # Generate environment needs
-        needs = []
-
-        # Check for devcontainer
-        devcontainer_dir = repo / ".devcontainer/devcontainer.json"
-        devcontainer_root = repo / "devcontainer.json"
-        if devcontainer_dir.exists() or devcontainer_root.exists():
-            needs.append("devcontainer: present")
-
-        for lang in lang_names:
-            if lang == "python":
-                needs.append("Python 3.7+")
-                if "pytest" in keywords:
-                    needs.append("pytest package")
-                if "tox" in keywords:
-                    needs.append("tox package")
-            elif lang in ("node", "javascript"):
-                needs.append("Node.js 16+")
-                needs.append("npm or yarn")
-            elif lang == "go":
-                needs.append("Go 1.19+")
-
-        if not needs:
-            needs.append("Standard development environment")
-
-        # Generate next steps
-        next_steps = [
-            "Run the suggested commands in order of priority",
-            "Check logs and error messages for patterns",
-            "Review environment setup if commands fail",
-            "Document any additional reproduction steps found",
-        ]
-
-        # Generate content
-        if format_type == "json":
-            content = build_repro_json(
-                title=safe_truncate_60(title),
-                assumptions=assumptions,
-                commands=suggestions[:5],  # Limit to 5 commands
-                needs=needs,
-                next_steps=next_steps,
-            )
-            content_str = json.dumps(content, indent=2)
-        else:
-            content_str = build_repro_md(title, assumptions, suggestions[:5], needs, next_steps)
-
-        # Ensure proper newline termination
-        content_str = content_str.rstrip() + "\n"
-
-        # Write to temporary file
-        extension = ".json" if format_type == "json" else ".md"
-        temp_file = Path(tempfile.mktemp(suffix=extension))
-
-        with open(temp_file, "w", encoding="utf-8") as f:
-            f.write(content_str)
-
-        return temp_file, content_str
-
-    finally:
-        os.chdir(original_cwd)
+    return temp_file, content_str
 
 
 def maybe_exec(repo: Path, opts: dict[str, Any]) -> tuple[int, Path | None, Path | None]:
