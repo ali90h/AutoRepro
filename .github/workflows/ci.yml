@@ -74,12 +74,12 @@ jobs:
               sys.exit(1)
           PY
 
-      - name: Coverage floor (>= 40%)
+      - name: Coverage floor (>= 50%)
         run: |
           PCT=$(grep -E "^TOTAL" /tmp/cov.txt | awk '{print $4}' | tr -d '%')
           echo "Coverage: ${PCT:-0}%"
-          if [ "${PCT:-0}" -lt "40" ]; then
-            echo "::error::Coverage ${PCT:-0}% < 40%"; exit 1; fi
+          if [ "${PCT:-0}" -lt "50" ]; then
+            echo "::error::Coverage ${PCT:-0}% < 50%"; exit 1; fi
 
       - name: Enforce module boundaries (import-linter)
         run: lint-imports
