@@ -54,7 +54,9 @@ jobs:
 
       - name: Tests + Coverage
         run: |
-          pytest --cov=autorepro --cov-report=term-missing:skip-covered
+          pcoverage erase || true
+          pytest --cov=autorepro --cov-branch --cov-report=term-missing:skip-covered
+          coverage combine || true
           coverage report -m | tee /tmp/cov.txt
           echo "---- Coverage summary ----"
           grep -E "^TOTAL" /tmp/cov.txt || true
