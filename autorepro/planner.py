@@ -82,13 +82,13 @@ def normalize(text: str) -> str:
 
 def extract_keywords(text: str) -> set[str]:
     """
-    Extract keywords from normalized text using regex patterns and plugin keywords.
+    Extract keywords from normalized text using regex patterns.
 
     Args:
         text: Input text (should be normalized) to extract keywords from
 
     Returns:
-        Set of matched keyword labels from KEYWORD_PATTERNS and plugin rules
+        Set of matched keyword labels exactly as defined in KEYWORD_PATTERNS
     """
     if not text:
         return set()
@@ -98,24 +98,6 @@ def extract_keywords(text: str) -> set[str]:
     for keyword_label, pattern in KEYWORD_PATTERNS.items():
         if pattern.search(text):
             matched_keywords.add(keyword_label)
-
-    # Also check for plugin keywords using simple word boundary matching
-    all_rules = get_rules()
-    plugin_keywords = set()
-    for ecosystem_rules in all_rules.values():
-        for rule in ecosystem_rules:
-            plugin_keywords.update(rule.keywords)
-
-    # Check for plugin keywords as whole words in the text
-    text_words = text.lower().split()
-    for keyword in plugin_keywords:
-        # Handle multi-word keywords
-        if " " in keyword:
-            if keyword.lower() in text.lower():
-                matched_keywords.add(keyword)
-        else:
-            if keyword.lower() in text_words:
-                matched_keywords.add(keyword)
 
     return matched_keywords
 
@@ -229,12 +211,12 @@ def suggest_commands(
     # Filter candidates by min_score
     relevant_candidates = [c for c in command_candidates if c["score"] >= min_score]
 
-    # Sort with enhanced tie-breaking: keyword count before plugin priority
+    # Sort with plugin priority and enhanced tie-breaking
     relevant_candidates.sort(
         key=lambda c: (
             -c["score"],  # Higher score first
-            -len(c["matched_keywords"]),  # Most matching words first
-            0 if c["source"] == "plugin" else 1,  # Plugin precedes built-in when tied
+            0 if c["source"] == "plugin" else 1,  # Plugin first in case of tie
+            -len(c["matched_keywords"]),  # More matching keywords first
             c["cmd"],  # Alphabetical order for final tie-breaking
         )
     )

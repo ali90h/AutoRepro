@@ -1,6 +1,5 @@
 """AutoRepro rules engine for command suggestion."""
 
-import importlib
 import importlib.util
 import os
 import sys
