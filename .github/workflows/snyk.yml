@@ -1,0 +1,84 @@
+name: Snyk Security (high+)
+
+on:
+  pull_request:
+    branches: [ main, master ]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+  push:
+    branches: [ main, master ]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'docs/MINDMAP.md'   # لا ندور على نفسنا
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  snyk:
+    runs-on: ubuntu-latest
+    # تفادي اللوب: لا تشتغل على PRات البوتات
+    if: >
+      github.actor != 'dependabot[bot]' &&
+      github.actor != 'snyk-bot' &&
+      github.actor != 'github-actions[bot]'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install project deps (editable)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+
+      - name: Install Snyk CLI
+        run: npm install -g snyk
+
+      - name: Detect Python manifest
+        id: detect
+        shell: bash
+        run: |
+          set -e
+          if [ -f "poetry.lock" ]; then
+            echo "file=poetry.lock" >> "$GITHUB_OUTPUT"
+          elif ls requirements*.txt >/dev/null 2>&1; then
+            # لو عندك أكثر من ملف requirements نختار الرئيسي
+            main_req=$(ls -1 requirements*.txt | head -n1)
+            echo "file=${main_req}" >> "$GITHUB_OUTPUT"
+          elif [ -f "pyproject.toml" ]; then
+            echo "file=pyproject.toml" >> "$GITHUB_OUTPUT"
+          else
+            # fallback: خلّ Snyk يقرر
+            echo "file=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Snyk test (fail only on high+)
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          if [ -n "${{ steps.detect.outputs.file }}" ]; then
+            snyk test --severity-threshold=high --file="${{ steps.detect.outputs.file }}" --package-manager=pip
+          else
+            snyk test --severity-threshold=high
+          fi
+
+      - name: Snyk monitor (main only)
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          if [ -n "${{ steps.detect.outputs.file }}" ]; then
+            snyk monitor --file="${{ steps.detect.outputs.file }}" --package-manager=pip
+          else
+            snyk monitor
+          fi
