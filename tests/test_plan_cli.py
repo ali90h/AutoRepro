@@ -328,7 +328,8 @@ class TestPlanCLIBasicFunctionality:
         custom_path = tmp_path / "custom_repro.md"
 
         with patch(
-            "sys.argv", ["autorepro", "plan", "--desc", "test issue", "--out", str(custom_path)]
+            "sys.argv",
+            ["autorepro", "plan", "--desc", "test issue", "--out", str(custom_path)],
         ):
             exit_code = main()
 
@@ -523,7 +524,14 @@ class TestPlanCLIMaxCommands:
 
         with patch(
             "sys.argv",
-            ["autorepro", "plan", "--desc", "pytest jest npm test failing", "--max", "2"],
+            [
+                "autorepro",
+                "plan",
+                "--desc",
+                "pytest jest npm test failing",
+                "--max",
+                "2",
+            ],
         ):
             exit_code = main()
 
@@ -567,7 +575,14 @@ class TestPlanCLIMaxCommands:
 
         # Test with higher limit to see full ordering
         result_full = run_plan_subprocess(
-            ["--desc", "pytest jest npm test failing", "--out", "full.md", "--max", "10"],
+            [
+                "--desc",
+                "pytest jest npm test failing",
+                "--out",
+                "full.md",
+                "--max",
+                "10",
+            ],
             cwd=tmp_path,
         )
         assert result_full.returncode == 0
@@ -582,7 +597,14 @@ class TestPlanCLIMaxCommands:
 
         # Test with --max 3
         result_limited = run_plan_subprocess(
-            ["--desc", "pytest jest npm test failing", "--out", "limited.md", "--max", "3"],
+            [
+                "--desc",
+                "pytest jest npm test failing",
+                "--out",
+                "limited.md",
+                "--max",
+                "3",
+            ],
             cwd=tmp_path,
         )
         assert result_limited.returncode == 0
@@ -633,7 +655,8 @@ class TestPlanCLIFormatFlag:
         (tmp_path / "pyproject.toml").write_text('[build-system]\nrequires = ["setuptools"]')
 
         with patch(
-            "sys.argv", ["autorepro", "plan", "--desc", "pytest failing", "--format", "json"]
+            "sys.argv",
+            ["autorepro", "plan", "--desc", "pytest failing", "--format", "json"],
         ):
             exit_code = main()
 
@@ -834,7 +857,8 @@ class TestPlanCLICommandFiltering:
         create_project_markers(tmp_path, "python")
 
         result = run_plan_subprocess(
-            ["--desc", "tests are broken and failing", "--out", "ambiguous.md"], cwd=tmp_path
+            ["--desc", "tests are broken and failing", "--out", "ambiguous.md"],
+            cwd=tmp_path,
         )
         assert result.returncode == 0
 
@@ -859,7 +883,8 @@ class TestPlanCLICommandFiltering:
         # Don't create any project markers (no language detection)
 
         result = run_plan_subprocess(
-            ["--desc", "npm test is failing with jest errors", "--out", "keyword.md"], cwd=tmp_path
+            ["--desc", "npm test is failing with jest errors", "--out", "keyword.md"],
+            cwd=tmp_path,
         )
         assert result.returncode == 0
 
@@ -884,7 +909,8 @@ class TestPlanCLICommandFiltering:
         # Don't create any project markers and use generic description
 
         result = run_plan_subprocess(
-            ["--desc", "something is broken and needs fixing", "--out", "generic.md"], cwd=tmp_path
+            ["--desc", "something is broken and needs fixing", "--out", "generic.md"],
+            cwd=tmp_path,
         )
         assert result.returncode == 0
 
@@ -895,13 +921,7 @@ class TestPlanCLICommandFiltering:
         ]
 
         # Should show NO commands when no keyword or language matches
-<<<<<<< HEAD
-        assert len(command_lines) == 0, (
-            f"Should show no commands when no matches. Got: {command_lines}"
-        )
-=======
         assert not command_lines, f"Should show no commands when no matches. Got: {command_lines}"
->>>>>>> d5f84ac (Complete Technique 1: Avoid Hard Coding - Final formatting)
 
     def test_plan_dry_run_ignores_force_flag(self, tmp_path):
         """Test that --dry-run ignores --force flag and outputs to stdout."""
@@ -932,7 +952,8 @@ class TestPlanCLICommandFilteringAlt:
         create_project_markers(tmp_path, "python")
 
         result = run_plan_subprocess(
-            ["--desc", "tests are broken and failing", "--out", "ambiguous.md"], cwd=tmp_path
+            ["--desc", "tests are broken and failing", "--out", "ambiguous.md"],
+            cwd=tmp_path,
         )
         assert result.returncode == 0
 
@@ -957,7 +978,8 @@ class TestPlanCLICommandFilteringAlt:
         # Don't create any project markers (no language detection)
 
         result = run_plan_subprocess(
-            ["--desc", "npm test is failing with jest errors", "--out", "keyword.md"], cwd=tmp_path
+            ["--desc", "npm test is failing with jest errors", "--out", "keyword.md"],
+            cwd=tmp_path,
         )
         assert result.returncode == 0
 
@@ -982,7 +1004,8 @@ class TestPlanCLICommandFilteringAlt:
         # Don't create any project markers and use generic description
 
         result = run_plan_subprocess(
-            ["--desc", "something is broken and needs fixing", "--out", "generic.md"], cwd=tmp_path
+            ["--desc", "something is broken and needs fixing", "--out", "generic.md"],
+            cwd=tmp_path,
         )
         assert result.returncode == 0
 
@@ -993,10 +1016,4 @@ class TestPlanCLICommandFilteringAlt:
         ]
 
         # Should show NO commands when no keyword or language matches
-<<<<<<< HEAD
-        assert len(command_lines) == 0, (
-            f"Should show no commands when no matches. Got: {command_lines}"
-        )
-=======
         assert not command_lines, f"Should show no commands when no matches. Got: {command_lines}"
->>>>>>> d5f84ac (Complete Technique 1: Avoid Hard Coding - Final formatting)
