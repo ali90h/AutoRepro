@@ -1,4 +1,4 @@
-# Test
+# Pytest Tests Are Failing With Importerror
 
 ## Assumptions
 
@@ -6,15 +6,17 @@
 
 ## Candidate Commands
 
-- `pytest -q` — detected langs: python; bonuses: lang: python (+2), specific (+1)
-- `python -m pytest -q` — detected langs: python; bonuses: lang: python (+2), specific (+1)
+- `pytest -q` — matched keywords: pytest; detected langs: python; bonuses: direct: pytest (+3), lang: python (+2), specific (+1)
+- `python -m pytest -q` — matched keywords: pytest; detected langs: python; bonuses: direct: pytest (+3), lang: python (+2), specific (+1)
+- `pytest` — matched keywords: pytest; detected langs: python; bonuses: direct: pytest (+3), lang: python (+2)
 - `python -m unittest -v` — detected langs: python; bonuses: lang: python (+2), specific (+1)
 - `tox -e py311` — detected langs: python; bonuses: lang: python (+2), specific (+1)
-- `pytest` — detected langs: python; bonuses: lang: python (+2)
 
 ## Needed Files/Env
 
+- devcontainer: present
 - Python 3.7+
+- pytest package
 
 ## Next Steps
 
