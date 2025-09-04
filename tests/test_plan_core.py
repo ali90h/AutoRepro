@@ -326,10 +326,8 @@ class TestBuildReproMd:
 
     def test_title_truncation(self):
         """Test that long titles are safely truncated."""
-        long_title = (
-            "This is a very long issue description that is definitely "
-            "longer than sixty characters"
-        )
+        # String exceeding 60 chars to test truncation
+        long_title = "This is a very long issue description that is definitely longer than 60 chars"
         result = build_repro_md(long_title, [], [], [], [])
 
         lines = result.split("\n")

@@ -104,10 +104,3 @@ exclude_lines = [
 "pragma: no cover",
 "raise NotImplementedError",
 ]
-
-[tool.isort]
-profile = "black"
-multi_line_output = 3
-line_length = 100
-known_first_party = ["autorepro"]
-sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
