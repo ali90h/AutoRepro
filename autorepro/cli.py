@@ -1152,16 +1152,38 @@ def cmd_pr(
                 return 1
 
     if dry_run:
-        # Show what would be done
-        log.info("Would run: gh pr create")
+        # Show what would be done - print to stdout for test compatibility
+        base_cmd = ["gh", "pr", "create"]
+        if title:
+            base_cmd.extend(["--title", title])
+        if body:
+            base_cmd.extend(["--body", body])
+        if repo_slug:
+            base_cmd.extend(["--repo", repo_slug])
+        if not ready:
+            base_cmd.append("--draft")
+        if label:
+            for lbl in label:
+                base_cmd.extend(["--label", lbl])
+        if assignee:
+            for assign in assignee:
+                base_cmd.extend(["--assignee", assign])
+        if reviewer:
+            for rev in reviewer:
+                base_cmd.extend(["--reviewer", rev])
+
+        # Print the command with safe quoting to stdout
+        quoted_cmd = " ".join(shlex.quote(arg) for arg in base_cmd)
+        print(f"Would run: {quoted_cmd}")
+
         if comment:
-            log.info("Would create PR comment with sync block")
+            print("Would update PR comment")
         if update_pr_body:
-            log.info("Would update PR body with sync block")
+            print("Would add sync block")
         if add_labels:
-            log.info(f"Would add labels: {add_labels}")
+            print(f"Would add labels: {add_labels}")
         if link_issue:
-            log.info(f"Would cross-link with issue #{link_issue}")
+            print(f"Would cross-link with issue #{link_issue}")
         return 0
 
     try:
