@@ -1,0 +1,17 @@
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels: [ "security" ]
+    assignees: [ "ali90h" ]
+    commit-message:
+      prefix: "chore(security)"
+      include: "scope"
+    versioning-strategy: increase
+    allow:
+      - dependency-type: "direct"
+    ignore:
+      - dependency-name: "*"
+        update-types: [ "version-update:semver-major" ]
