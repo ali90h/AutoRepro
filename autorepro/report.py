@@ -20,6 +20,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from autorepro.utils.file_ops import FileOperations
+
 from . import __version__
 from .config import config
 from .detect import collect_evidence, detect_languages
@@ -276,19 +278,18 @@ def maybe_exec(repo: Path, opts: dict[str, Any]) -> tuple[int, Path | None, Path
             return 1, None, None
 
         # Write log file
-        log_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(log_path, "w", encoding="utf-8") as f:
-            f.write(f"=== {start_iso} - {command_str} ===\n")
-            f.write("STDOUT:\n")
-            f.write(stdout_full)
-            f.write("\nSTDERR:\n")
-            f.write(stderr_full)
-            f.write(f"\nExit code: {exit_code}\n")
-            f.write("=" * 50 + "\n\n")
+        log_content = (
+            f"=== {start_iso} - {command_str} ===\n"
+            "STDOUT:\n"
+            f"{stdout_full}"
+            "\nSTDERR:\n"
+            f"{stderr_full}"
+            f"\nExit code: {exit_code}\n"
+            "=" * 50 + "\n\n"
+        )
+        FileOperations.atomic_write(log_path, log_content)
 
         # Write JSONL file
-        jsonl_path.parent.mkdir(parents=True, exist_ok=True)
-
         stdout_preview = stdout_full[:2000] if stdout_full else ""
         stderr_preview = stderr_full[:2000] if stderr_full else ""
 
@@ -307,8 +308,8 @@ def maybe_exec(repo: Path, opts: dict[str, Any]) -> tuple[int, Path | None, Path
             "stderr_preview": stderr_preview,
         }
 
-        with open(jsonl_path, "w", encoding="utf-8") as f:
-            f.write(json.dumps(jsonl_record) + "\n")
+        jsonl_content = json.dumps(jsonl_record) + "\n"
+        FileOperations.atomic_write(jsonl_path, jsonl_content)
 
         return exit_code, log_path, jsonl_path
 
@@ -327,7 +328,7 @@ def pack_zip(out_path: Path, files: dict[str, Path | str | bytes]) -> None:
     log = logging.getLogger("autorepro")
 
     # Ensure output directory exists
-    out_path.parent.mkdir(parents=True, exist_ok=True)
+    FileOperations.ensure_directory(out_path.parent)
 
     try:
         with zipfile.ZipFile(out_path, "w", zipfile.ZIP_DEFLATED) as zf:
