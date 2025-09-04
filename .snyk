@@ -1,0 +1,12 @@
+# Snyk policy file: only for ignores/patches.
+version: v1.25.0
+
+# Example ignore (keep commented until needed):
+# ignore:
+#   SNYK-PYTHON-FOO-123456:
+#     - '*':
+#         reason: "False positive in transitive dep; verified manually"
+#         expires: "2026-01-01T00:00:00.000Z"
+
+# Example patch (rarely used):
+# patch: {}
