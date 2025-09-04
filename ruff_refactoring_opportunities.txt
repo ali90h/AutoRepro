@@ -1,0 +1,612 @@
+PLR0915 Too many statements (69 > 50)
+  --> autorepro/cli.py:52:5
+   |
+52 | def create_parser() -> argparse.ArgumentParser:
+   |     ^^^^^^^^^^^^^
+53 |     """Create and configure the argument parser."""
+54 |     parser = argparse.ArgumentParser(
+   |
+
+C901 `cmd_plan` is too complex (36 > 10)
+   --> autorepro/cli.py:484:5
+    |
+484 | def cmd_plan(
+    |     ^^^^^^^^
+485 |     desc: str | None = None,
+486 |     file: str | None = None,
+    |
+
+PLR0913 Too many arguments in function definition (10 > 5)
+   --> autorepro/cli.py:484:5
+    |
+484 | def cmd_plan(
+    |     ^^^^^^^^
+485 |     desc: str | None = None,
+486 |     file: str | None = None,
+    |
+
+PLR0911 Too many return statements (10 > 6)
+   --> autorepro/cli.py:484:5
+    |
+484 | def cmd_plan(
+    |     ^^^^^^^^
+485 |     desc: str | None = None,
+486 |     file: str | None = None,
+    |
+
+PLR0912 Too many branches (43 > 12)
+   --> autorepro/cli.py:484:5
+    |
+484 | def cmd_plan(
+    |     ^^^^^^^^
+485 |     desc: str | None = None,
+486 |     file: str | None = None,
+    |
+
+PLR0915 Too many statements (123 > 50)
+   --> autorepro/cli.py:484:5
+    |
+484 | def cmd_plan(
+    |     ^^^^^^^^
+485 |     desc: str | None = None,
+486 |     file: str | None = None,
+    |
+
+PLR2004 Magic value used in comparison, consider replacing `2` with a constant variable
+   --> autorepro/cli.py:628:39
+    |
+626 |     # Add filtering note to assumptions if commands were filtered and user explicitly set min-score
+627 |     # Only show filtering notes when user explicitly used --min-score (not default) or --strict
+628 |     min_score_explicit = min_score != 2  # 2 is the default value
+    |                                       ^
+629 |     if filtered_count > 0 and (min_score_explicit or strict):
+630 |         assumptions.append(
+    |
+
+PLR1714 Consider merging multiple comparisons: `lang in {"node", "javascript"}`.
+   --> autorepro/cli.py:655:14
+    |
+653 |             if "tox" in keywords:
+654 |                 needs.append("tox package")
+655 |         elif lang == "node" or lang == "javascript":
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+656 |             needs.append("Node.js 16+")
+657 |             needs.append("npm or yarn")
+    |
+help: Merge multiple comparisons
+
+C901 `cmd_init` is too complex (16 > 10)
+   --> autorepro/cli.py:720:5
+    |
+720 | def cmd_init(
+    |     ^^^^^^^^
+721 |     force: bool = False,
+722 |     out: str | None = None,
+    |
+
+PLR0911 Too many return statements (9 > 6)
+   --> autorepro/cli.py:720:5
+    |
+720 | def cmd_init(
+    |     ^^^^^^^^
+721 |     force: bool = False,
+722 |     out: str | None = None,
+    |
+
+PLR0912 Too many branches (18 > 12)
+   --> autorepro/cli.py:720:5
+    |
+720 | def cmd_init(
+    |     ^^^^^^^^
+721 |     force: bool = False,
+722 |     out: str | None = None,
+    |
+
+C901 `cmd_exec` is too complex (30 > 10)
+   --> autorepro/cli.py:843:5
+    |
+843 | def cmd_exec(
+    |     ^^^^^^^^
+844 |     desc: str | None = None,
+845 |     file: str | None = None,
+    |
+
+PLR0913 Too many arguments in function definition (12 > 5)
+   --> autorepro/cli.py:843:5
+    |
+843 | def cmd_exec(
+    |     ^^^^^^^^
+844 |     desc: str | None = None,
+845 |     file: str | None = None,
+    |
+
+PLR0911 Too many return statements (14 > 6)
+   --> autorepro/cli.py:843:5
+    |
+843 | def cmd_exec(
+    |     ^^^^^^^^
+844 |     desc: str | None = None,
+845 |     file: str | None = None,
+    |
+
+PLR0912 Too many branches (33 > 12)
+   --> autorepro/cli.py:843:5
+    |
+843 | def cmd_exec(
+    |     ^^^^^^^^
+844 |     desc: str | None = None,
+845 |     file: str | None = None,
+    |
+
+PLR0915 Too many statements (127 > 50)
+   --> autorepro/cli.py:843:5
+    |
+843 | def cmd_exec(
+    |     ^^^^^^^^
+844 |     desc: str | None = None,
+845 |     file: str | None = None,
+    |
+
+C901 `cmd_pr` is too complex (25 > 10)
+    --> autorepro/cli.py:1070:5
+     |
+1070 | def cmd_pr(
+     |     ^^^^^^
+1071 |     desc: str | None = None,
+1072 |     file: str | None = None,
+     |
+
+PLR0913 Too many arguments in function definition (22 > 5)
+    --> autorepro/cli.py:1070:5
+     |
+1070 | def cmd_pr(
+     |     ^^^^^^
+1071 |     desc: str | None = None,
+1072 |     file: str | None = None,
+     |
+
+PLR0911 Too many return statements (8 > 6)
+    --> autorepro/cli.py:1070:5
+     |
+1070 | def cmd_pr(
+     |     ^^^^^^
+1071 |     desc: str | None = None,
+1072 |     file: str | None = None,
+     |
+
+PLR0912 Too many branches (25 > 12)
+    --> autorepro/cli.py:1070:5
+     |
+1070 | def cmd_pr(
+     |     ^^^^^^
+1071 |     desc: str | None = None,
+1072 |     file: str | None = None,
+     |
+
+PLR0915 Too many statements (60 > 50)
+    --> autorepro/cli.py:1070:5
+     |
+1070 | def cmd_pr(
+     |     ^^^^^^
+1071 |     desc: str | None = None,
+1072 |     file: str | None = None,
+     |
+
+C901 `main` is too complex (12 > 10)
+    --> autorepro/cli.py:1184:5
+     |
+1184 | def main(argv: list[str] | None = None) -> int:
+     |     ^^^^
+1185 |     """
+1186 |     Main entry point for the AutoRepro CLI.
+     |
+
+PLR0911 Too many return statements (8 > 6)
+    --> autorepro/cli.py:1184:5
+     |
+1184 | def main(argv: list[str] | None = None) -> int:
+     |     ^^^^
+1185 |     """
+1186 |     Main entry point for the AutoRepro CLI.
+     |
+
+PLR0912 Too many branches (13 > 12)
+    --> autorepro/cli.py:1184:5
+     |
+1184 | def main(argv: list[str] | None = None) -> int:
+     |     ^^^^
+1185 |     """
+1186 |     Main entry point for the AutoRepro CLI.
+     |
+
+PLR2004 Magic value used in comparison, consider replacing `2` with a constant variable
+    --> autorepro/cli.py:1205:28
+     |
+1203 |         level = logging.ERROR
+1204 |     elif hasattr(args, "verbose"):
+1205 |         if args.verbose >= 2:
+     |                            ^
+1206 |             level = logging.DEBUG
+1207 |         elif args.verbose == 1:
+     |
+
+PLR5501 [*] Use `elif` instead of `else` then `if`, to reduce indentation
+  --> autorepro/core/planning.py:91:9
+   |
+89 |               if keyword.lower() in text.lower():
+90 |                   matched_keywords.add(keyword)
+91 | /         else:
+92 | |             if keyword.lower() in text_words:
+   | |____________^
+93 |                   matched_keywords.add(keyword)
+   |
+help: Convert to `elif`
+
+PLR2004 Magic value used in comparison, consider replacing `60` with a constant variable
+   --> autorepro/core/planning.py:135:21
+    |
+133 |     text = text.strip()
+134 |
+135 |     if len(text) <= 60:
+    |                     ^^
+136 |         return text
+    |
+
+SIM102 Use a single `if` statement instead of nested `if` statements
+   --> autorepro/core/planning.py:216:5
+    |
+215 |       # Only apply bonuses if there are matches
+216 | /     if matched_keywords or detected_ecosystems:
+217 | |         # +1 for more specific/stable spellings (weight > 0)
+218 | |         if rule.weight > 0:
+    | |___________________________^
+219 |               score += 1
+220 |               bonuses_applied.append("specific (+1)")
+    |
+help: Combine `if` statements using `and`
+
+C901 `collect_evidence` is too complex (12 > 10)
+  --> autorepro/detect.py:56:5
+   |
+56 | def collect_evidence(root: Path) -> dict[str, dict[str, object]]:
+   |     ^^^^^^^^^^^^^^^^
+57 |     """
+58 |     Collect weighted evidence for language detection in the root directory.
+   |
+
+C901 `write_devcontainer` is too complex (20 > 10)
+   --> autorepro/env.py:162:5
+    |
+162 | def write_devcontainer(
+    |     ^^^^^^^^^^^^^^^^^^
+163 |     content: dict[str, str | dict[str, dict[str, str]]], force: bool = False, out: str | None = None
+164 | ) -> tuple[Path, list[str] | None]:
+    |
+
+PLR0912 Too many branches (21 > 12)
+   --> autorepro/env.py:162:5
+    |
+162 | def write_devcontainer(
+    |     ^^^^^^^^^^^^^^^^^^
+163 |     content: dict[str, str | dict[str, dict[str, str]]], force: bool = False, out: str | None = None
+164 | ) -> tuple[Path, list[str] | None]:
+    |
+
+PLR0915 Too many statements (61 > 50)
+   --> autorepro/env.py:162:5
+    |
+162 | def write_devcontainer(
+    |     ^^^^^^^^^^^^^^^^^^
+163 |     content: dict[str, str | dict[str, dict[str, str]]], force: bool = False, out: str | None = None
+164 | ) -> tuple[Path, list[str] | None]:
+    |
+
+SIM108 Use ternary operator `output_path = Path(".devcontainer") / "devcontainer.json" if out is None else Path(out)` instead of `if`-`else`-block
+   --> autorepro/env.py:185:5
+    |
+183 |       """
+184 |       # Determine output path
+185 | /     if out is None:
+186 | |         output_path = Path(".devcontainer") / "devcontainer.json"
+187 | |     else:
+188 | |         output_path = Path(out)
+    | |_______________________________^
+189 |
+190 |       # Validate output path
+    |
+help: Replace `if`-`else`-block with `output_path = Path(".devcontainer") / "devcontainer.json" if out is None else Path(out)`
+
+PLR5501 [*] Use `elif` instead of `else` then `if`, to reduce indentation
+   --> autorepro/env.py:238:5
+    |
+236 |               # If we can't read the old file as JSON, treat it as a complete replacement
+237 |               diff_lines = []
+238 | /     else:
+239 | |         # Check write permissions on parent directory for new file
+240 | |         if not os.access(output_path.parent, os.W_OK):
+    | |________^
+241 |               raise PermissionError(f"Permission denied: {output_path.parent}")
+    |
+help: Convert to `elif`
+
+PLR2004 Magic value used in comparison, consider replacing `200` with a constant variable
+   --> autorepro/io/github.py:174:74
+    |
+172 |     except json.JSONDecodeError as e:
+173 |         # Include the raw output for debugging
+174 |         raw_output = result.stdout[:200] + "..." if len(result.stdout) > 200 else result.stdout
+    |                                                                          ^^^
+175 |         raise RuntimeError(f"Invalid JSON response from gh: {e}. Raw output: {raw_output!r}") from e
+    |
+
+SIM105 Use `contextlib.suppress(OSError)` instead of `try`-`except`-`pass`
+   --> autorepro/io/github.py:225:9
+    |
+223 |       finally:
+224 |           # Clean up temp file
+225 | /         try:
+226 | |             os.unlink(body_file)
+227 | |         except OSError:
+228 | |             pass
+    | |________________^
+    |
+help: Replace with `contextlib.suppress(OSError)`
+
+SIM105 Use `contextlib.suppress(OSError)` instead of `try`-`except`-`pass`
+   --> autorepro/io/github.py:278:9
+    |
+276 |       finally:
+277 |           # Clean up temp file
+278 | /         try:
+279 | |             os.unlink(body_file)
+280 | |         except OSError:
+281 | |             pass
+    | |________________^
+    |
+help: Replace with `contextlib.suppress(OSError)`
+
+C901 `create_or_update_pr` is too complex (14 > 10)
+   --> autorepro/io/github.py:323:5
+    |
+323 | def create_or_update_pr(
+    |     ^^^^^^^^^^^^^^^^^^^
+324 |     title: str,
+325 |     body: str,
+    |
+
+PLR0913 Too many arguments in function definition (11 > 5)
+   --> autorepro/io/github.py:323:5
+    |
+323 | def create_or_update_pr(
+    |     ^^^^^^^^^^^^^^^^^^^
+324 |     title: str,
+325 |     body: str,
+    |
+
+PLR0912 Too many branches (15 > 12)
+   --> autorepro/io/github.py:323:5
+    |
+323 | def create_or_update_pr(
+    |     ^^^^^^^^^^^^^^^^^^^
+324 |     title: str,
+325 |     body: str,
+    |
+
+SIM105 Use `contextlib.suppress(OSError)` instead of `try`-`except`-`pass`
+   --> autorepro/io/github.py:452:9
+    |
+450 |       finally:
+451 |           # Clean up temp file
+452 | /         try:
+453 | |             os.unlink(body_file)
+454 | |         except OSError:
+455 | |             pass
+    | |________________^
+    |
+help: Replace with `contextlib.suppress(OSError)`
+
+SIM105 Use `contextlib.suppress(OSError)` instead of `try`-`except`-`pass`
+   --> autorepro/io/github.py:588:9
+    |
+586 |       finally:
+587 |           # Clean up temp file
+588 | /         try:
+589 | |             os.unlink(body_file)
+590 | |         except OSError:
+591 | |             pass
+    | |________________^
+    |
+help: Replace with `contextlib.suppress(OSError)`
+
+PLR0913 Too many arguments in function definition (6 > 5)
+   --> autorepro/io/github.py:594:5
+    |
+594 | def create_issue(
+    |     ^^^^^^^^^^^^
+595 |     title: str,
+596 |     body: str = "",
+    |
+
+SIM105 Use `contextlib.suppress(OSError)` instead of `try`-`except`-`pass`
+   --> autorepro/io/github.py:658:13
+    |
+656 |           # Clean up temp file
+657 |           if body_file:
+658 | /             try:
+659 | |                 os.unlink(body_file)
+660 | |             except OSError:
+661 | |                 pass
+    | |____________________^
+    |
+help: Replace with `contextlib.suppress(OSError)`
+
+C901 `build_pr_body` is too complex (19 > 10)
+  --> autorepro/pr.py:46:5
+   |
+46 | def build_pr_body(plan_content: str, format_type: str) -> str:
+   |     ^^^^^^^^^^^^^
+47 |     """
+48 |     Build PR body from plan content.
+   |
+
+PLR0912 Too many branches (22 > 12)
+  --> autorepro/pr.py:46:5
+   |
+46 | def build_pr_body(plan_content: str, format_type: str) -> str:
+   |     ^^^^^^^^^^^^^
+47 |     """
+48 |     Build PR body from plan content.
+   |
+
+PLR0915 Too many statements (63 > 50)
+  --> autorepro/pr.py:46:5
+   |
+46 | def build_pr_body(plan_content: str, format_type: str) -> str:
+   |     ^^^^^^^^^^^^^
+47 |     """
+48 |     Build PR body from plan content.
+   |
+
+SIM102 Use a single `if` statement instead of nested `if` statements
+   --> autorepro/pr.py:130:13
+    |
+128 |                   if line.startswith("- "):
+129 |                       assumptions_section.append(line)
+130 | /             elif in_commands and line.strip():
+131 | |                 if line.startswith("- "):
+    | |_________________________________________^
+132 |                       commands_section.append(line)
+133 |                       if len(commands_section) >= 3:  # Limit to top 3
+    |
+help: Combine `if` statements using `and`
+
+PLR2004 Magic value used in comparison, consider replacing `3` with a constant variable
+   --> autorepro/pr.py:133:49
+    |
+131 |                 if line.startswith("- "):
+132 |                     commands_section.append(line)
+133 |                     if len(commands_section) >= 3:  # Limit to top 3
+    |                                                 ^
+134 |                         break
+    |
+
+SIM110 Use `return any("devcontainer" in need.lower() and "present" in need.lower() for need in needs)` instead of `for` loop
+  --> autorepro/render/formats.py:15:5
+   |
+13 |   def _parse_devcontainer_status(needs: list[str]) -> bool:
+14 |       """Check if devcontainer is present in needs list."""
+15 | /     for need in needs:
+16 | |         if "devcontainer" in need.lower() and "present" in need.lower():
+17 | |             return True
+18 | |     return False
+   | |________________^
+   |
+help: Replace with `return any("devcontainer" in need.lower() and "present" in need.lower() for need in needs)`
+
+C901 `maybe_exec` is too complex (22 > 10)
+   --> autorepro/report.py:122:5
+    |
+122 | def maybe_exec(repo: Path, opts: dict[str, Any]) -> tuple[int, Path | None, Path | None]:
+    |     ^^^^^^^^^^
+123 |     """
+124 |     Optionally execute the best command and return execution results.
+    |
+
+PLR0911 Too many return statements (10 > 6)
+   --> autorepro/report.py:122:5
+    |
+122 | def maybe_exec(repo: Path, opts: dict[str, Any]) -> tuple[int, Path | None, Path | None]:
+    |     ^^^^^^^^^^
+123 |     """
+124 |     Optionally execute the best command and return execution results.
+    |
+
+PLR0912 Too many branches (23 > 12)
+   --> autorepro/report.py:122:5
+    |
+122 | def maybe_exec(repo: Path, opts: dict[str, Any]) -> tuple[int, Path | None, Path | None]:
+    |     ^^^^^^^^^^
+123 |     """
+124 |     Optionally execute the best command and return execution results.
+    |
+
+PLR0915 Too many statements (107 > 50)
+   --> autorepro/report.py:122:5
+    |
+122 | def maybe_exec(repo: Path, opts: dict[str, Any]) -> tuple[int, Path | None, Path | None]:
+    |     ^^^^^^^^^^
+123 |     """
+124 |     Optionally execute the best command and return execution results.
+    |
+
+C901 `_load_plugin_rules` is too complex (11 > 10)
+  --> autorepro/rules.py:59:5
+   |
+59 | def _load_plugin_rules() -> dict[str, list[Rule]]:
+   |     ^^^^^^^^^^^^^^^^^^
+60 |     """Load rules from plugins specified in AUTOREPRO_PLUGINS environment variable."""
+61 |     plugin_rules: dict[str, list[Rule]] = {}
+   |
+
+PLR0913 Too many arguments in function definition (7 > 5)
+  --> autorepro/sync.py:24:5
+   |
+24 | def render_sync_comment(
+   |     ^^^^^^^^^^^^^^^^^^^
+25 |     plan_content: str,
+26 |     format_type: str,
+   |
+
+PLR2004 Magic value used in comparison, consider replacing `15` with a constant variable
+  --> autorepro/sync.py:89:63
+   |
+87 |     # Determine if content should be wrapped in details
+88 |     content_lines = plan_content.strip().split("\n")
+89 |     should_use_details = use_details and len(content_lines) > 15
+   |                                                               ^^
+90 |
+91 |     # Build sync block content
+   |
+
+SIM105 Use `contextlib.suppress(OSError)` instead of `try`-`except`-`pass`
+  --> autorepro/utils/github_api.py:63:9
+   |
+61 |       finally:
+62 |           # Clean up temp file
+63 | /         try:
+64 | |             os.unlink(body_file)
+65 | |         except OSError:
+66 | |             pass
+   | |________________^
+   |
+help: Replace with `contextlib.suppress(OSError)`
+
+C901 `process_plan_input` is too complex (18 > 10)
+  --> autorepro/utils/plan_processing.py:29:5
+   |
+29 | def process_plan_input(desc_or_file: str | None, repo_path: Path, min_score: int = 0) -> PlanData:
+   |     ^^^^^^^^^^^^^^^^^^
+30 |     """
+31 |     Process plan input and generate common plan components.
+   |
+
+PLR0912 Too many branches (21 > 12)
+  --> autorepro/utils/plan_processing.py:29:5
+   |
+29 | def process_plan_input(desc_or_file: str | None, repo_path: Path, min_score: int = 0) -> PlanData:
+   |     ^^^^^^^^^^^^^^^^^^
+30 |     """
+31 |     Process plan input and generate common plan components.
+   |
+
+PLR0915 Too many statements (63 > 50)
+  --> autorepro/utils/plan_processing.py:29:5
+   |
+29 | def process_plan_input(desc_or_file: str | None, repo_path: Path, min_score: int = 0) -> PlanData:
+   |     ^^^^^^^^^^^^^^^^^^
+30 |     """
+31 |     Process plan input and generate common plan components.
+   |
+
+Found 61 errors.
+[*] 2 fixable with the `--fix` option (10 hidden fixes can be enabled with the `--unsafe-fixes` option).

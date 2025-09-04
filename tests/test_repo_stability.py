@@ -47,7 +47,15 @@ class TestRepoPathStability:
 
         # Test with dir format
         result2 = run_cli_subprocess(
-            ["plan", "--desc", "pytest failing", "--out", "plan2.md", "--repo", repo_dir.name],
+            [
+                "plan",
+                "--desc",
+                "pytest failing",
+                "--out",
+                "plan2.md",
+                "--repo",
+                repo_dir.name,
+            ],
             cwd=tmp_path,
         )
         assert result2.returncode == 0
@@ -110,7 +118,8 @@ class TestRepoPathStability:
 
         # Run plan command with --repo
         result1 = run_cli_subprocess(
-            ["plan", "--desc", "npm test failing", "--repo", str(repo_dir)], cwd=tmp_path
+            ["plan", "--desc", "npm test failing", "--repo", str(repo_dir)],
+            cwd=tmp_path,
         )
         assert result1.returncode == 0
 
@@ -134,6 +143,6 @@ class TestRepoPathStability:
         repo_devcontainer = repo_dir / ".devcontainer" / "devcontainer.json"
         current_devcontainer = tmp_path / ".devcontainer" / "devcontainer.json"
         assert repo_devcontainer.exists(), "Devcontainer should be created in repo directory"
-        assert (
-            not current_devcontainer.exists()
-        ), "Devcontainer should NOT be created in current directory"
+        assert not current_devcontainer.exists(), (
+            "Devcontainer should NOT be created in current directory"
+        )

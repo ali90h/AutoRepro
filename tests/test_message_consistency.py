@@ -130,7 +130,8 @@ class TestStdoutIgnoresForce:
 
         # Use --out - with --force and different content
         result2 = run_cli_subprocess(
-            ["plan", "--desc", "completely different issue", "--out", "-", "--force"], cwd=tmp_path
+            ["plan", "--desc", "completely different issue", "--out", "-", "--force"],
+            cwd=tmp_path,
         )
         assert result2.returncode == 0
 

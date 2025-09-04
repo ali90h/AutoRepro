@@ -138,7 +138,7 @@ class TestRulesCore:
         other_keywords = {"pytest"}
         suggestions = suggest_commands(other_keywords, detected_langs, min_score=0)
         java_suggestions = [s for s in suggestions if "mvn" in s[0]]
-        assert len(java_suggestions) == 0  # Should not include Java commands
+        assert not java_suggestions  # Should not include Java commands
 
     def test_plugin_loading_from_file_path(self, tmp_path):
         """Test loading plugin from direct file path."""
@@ -166,7 +166,10 @@ def provide_rules():
         """Test debug flag shows plugin loading errors."""
         with patch.dict(
             os.environ,
-            {"AUTOREPRO_PLUGINS": "nonexistent.plugin.module", "AUTOREPRO_PLUGINS_DEBUG": "1"},
+            {
+                "AUTOREPRO_PLUGINS": "nonexistent.plugin.module",
+                "AUTOREPRO_PLUGINS_DEBUG": "1",
+            },
         ):
             _load_plugin_rules()
             captured = capsys.readouterr()

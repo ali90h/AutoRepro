@@ -54,13 +54,13 @@ class TestPlanCoreFiltering:
 
         # Test with high min_score=4 - should exclude Python-only commands (score 2)
         suggestions_high = suggest_commands(keywords, detected_langs, min_score=4)
-        assert len(suggestions_high) == 0, "Should exclude commands with score < 4"
+        assert not suggestions_high, "Should exclude commands with score < 4"
 
         # Test with low min_score=1 - should include more commands
         suggestions_low = suggest_commands(keywords, detected_langs, min_score=1)
-        assert len(suggestions_low) >= len(
-            suggestions_default
-        ), "Lower min_score should include more commands"
+        assert len(suggestions_low) >= len(suggestions_default), (
+            "Lower min_score should include more commands"
+        )
 
     def test_keyword_match_respects_min_score(self):
         """Test that direct keyword matches are filtered by min_score."""
@@ -73,7 +73,7 @@ class TestPlanCoreFiltering:
 
         # With min_score=5, should exclude all pytest commands (max score is 4)
         suggestions_high = suggest_commands(keywords, detected_langs, min_score=5)
-        assert len(suggestions_high) == 0, "Should exclude commands with score < min_score"
+        assert not suggestions_high, "Should exclude commands with score < min_score"
 
     def test_language_match_respects_min_score(self):
         """Test that language detection matches are filtered by min_score."""
@@ -86,7 +86,7 @@ class TestPlanCoreFiltering:
 
         # With min_score=4, should exclude python commands (max score is 3)
         suggestions_high = suggest_commands(keywords, detected_langs, min_score=4)
-        assert len(suggestions_high) == 0, "Should exclude commands with score < min_score"
+        assert not suggestions_high, "Should exclude commands with score < min_score"
 
 
 class TestPlanCLIStrictMode:
@@ -96,7 +96,8 @@ class TestPlanCLIStrictMode:
         """Test --strict exits with code 1 when no commands make the cut."""
         # No project markers, generic description - should have no high-scoring commands
         result = run_plan_subprocess(
-            ["--desc", "random generic issue", "--min-score", "5", "--strict"], cwd=tmp_path
+            ["--desc", "random generic issue", "--min-score", "5", "--strict"],
+            cwd=tmp_path,
         )
 
         assert result.returncode == 1, f"Expected exit code 1, got {result.returncode}"
@@ -110,9 +111,9 @@ class TestPlanCLIStrictMode:
             ["--desc", "pytest failing", "--min-score", "2", "--strict"], cwd=tmp_path
         )
 
-        assert (
-            result.returncode == 0
-        ), f"Expected exit code 0, got {result.returncode}. STDERR: {result.stderr}"
+        assert result.returncode == 0, (
+            f"Expected exit code 0, got {result.returncode}. STDERR: {result.stderr}"
+        )
 
     def test_non_strict_mode_always_exit_0(self, tmp_path):
         """Test non-strict mode always exits 0 even with no commands."""
@@ -121,9 +122,9 @@ class TestPlanCLIStrictMode:
             ["--desc", "random generic issue", "--min-score", "5"], cwd=tmp_path
         )
 
-        assert (
-            result.returncode == 0
-        ), f"Non-strict mode should always exit 0, got {result.returncode}"
+        assert result.returncode == 0, (
+            f"Non-strict mode should always exit 0, got {result.returncode}"
+        )
 
 
 class TestPlanCLIMinScore:
@@ -149,13 +150,15 @@ class TestPlanCLIMinScore:
 
         # Low min-score should show more commands
         result_low = run_plan_subprocess(
-            ["--desc", "pytest failing", "--min-score", "1", "--out", "low.md"], cwd=tmp_path
+            ["--desc", "pytest failing", "--min-score", "1", "--out", "low.md"],
+            cwd=tmp_path,
         )
         assert result_low.returncode == 0
 
         # High min-score should show fewer commands
         result_high = run_plan_subprocess(
-            ["--desc", "pytest failing", "--min-score", "4", "--out", "high.md"], cwd=tmp_path
+            ["--desc", "pytest failing", "--min-score", "4", "--out", "high.md"],
+            cwd=tmp_path,
         )
         assert result_high.returncode == 0
 
@@ -214,7 +217,8 @@ class TestPlanCLIJSONOutputFiltering:
         create_project_markers(tmp_path, "python")
 
         result = run_plan_subprocess(
-            ["--desc", "pytest failing", "--format", "json", "--min-score", "4"], cwd=tmp_path
+            ["--desc", "pytest failing", "--format", "json", "--min-score", "4"],
+            cwd=tmp_path,
         )
         assert result.returncode == 0
 
@@ -231,7 +235,8 @@ class TestPlanCLIJSONOutputFiltering:
     def test_json_strict_mode(self, tmp_path):
         """Test JSON output with strict mode."""
         result = run_plan_subprocess(
-            ["--desc", "random", "--format", "json", "--min-score", "5", "--strict"], cwd=tmp_path
+            ["--desc", "random", "--format", "json", "--min-score", "5", "--strict"],
+            cwd=tmp_path,
         )
         assert result.returncode == 1
         assert "no candidate commands above min-score=5" in result.stderr

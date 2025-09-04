@@ -43,8 +43,7 @@ jobs:
       - name: Pre-commit (repo policy)
         run: pre-commit run --all-files
 
-      - name: Black (format check)
-        run: python -m black --check .
+
 
       - name: Ruff (lint)
         run: python -m ruff check .
@@ -52,9 +51,15 @@ jobs:
       - name: Mypy (type check)
         run: mypy || true
 
+      - name: Export PYTHON_BIN
+        run: echo "PYTHON_BIN=$(which python)" >> $GITHUB_ENV
+
       - name: Tests + Coverage
         run: |
-          pytest -q --cov=autorepro --cov-report=term | tee /tmp/cov.txt
+          coverage erase || true
+          pytest --cov=autorepro --cov-branch --cov-report=term-missing:skip-covered
+          coverage combine || true
+          coverage report -m | tee /tmp/cov.txt
           echo "---- Coverage summary ----"
           grep -E "^TOTAL" /tmp/cov.txt || true
 

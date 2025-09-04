@@ -207,7 +207,8 @@ def _extract_title_from_content(plan_content: str, format_type: str) -> str:
         # Extract title from markdown
         lines = plan_content.split("\n")
         title_line = next(
-            (line for line in lines if line.startswith("# ")), "# Issue Reproduction Plan"
+            (line for line in lines if line.startswith("# ")),
+            "# Issue Reproduction Plan",
         )
         return title_line[2:].strip()
 

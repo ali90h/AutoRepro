@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pytest
 
+from autorepro.env import python_bin
+
 
 class TestPREnrichmentCommand:
     """Test PR enrichment features with fake GitHub CLI setup."""
@@ -30,12 +32,16 @@ class TestPREnrichmentCommand:
             subprocess.run(["git", "init"], cwd=work_repo, check=True)
             subprocess.run(["git", "config", "user.name", "Test User"], cwd=work_repo, check=True)
             subprocess.run(
-                ["git", "config", "user.email", "test@example.com"], cwd=work_repo, check=True
+                ["git", "config", "user.email", "test@example.com"],
+                cwd=work_repo,
+                check=True,
             )
 
             # Set up remote
             subprocess.run(
-                ["git", "remote", "add", "origin", str(bare_repo)], cwd=work_repo, check=True
+                ["git", "remote", "add", "origin", str(bare_repo)],
+                cwd=work_repo,
+                check=True,
             )
             subprocess.run(
                 [
@@ -73,7 +79,9 @@ class TestPREnrichmentCommand:
             subprocess.run(["git", "add", "test.py"], cwd=work_repo, check=True)
             subprocess.run(["git", "commit", "-m", "Add test file"], cwd=work_repo, check=True)
             subprocess.run(
-                ["git", "push", "-u", "origin", "feature/test-pr"], cwd=work_repo, check=True
+                ["git", "push", "-u", "origin", "feature/test-pr"],
+                cwd=work_repo,
+                check=True,
             )
 
             # Create fake gh CLI tool directory
@@ -144,7 +152,7 @@ if [[ "$ARGS" == *"pr view"* ]]; then
         test_env["PATH"] = f"{fake_bin}:{test_env['PATH']}"
 
         # Replace 'python' with the virtual environment's Python executable
-        python_executable = "/Users/ali/autorepro/.venv/bin/python"
+        python_executable = python_bin()
 
         # Update subprocess.run calls to use the virtual environment's Python executable
         result = subprocess.run(
@@ -186,7 +194,7 @@ if [[ "$ARGS" == *"pr view"* ]]; then
         test_env["PATH"] = f"{fake_bin}:{test_env['PATH']}"
 
         # Replace 'python' with the virtual environment's Python executable
-        python_executable = "/Users/ali/autorepro/.venv/bin/python"
+        python_executable = python_bin()
 
         # Update subprocess.run calls to use the virtual environment's Python executable
         result = subprocess.run(
@@ -230,7 +238,7 @@ if [[ "$ARGS" == *"pr view"* ]]; then
         test_env["PATH"] = f"{fake_bin}:{test_env['PATH']}"
 
         # Replace 'python' with the virtual environment's Python executable
-        python_executable = "/Users/ali/autorepro/.venv/bin/python"
+        python_executable = python_bin()
 
         # Update subprocess.run calls to use the virtual environment's Python executable
         result = subprocess.run(
@@ -272,7 +280,7 @@ if [[ "$ARGS" == *"pr view"* ]]; then
         test_env["PATH"] = f"{fake_bin}:{test_env['PATH']}"
 
         # Replace 'python' with the virtual environment's Python executable
-        python_executable = "/Users/ali/autorepro/.venv/bin/python"
+        python_executable = python_bin()
 
         # Update subprocess.run calls to use the virtual environment's Python executable
         result = subprocess.run(
@@ -316,7 +324,7 @@ if [[ "$ARGS" == *"pr view"* ]]; then
         test_env["PATH"] = f"{fake_bin}:{test_env['PATH']}"
 
         # Replace 'python' with the virtual environment's Python executable
-        python_executable = "/Users/ali/autorepro/.venv/bin/python"
+        python_executable = python_bin()
 
         # Update subprocess.run calls to use the virtual environment's Python executable
         result = subprocess.run(
@@ -359,7 +367,7 @@ if [[ "$ARGS" == *"pr view"* ]]; then
         test_env["PATH"] = f"{fake_bin}:{test_env['PATH']}"
 
         # Replace 'python' with the virtual environment's Python executable
-        python_executable = "/Users/ali/autorepro/.venv/bin/python"
+        python_executable = python_bin()
 
         # Update subprocess.run calls to use the virtual environment's Python executable
         result = subprocess.run(
@@ -402,7 +410,7 @@ if [[ "$ARGS" == *"pr view"* ]]; then
         test_env["PATH"] = f"{fake_bin}:{test_env['PATH']}"
 
         # Replace 'python' with the virtual environment's Python executable
-        python_executable = "/Users/ali/autorepro/.venv/bin/python"
+        python_executable = python_bin()
 
         # Update subprocess.run calls to use the virtual environment's Python executable
         result = subprocess.run(
@@ -448,7 +456,7 @@ if [[ "$ARGS" == *"pr view"* ]]; then
         test_env["PATH"] = f"{fake_bin}:{test_env['PATH']}"
 
         # Replace 'python' with the virtual environment's Python executable
-        python_executable = "/Users/ali/autorepro/.venv/bin/python"
+        python_executable = python_bin()
 
         # Update subprocess.run calls to use the virtual environment's Python executable
         result = subprocess.run(
@@ -495,7 +503,7 @@ if [[ "$ARGS" == *"pr view"* ]]; then
         test_env["PATH"] = f"{fake_bin}:{test_env['PATH']}"
 
         # Replace 'python' with the virtual environment's Python executable
-        python_executable = "/Users/ali/autorepro/.venv/bin/python"
+        python_executable = python_bin()
 
         # Update subprocess.run calls to use the virtual environment's Python executable
         result = subprocess.run(
@@ -541,7 +549,7 @@ if [[ "$ARGS" == *"pr view"* ]]; then
         test_env["PATH"] = f"{fake_bin}:{test_env['PATH']}"
 
         # Replace 'python' with the virtual environment's Python executable
-        python_executable = "/Users/ali/autorepro/.venv/bin/python"
+        python_executable = python_bin()
 
         # Update subprocess.run calls to use the virtual environment's Python executable
         result = subprocess.run(
@@ -601,7 +609,7 @@ if [[ "$ARGS" == *"pr view"* ]]; then
         test_env["PATH"] = f"{fake_bin}:{test_env['PATH']}"
 
         # Replace 'python' with the virtual environment's Python executable
-        python_executable = "/Users/ali/autorepro/.venv/bin/python"
+        python_executable = python_bin()
 
         # Update subprocess.run calls to use the virtual environment's Python executable
         result = subprocess.run(
@@ -650,7 +658,7 @@ if [[ "$ARGS" == *"pr view"* ]]; then
         test_env["PATH"] = f"{fake_bin}:{test_env['PATH']}"
 
         # Replace 'python' with the virtual environment's Python executable
-        python_executable = "/Users/ali/autorepro/.venv/bin/python"
+        python_executable = python_bin()
 
         # Update subprocess.run calls to use the virtual environment's Python executable
         result = subprocess.run(
@@ -725,7 +733,7 @@ fi
         # Run with --comment flag (should fail due to fake error)
         result = subprocess.run(
             [
-                "/Users/ali/autorepro/.venv/bin/python",
+                python_bin(),
                 "-m",
                 "autorepro",
                 "pr",
@@ -768,7 +776,7 @@ fi
         test_env["PATH"] = f"{fake_bin}:{test_env['PATH']}"
 
         # Replace 'python' with the virtual environment's Python executable
-        python_executable = "/Users/ali/autorepro/.venv/bin/python"
+        python_executable = python_bin()
 
         # Update subprocess.run calls to use the virtual environment's Python executable
         result = subprocess.run(

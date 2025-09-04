@@ -4,7 +4,14 @@ from pathlib import Path
 
 import pytest
 
-from tests._golden_utils import canon_json_bytes, canon_md, read, run_cli, unified_diff, write
+from tests._golden_utils import (
+    canon_json_bytes,
+    canon_md,
+    read,
+    run_cli,
+    unified_diff,
+    write,
+)
 
 # Get golden directory path
 GOLDEN_DIR = Path(__file__).parent / "golden"

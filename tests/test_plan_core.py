@@ -196,9 +196,9 @@ class TestSuggestCommands:
 
         # Check each score group is alphabetically ordered
         for score, commands in score_groups.items():
-            assert commands == sorted(
-                commands
-            ), f"Commands with score {score} not alphabetically ordered"
+            assert commands == sorted(commands), (
+                f"Commands with score {score} not alphabetically ordered"
+            )
 
     def test_detailed_rationales(self):
         """Test that rationales show matched keywords and detected langs."""
@@ -224,7 +224,7 @@ class TestSuggestCommands:
         suggestions = suggest_commands(keywords, detected_langs)
 
         # Should return empty list when no keyword or language matches
-        assert len(suggestions) == 0, f"Expected no suggestions, got: {suggestions}"
+        assert not suggestions, f"Expected no suggestions, got: {suggestions}"
 
     def test_suggest_commands_weighting(self):
         """Test that pytest -q ranks above npx vitest run with correct weighting."""
@@ -260,9 +260,9 @@ class TestSuggestCommands:
         vitest_index = next(
             i for i, (cmd, _, _) in enumerate(suggestions) if cmd == "npx vitest run"
         )
-        assert (
-            pytest_index < vitest_index
-        ), "pytest -q should appear before npx vitest run in sorted results"
+        assert pytest_index < vitest_index, (
+            "pytest -q should appear before npx vitest run in sorted results"
+        )
 
 
 class TestSafeTruncate60:
@@ -326,9 +326,8 @@ class TestBuildReproMd:
 
     def test_title_truncation(self):
         """Test that long titles are safely truncated."""
-        long_title = (
-            "This is a very long issue description that is definitely longer than sixty characters"
-        )
+        # String exceeding 60 chars to test truncation
+        long_title = "This is a very long issue description that is definitely longer than 60 chars"
         result = build_repro_md(long_title, [], [], [], [])
 
         lines = result.split("\n")
@@ -488,9 +487,9 @@ class TestBuildReproMd:
         # Assert sections are in correct order
         expected_order = ["title", "assumptions", "commands", "needs", "next_steps"]
         actual_order = sorted(section_indices.keys(), key=lambda k: section_indices[k])
-        assert (
-            actual_order == expected_order
-        ), f"Sections not in correct order. Expected {expected_order}, got {actual_order}"
+        assert actual_order == expected_order, (
+            f"Sections not in correct order. Expected {expected_order}, got {actual_order}"
+        )
 
         # Verify section content makes sense
         assert "Test Issue Title" in lines[section_indices["title"]]
@@ -609,7 +608,11 @@ class TestBuildReproJson:
     def test_command_parsing_multiple_keywords(self):
         """Test parsing multiple keywords from rationale."""
         commands = [
-            ("complex cmd", 5, "matched keywords: pytest, jest; detected langs: python, node"),
+            (
+                "complex cmd",
+                5,
+                "matched keywords: pytest, jest; detected langs: python, node",
+            ),
         ]
 
         result = build_repro_json("Test", [], commands, [], [])
@@ -623,7 +626,11 @@ class TestBuildReproJson:
     def test_command_parsing_special_characters(self):
         """Test that special characters are filtered from parsed keywords."""
         commands = [
-            ("test cmd", 5, "matched keywords: py*test, n@pm; detected langs: py-thon, no_de"),
+            (
+                "test cmd",
+                5,
+                "matched keywords: py*test, n@pm; detected langs: py-thon, no_de",
+            ),
         ]
 
         result = build_repro_json("Test", [], commands, [], [])
@@ -678,7 +685,13 @@ class TestBuildReproJson:
         # Check command object key order
         if result["commands"]:
             cmd_keys = list(result["commands"][0].keys())
-            expected_cmd_keys = ["cmd", "score", "rationale", "matched_keywords", "matched_langs"]
+            expected_cmd_keys = [
+                "cmd",
+                "score",
+                "rationale",
+                "matched_keywords",
+                "matched_langs",
+            ]
             assert cmd_keys == expected_cmd_keys
 
     def test_schema_versioning_fields(self):

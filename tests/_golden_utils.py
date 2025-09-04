@@ -35,7 +35,11 @@ def run_cli(args: list[str], cwd: Path) -> tuple[str, str, int]:
     env["PYTHONPATH"] = str(autorepro_root)
 
     cp = subprocess.run(
-        [sys.executable, "-m", "autorepro", *args], cwd=cwd, text=True, capture_output=True, env=env
+        [sys.executable, "-m", "autorepro", *args],
+        cwd=cwd,
+        text=True,
+        capture_output=True,
+        env=env,
     )
     return cp.stdout, cp.stderr, cp.returncode
 

@@ -99,7 +99,8 @@ def regold_plan(golden_dir, write=False):
 
             # Generate JSON
             result = run_cli(
-                ["plan", "--file", str(temp_desc), "--format", "json", "--out", "-"], tmp_path
+                ["plan", "--file", str(temp_desc), "--format", "json", "--out", "-"],
+                tmp_path,
             )
             if result.returncode != 0:
                 print(f"Error generating JSON for {case}: {result.stderr}")
