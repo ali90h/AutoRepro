@@ -32,6 +32,7 @@ from autorepro.planner import (
     safe_truncate_60,
     suggest_commands,
 )
+from autorepro.utils.file_ops import FileOperations
 
 
 def ensure_trailing_newline(content: str) -> str:
@@ -711,9 +712,7 @@ def cmd_plan(
         # Write output file
         try:
             out_path = Path(out).resolve()
-            out_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(out_path, "w", encoding="utf-8") as f:
-                f.write(content)
+            FileOperations.atomic_write(out_path, content)
             print(f"Wrote repro to {out_path}")
             return 0
         except OSError as e:
@@ -1021,7 +1020,7 @@ def cmd_exec(
     if tee_path:
         try:
             tee_path_obj = Path(tee_path)
-            tee_path_obj.parent.mkdir(parents=True, exist_ok=True)
+            FileOperations.ensure_directory(tee_path_obj.parent)
             with open(tee_path_obj, "a", encoding="utf-8") as f:
                 f.write(f"=== {start_iso} - {command_str} ===\n")
                 f.write("STDOUT:\n")
@@ -1037,7 +1036,7 @@ def cmd_exec(
     if jsonl_path:
         try:
             jsonl_path_obj = Path(jsonl_path)
-            jsonl_path_obj.parent.mkdir(parents=True, exist_ok=True)
+            FileOperations.ensure_directory(jsonl_path_obj.parent)
 
             # Prepare previews (first 2000 chars)
             stdout_preview = stdout_full[:2000] if stdout_full else ""

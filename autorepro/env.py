@@ -10,6 +10,7 @@ from shutil import which
 from typing import Any
 
 from .config import config
+from .utils.file_ops import FileOperations
 
 
 def python_bin() -> str:
@@ -213,11 +214,9 @@ def write_devcontainer(
 
     # Check if parent directory can be created
     try:
-        parent_dir = output_path.parent
-        if not parent_dir.exists():
-            parent_dir.mkdir(parents=True, exist_ok=True)
-    except (OSError, PermissionError) as e:
-        raise OSError(f"Cannot create parent directory: {parent_dir}") from e
+        FileOperations.ensure_directory(output_path.parent)
+    except OSError as e:
+        raise OSError(f"Cannot create parent directory: {output_path.parent}") from e
 
     # Check if file exists and handle idempotent behavior
     try:
