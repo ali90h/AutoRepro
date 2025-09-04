@@ -124,7 +124,10 @@ class TestWriteDevcontainerWithDiff:
 
         assert result_path == output_file
         assert diff_lines is not None
-        expected_diff = ['~ features.python.version: "3.10" -> "3.11"', '~ name: "old" -> "new"']
+        expected_diff = [
+            '~ features.python.version: "3.10" -> "3.11"',
+            '~ name: "old" -> "new"',
+        ]
         assert diff_lines == expected_diff
 
     def test_write_devcontainer_overwrite_no_changes(self, tmp_path):

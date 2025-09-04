@@ -105,7 +105,15 @@ class TestPlanJSONFileOutput:
         output_file.write_text('{"old": "content"}\n')
 
         result = run_plan_subprocess(
-            ["--desc", "jest failing", "--format", "json", "--out", str(output_file), "--force"],
+            [
+                "--desc",
+                "jest failing",
+                "--format",
+                "json",
+                "--out",
+                str(output_file),
+                "--force",
+            ],
             cwd=tmp_path,
         )
 
@@ -203,7 +211,15 @@ class TestPlanJSONStdoutOutput:
         output_file = tmp_path / "should_not_exist.json"
 
         result = run_plan_subprocess(
-            ["--desc", "jest failing", "--format", "json", "--out", str(output_file), "--dry-run"],
+            [
+                "--desc",
+                "jest failing",
+                "--format",
+                "json",
+                "--out",
+                str(output_file),
+                "--dry-run",
+            ],
             cwd=tmp_path,
         )
 
@@ -289,7 +305,16 @@ class TestPlanJSONWithRepo:
         create_project_markers(repo_dir, "go")
 
         result = run_plan_subprocess(
-            ["--desc", "go test failing", "--format", "json", "--repo", "project", "--out", "-"],
+            [
+                "--desc",
+                "go test failing",
+                "--format",
+                "json",
+                "--repo",
+                "project",
+                "--out",
+                "-",
+            ],
             cwd=tmp_path,
         )
 
@@ -338,7 +363,8 @@ class TestPlanJSONValidation:
         create_project_markers(tmp_path, "python")
 
         result = run_plan_subprocess(
-            ["--desc", "pytest and jest failing", "--format", "json", "--out", "-"], cwd=tmp_path
+            ["--desc", "pytest and jest failing", "--format", "json", "--out", "-"],
+            cwd=tmp_path,
         )
 
         assert result.returncode == 0
@@ -347,7 +373,13 @@ class TestPlanJSONValidation:
 
         # Verify each command has correct structure
         for cmd in data["commands"]:
-            expected_cmd_keys = ["cmd", "score", "rationale", "matched_keywords", "matched_langs"]
+            expected_cmd_keys = [
+                "cmd",
+                "score",
+                "rationale",
+                "matched_keywords",
+                "matched_langs",
+            ]
             assert list(cmd.keys()) == expected_cmd_keys
 
             assert isinstance(cmd["cmd"], str)
@@ -378,7 +410,14 @@ class TestPlanJSONValidation:
         create_project_markers(tmp_path, "mixed")  # Python + Node
 
         result = run_plan_subprocess(
-            ["--desc", "pytest and jest both failing", "--format", "json", "--out", "-"],
+            [
+                "--desc",
+                "pytest and jest both failing",
+                "--format",
+                "json",
+                "--out",
+                "-",
+            ],
             cwd=tmp_path,
         )
 

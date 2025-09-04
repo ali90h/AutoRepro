@@ -96,7 +96,8 @@ class TestPlanCLIStrictMode:
         """Test --strict exits with code 1 when no commands make the cut."""
         # No project markers, generic description - should have no high-scoring commands
         result = run_plan_subprocess(
-            ["--desc", "random generic issue", "--min-score", "5", "--strict"], cwd=tmp_path
+            ["--desc", "random generic issue", "--min-score", "5", "--strict"],
+            cwd=tmp_path,
         )
 
         assert result.returncode == 1, f"Expected exit code 1, got {result.returncode}"
@@ -149,13 +150,15 @@ class TestPlanCLIMinScore:
 
         # Low min-score should show more commands
         result_low = run_plan_subprocess(
-            ["--desc", "pytest failing", "--min-score", "1", "--out", "low.md"], cwd=tmp_path
+            ["--desc", "pytest failing", "--min-score", "1", "--out", "low.md"],
+            cwd=tmp_path,
         )
         assert result_low.returncode == 0
 
         # High min-score should show fewer commands
         result_high = run_plan_subprocess(
-            ["--desc", "pytest failing", "--min-score", "4", "--out", "high.md"], cwd=tmp_path
+            ["--desc", "pytest failing", "--min-score", "4", "--out", "high.md"],
+            cwd=tmp_path,
         )
         assert result_high.returncode == 0
 
@@ -214,7 +217,8 @@ class TestPlanCLIJSONOutputFiltering:
         create_project_markers(tmp_path, "python")
 
         result = run_plan_subprocess(
-            ["--desc", "pytest failing", "--format", "json", "--min-score", "4"], cwd=tmp_path
+            ["--desc", "pytest failing", "--format", "json", "--min-score", "4"],
+            cwd=tmp_path,
         )
         assert result.returncode == 0
 
@@ -231,7 +235,8 @@ class TestPlanCLIJSONOutputFiltering:
     def test_json_strict_mode(self, tmp_path):
         """Test JSON output with strict mode."""
         result = run_plan_subprocess(
-            ["--desc", "random", "--format", "json", "--min-score", "5", "--strict"], cwd=tmp_path
+            ["--desc", "random", "--format", "json", "--min-score", "5", "--strict"],
+            cwd=tmp_path,
         )
         assert result.returncode == 1
         assert "no candidate commands above min-score=5" in result.stderr

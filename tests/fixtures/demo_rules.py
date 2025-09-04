@@ -7,6 +7,11 @@ def provide_rules():
     """Provide additional rules for testing plugin system."""
     return {
         "python": [
-            Rule("pytest -q -k smoke", {"pytest", "smoke"}, weight=1, tags={"test", "plugin"}),
+            Rule(
+                "pytest -q -k smoke",
+                {"pytest", "smoke"},
+                weight=1,
+                tags={"test", "plugin"},
+            ),
         ]
     }

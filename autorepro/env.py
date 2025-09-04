@@ -165,7 +165,9 @@ def json_diff(old: dict[str, Any], new: dict[str, Any]) -> list[str]:
 
 
 def write_devcontainer(
-    content: dict[str, str | dict[str, dict[str, str]]], force: bool = False, out: str | None = None
+    content: dict[str, str | dict[str, dict[str, str]]],
+    force: bool = False,
+    out: str | None = None,
 ) -> tuple[Path, list[str] | None]:
     """
     Write devcontainer configuration to file with atomic and idempotent behavior.

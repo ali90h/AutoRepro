@@ -20,7 +20,12 @@ from .io.github import (
 from .planner import (
     safe_truncate_60,
 )
-from .sync import ReportMeta, find_autorepro_content, find_synced_block, replace_synced_block
+from .sync import (
+    ReportMeta,
+    find_autorepro_content,
+    find_synced_block,
+    replace_synced_block,
+)
 from .utils.github_api import update_comment
 from .utils.repro_bundle import generate_plan_content
 

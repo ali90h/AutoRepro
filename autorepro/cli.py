@@ -509,7 +509,8 @@ def cmd_plan(
                 return 2
         except (OSError, ValueError):
             print(
-                f"Error: --repo path does not exist or is not a directory: {repo}", file=sys.stderr
+                f"Error: --repo path does not exist or is not a directory: {repo}",
+                file=sys.stderr,
             )
             return 2
 
@@ -678,7 +679,7 @@ def cmd_plan(
         # Use the standardized JSON function
         json_output = build_repro_json(
             title=safe_truncate_60(title),
-            assumptions=assumptions if assumptions else ["Standard development environment"],
+            assumptions=(assumptions if assumptions else ["Standard development environment"]),
             commands=limited_suggestions,
             needs=needs if needs else ["Standard development environment"],
             next_steps=(
@@ -742,7 +743,8 @@ def cmd_init(
                 return 2
         except (OSError, ValueError):
             print(
-                f"Error: --repo path does not exist or is not a directory: {repo}", file=sys.stderr
+                f"Error: --repo path does not exist or is not a directory: {repo}",
+                file=sys.stderr,
             )
             return 2
 
@@ -1127,7 +1129,15 @@ def cmd_pr(
         try:
             # Look for existing PR
             result = subprocess.run(
-                ["gh", "pr", "list", "--head", "feature/test-pr", "--json", "number,isDraft"],
+                [
+                    "gh",
+                    "pr",
+                    "list",
+                    "--head",
+                    "feature/test-pr",
+                    "--json",
+                    "number,isDraft",
+                ],
                 capture_output=True,
                 text=True,
                 check=True,

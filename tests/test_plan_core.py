@@ -327,7 +327,8 @@ class TestBuildReproMd:
     def test_title_truncation(self):
         """Test that long titles are safely truncated."""
         long_title = (
-            "This is a very long issue description that is definitely longer than sixty characters"
+            "This is a very long issue description that is definitely "
+            "longer than sixty characters"
         )
         result = build_repro_md(long_title, [], [], [], [])
 
@@ -609,7 +610,11 @@ class TestBuildReproJson:
     def test_command_parsing_multiple_keywords(self):
         """Test parsing multiple keywords from rationale."""
         commands = [
-            ("complex cmd", 5, "matched keywords: pytest, jest; detected langs: python, node"),
+            (
+                "complex cmd",
+                5,
+                "matched keywords: pytest, jest; detected langs: python, node",
+            ),
         ]
 
         result = build_repro_json("Test", [], commands, [], [])
@@ -623,7 +628,11 @@ class TestBuildReproJson:
     def test_command_parsing_special_characters(self):
         """Test that special characters are filtered from parsed keywords."""
         commands = [
-            ("test cmd", 5, "matched keywords: py*test, n@pm; detected langs: py-thon, no_de"),
+            (
+                "test cmd",
+                5,
+                "matched keywords: py*test, n@pm; detected langs: py-thon, no_de",
+            ),
         ]
 
         result = build_repro_json("Test", [], commands, [], [])
@@ -678,7 +687,13 @@ class TestBuildReproJson:
         # Check command object key order
         if result["commands"]:
             cmd_keys = list(result["commands"][0].keys())
-            expected_cmd_keys = ["cmd", "score", "rationale", "matched_keywords", "matched_langs"]
+            expected_cmd_keys = [
+                "cmd",
+                "score",
+                "rationale",
+                "matched_keywords",
+                "matched_langs",
+            ]
             assert cmd_keys == expected_cmd_keys
 
     def test_schema_versioning_fields(self):

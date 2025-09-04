@@ -25,7 +25,11 @@ WEIGHTED_PATTERNS = {
         "kind": "lock",
         "language": "node",
     },
-    "yarn.lock": {"weight": config.detection.weights["lock"], "kind": "lock", "language": "node"},
+    "yarn.lock": {
+        "weight": config.detection.weights["lock"],
+        "kind": "lock",
+        "language": "node",
+    },
     "npm-shrinkwrap.json": {
         "weight": config.detection.weights["lock"],
         "kind": "lock",
@@ -36,21 +40,37 @@ WEIGHTED_PATTERNS = {
         "kind": "lock",
         "language": "node",
     },
-    "go.sum": {"weight": config.detection.weights["lock"], "kind": "lock", "language": "go"},
-    "Cargo.lock": {"weight": config.detection.weights["lock"], "kind": "lock", "language": "rust"},
+    "go.sum": {
+        "weight": config.detection.weights["lock"],
+        "kind": "lock",
+        "language": "go",
+    },
+    "Cargo.lock": {
+        "weight": config.detection.weights["lock"],
+        "kind": "lock",
+        "language": "rust",
+    },
     # Config/manifest files (configurable weight)
     "pyproject.toml": {
         "weight": config.detection.weights["config"],
         "kind": "config",
         "language": "python",
     },
-    "go.mod": {"weight": config.detection.weights["config"], "kind": "config", "language": "go"},
+    "go.mod": {
+        "weight": config.detection.weights["config"],
+        "kind": "config",
+        "language": "go",
+    },
     "Cargo.toml": {
         "weight": config.detection.weights["config"],
         "kind": "config",
         "language": "rust",
     },
-    "pom.xml": {"weight": config.detection.weights["config"], "kind": "config", "language": "java"},
+    "pom.xml": {
+        "weight": config.detection.weights["config"],
+        "kind": "config",
+        "language": "java",
+    },
     "package.json": {
         "weight": config.detection.weights["config"],
         "kind": "config",
@@ -71,21 +91,61 @@ WEIGHTED_PATTERNS = {
 
 # Source file patterns with configurable weights
 SOURCE_PATTERNS = {
-    "*.py": {"weight": config.detection.weights["source"], "kind": "source", "language": "python"},
-    "*.go": {"weight": config.detection.weights["source"], "kind": "source", "language": "go"},
-    "*.rs": {"weight": config.detection.weights["source"], "kind": "source", "language": "rust"},
-    "*.java": {"weight": config.detection.weights["source"], "kind": "source", "language": "java"},
-    "*.cs": {"weight": config.detection.weights["source"], "kind": "source", "language": "csharp"},
-    "*.js": {"weight": config.detection.weights["source"], "kind": "source", "language": "node"},
-    "*.ts": {"weight": config.detection.weights["source"], "kind": "source", "language": "node"},
-    "*.jsx": {"weight": config.detection.weights["source"], "kind": "source", "language": "node"},
-    "*.tsx": {"weight": config.detection.weights["source"], "kind": "source", "language": "node"},
+    "*.py": {
+        "weight": config.detection.weights["source"],
+        "kind": "source",
+        "language": "python",
+    },
+    "*.go": {
+        "weight": config.detection.weights["source"],
+        "kind": "source",
+        "language": "go",
+    },
+    "*.rs": {
+        "weight": config.detection.weights["source"],
+        "kind": "source",
+        "language": "rust",
+    },
+    "*.java": {
+        "weight": config.detection.weights["source"],
+        "kind": "source",
+        "language": "java",
+    },
+    "*.cs": {
+        "weight": config.detection.weights["source"],
+        "kind": "source",
+        "language": "csharp",
+    },
+    "*.js": {
+        "weight": config.detection.weights["source"],
+        "kind": "source",
+        "language": "node",
+    },
+    "*.ts": {
+        "weight": config.detection.weights["source"],
+        "kind": "source",
+        "language": "node",
+    },
+    "*.jsx": {
+        "weight": config.detection.weights["source"],
+        "kind": "source",
+        "language": "node",
+    },
+    "*.tsx": {
+        "weight": config.detection.weights["source"],
+        "kind": "source",
+        "language": "node",
+    },
     "*.csproj": {
         "weight": config.detection.weights["config"],
         "kind": "config",
         "language": "csharp",
     },
-    "*.sln": {"weight": config.detection.weights["config"], "kind": "config", "language": "csharp"},
+    "*.sln": {
+        "weight": config.detection.weights["config"],
+        "kind": "config",
+        "language": "csharp",
+    },
     "build.gradle": {
         "weight": config.detection.weights["config"],
         "kind": "config",

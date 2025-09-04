@@ -15,7 +15,11 @@ def run_command(cmd: list[str]) -> str:
     """Run a command and return its stdout."""
     try:
         result = subprocess.run(
-            cmd, capture_output=True, text=True, check=True, cwd=Path(__file__).parent.parent.parent
+            cmd,
+            capture_output=True,
+            text=True,
+            check=True,
+            cwd=Path(__file__).parent.parent.parent,
         )
         return result.stdout
     except subprocess.CalledProcessError as e:
@@ -73,7 +77,11 @@ def compare_text_outputs(baseline_file: str, current_output: str, test_name: str
     else:
         print(f"❌ {test_name}: Text outputs differ")
         diff = difflib.unified_diff(
-            baseline_lines, current_lines, fromfile="baseline", tofile="current", lineterm=""
+            baseline_lines,
+            current_lines,
+            fromfile="baseline",
+            tofile="current",
+            lineterm="",
         )
         for line in list(diff)[:10]:  # Show first 10 diff lines
             print(line)
@@ -110,7 +118,15 @@ def test_plan_json():
 def test_plan_markdown():
     """Test plan command markdown output."""
     current = run_command(
-        ["python", "-m", "autorepro", "plan", "--desc", "npm test failing in CI", "--dry-run"]
+        [
+            "python",
+            "-m",
+            "autorepro",
+            "plan",
+            "--desc",
+            "npm test failing in CI",
+            "--dry-run",
+        ]
     )
     return compare_text_outputs("baseline_plan.md", current, "Plan Markdown")
 

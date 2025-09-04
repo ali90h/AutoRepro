@@ -88,7 +88,16 @@ def benchmark_plan_commands() -> dict[str, dict[str, float]]:
     print("📊 Benchmarking plan commands...")
 
     commands = {
-        "plan_simple": ["python", "-m", "autorepro", "plan", "--desc", "test issue", "--out", "-"],
+        "plan_simple": [
+            "python",
+            "-m",
+            "autorepro",
+            "plan",
+            "--desc",
+            "test issue",
+            "--out",
+            "-",
+        ],
         "plan_complex": [
             "python",
             "-m",

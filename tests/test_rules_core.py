@@ -166,7 +166,10 @@ def provide_rules():
         """Test debug flag shows plugin loading errors."""
         with patch.dict(
             os.environ,
-            {"AUTOREPRO_PLUGINS": "nonexistent.plugin.module", "AUTOREPRO_PLUGINS_DEBUG": "1"},
+            {
+                "AUTOREPRO_PLUGINS": "nonexistent.plugin.module",
+                "AUTOREPRO_PLUGINS_DEBUG": "1",
+            },
         ):
             _load_plugin_rules()
             captured = capsys.readouterr()

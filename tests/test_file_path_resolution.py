@@ -105,7 +105,8 @@ class TestFilePathResolution:
 
         # Run with absolute path - should use exact path
         result = run_plan_subprocess(
-            ["--file", str(issue_file), "--repo", str(repo_dir), "--dry-run"], cwd=repo_dir
+            ["--file", str(issue_file), "--repo", str(repo_dir), "--dry-run"],
+            cwd=repo_dir,
         )
 
         assert result.returncode == 0, (
@@ -167,7 +168,8 @@ class TestFilePathResolution:
 
         # Run from work_dir with subdir path - should fallback to repo
         result = run_plan_subprocess(
-            ["--file", "issues/bug-report.txt", "--repo", str(repo_dir), "--dry-run"], cwd=work_dir
+            ["--file", "issues/bug-report.txt", "--repo", str(repo_dir), "--dry-run"],
+            cwd=work_dir,
         )
 
         assert result.returncode == 0, (
