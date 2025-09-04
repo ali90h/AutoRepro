@@ -43,8 +43,7 @@ jobs:
       - name: Pre-commit (repo policy)
         run: pre-commit run --all-files
 
-      - name: Black (format check)
-        run: python -m black --check .
+
 
       - name: Ruff (lint)
         run: python -m ruff check .

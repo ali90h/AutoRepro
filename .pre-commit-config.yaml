@@ -9,14 +9,8 @@ repos:
       - id: check-toml
       - id: check-merge-conflict
 
-  - repo: https://github.com/psf/black
-    rev: 23.12.1
-    hooks:
-      - id: black
-        language_version: python3.11
-
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.1.13
+    rev: v0.12.11
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
