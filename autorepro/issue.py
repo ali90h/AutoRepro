@@ -11,7 +11,6 @@ This module handles GitHub issue synchronization with autorepro plans, including
 
 from __future__ import annotations
 
-import json
 import logging
 import subprocess
 from pathlib import Path
@@ -23,15 +22,10 @@ from .io.github import (
     get_current_pr_for_branch,
     get_issue_comments,
 )
-from .planner import (
-    build_repro_json,
-    build_repro_md,
-    safe_truncate_60,
-)
 from .report import collect_env_info, pack_zip, write_plan
 from .sync import find_autorepro_content, render_sync_comment
 from .utils.github_api import update_comment
-from .utils.plan_processing import process_plan_input
+from .utils.repro_bundle import generate_plan_content
 
 
 class ReportMeta(NamedTuple):
@@ -139,7 +133,7 @@ def generate_plan_for_issue(
         desc_or_file: Issue description text or file path
         format_type: Output format ('md' or 'json')
         min_score: Minimum score for command suggestions
-        max_commands: Maximum number of commands to include
+        max_commands: Maximum number of commands to include (unused - delegated to shared function)
         repo_path: Repository path (defaults to current directory)
 
     Returns:
@@ -148,38 +142,8 @@ def generate_plan_for_issue(
     if repo_path is None:
         repo_path = Path.cwd()
 
-    # Use common plan processing function
-    plan_data = process_plan_input(desc_or_file, repo_path, min_score)
-
-    # Limit suggestions to max_commands and convert to tuples
-    command_tuples = [
-        (suggestion["cmd"], suggestion["score"], suggestion["rationale"])
-        for suggestion in plan_data.suggestions[:max_commands]
-    ]
-
-    # Generate content
-    if format_type == "json":
-        content = build_repro_json(
-            title=safe_truncate_60(plan_data.title),
-            assumptions=plan_data.assumptions,
-            commands=command_tuples,
-            needs=plan_data.needs,
-            next_steps=plan_data.next_steps,
-        )
-        content_str = json.dumps(content, indent=2)
-    else:
-        content_str = build_repro_md(
-            plan_data.title,
-            plan_data.assumptions,
-            command_tuples,
-            plan_data.needs,
-            plan_data.next_steps,
-        )
-
-    # Ensure proper newline termination
-    content_str = content_str.rstrip() + "\n"
-
-    return content_str
+    # Use shared plan content generation function
+    return generate_plan_content(desc_or_file, repo_path, format_type, min_score)
 
 
 def find_autorepro_comment(comments: list[dict[str, Any]]) -> dict[str, Any] | None:

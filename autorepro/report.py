@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any
 
 from . import __version__
+from .config import config
 from .detect import collect_evidence, detect_languages
 from .planner import (
     extract_keywords,
@@ -107,7 +108,9 @@ def write_plan(repo: Path, desc_or_file: str | None, format_type: str) -> tuple[
     """
 
     # Use shared plan content generation
-    content_str = generate_plan_content(desc_or_file, repo, format_type, min_score=2)
+    content_str = generate_plan_content(
+        desc_or_file, repo, format_type, min_score=config.limits.min_score_threshold
+    )
 
     # Write to temporary file
     extension = ".json" if format_type == "json" else ".md"
@@ -155,7 +158,7 @@ def maybe_exec(repo: Path, opts: dict[str, Any]) -> tuple[int, Path | None, Path
         detected_languages = detect_languages(".")
         lang_names = [lang for lang, _ in detected_languages]
 
-        min_score = opts.get("min_score", 2)
+        min_score = opts.get("min_score", config.limits.min_score_threshold)
         suggestions = suggest_commands(keywords, lang_names, min_score)
 
         # Check strict mode
@@ -234,7 +237,7 @@ def maybe_exec(repo: Path, opts: dict[str, Any]) -> tuple[int, Path | None, Path
         # Execute command
         start_time = datetime.now()
         start_iso = start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
-        timeout = opts.get("timeout", 120)
+        timeout = opts.get("timeout", config.timeouts.default_seconds)
 
         log.info(f"Executing: {command_str}")
         timed_out = False

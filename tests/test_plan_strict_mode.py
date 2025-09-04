@@ -54,13 +54,13 @@ class TestPlanCoreFiltering:
 
         # Test with high min_score=4 - should exclude Python-only commands (score 2)
         suggestions_high = suggest_commands(keywords, detected_langs, min_score=4)
-        assert len(suggestions_high) == 0, "Should exclude commands with score < 4"
+        assert not suggestions_high, "Should exclude commands with score < 4"
 
         # Test with low min_score=1 - should include more commands
         suggestions_low = suggest_commands(keywords, detected_langs, min_score=1)
-        assert len(suggestions_low) >= len(
-            suggestions_default
-        ), "Lower min_score should include more commands"
+        assert len(suggestions_low) >= len(suggestions_default), (
+            "Lower min_score should include more commands"
+        )
 
     def test_keyword_match_respects_min_score(self):
         """Test that direct keyword matches are filtered by min_score."""
@@ -73,7 +73,7 @@ class TestPlanCoreFiltering:
 
         # With min_score=5, should exclude all pytest commands (max score is 4)
         suggestions_high = suggest_commands(keywords, detected_langs, min_score=5)
-        assert len(suggestions_high) == 0, "Should exclude commands with score < min_score"
+        assert not suggestions_high, "Should exclude commands with score < min_score"
 
     def test_language_match_respects_min_score(self):
         """Test that language detection matches are filtered by min_score."""
@@ -86,7 +86,7 @@ class TestPlanCoreFiltering:
 
         # With min_score=4, should exclude python commands (max score is 3)
         suggestions_high = suggest_commands(keywords, detected_langs, min_score=4)
-        assert len(suggestions_high) == 0, "Should exclude commands with score < min_score"
+        assert not suggestions_high, "Should exclude commands with score < min_score"
 
 
 class TestPlanCLIStrictMode:
@@ -110,9 +110,9 @@ class TestPlanCLIStrictMode:
             ["--desc", "pytest failing", "--min-score", "2", "--strict"], cwd=tmp_path
         )
 
-        assert (
-            result.returncode == 0
-        ), f"Expected exit code 0, got {result.returncode}. STDERR: {result.stderr}"
+        assert result.returncode == 0, (
+            f"Expected exit code 0, got {result.returncode}. STDERR: {result.stderr}"
+        )
 
     def test_non_strict_mode_always_exit_0(self, tmp_path):
         """Test non-strict mode always exits 0 even with no commands."""
@@ -121,9 +121,9 @@ class TestPlanCLIStrictMode:
             ["--desc", "random generic issue", "--min-score", "5"], cwd=tmp_path
         )
 
-        assert (
-            result.returncode == 0
-        ), f"Non-strict mode should always exit 0, got {result.returncode}"
+        assert result.returncode == 0, (
+            f"Non-strict mode should always exit 0, got {result.returncode}"
+        )
 
 
 class TestPlanCLIMinScore:

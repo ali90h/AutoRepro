@@ -108,17 +108,17 @@ class TestPlanMaxLimitsCommands:
             print(f"Extracted commands: {limited_commands}")
 
         # Should limit to exactly 3 commands
-        assert (
-            len(limited_commands) == 3
-        ), f"Expected 3 commands, got {len(limited_commands)}: {limited_commands}"
-        assert (
-            len(full_commands) >= 3
-        ), f"Need at least 3 full commands, got {len(full_commands)}: {full_commands}"
+        assert len(limited_commands) == 3, (
+            f"Expected 3 commands, got {len(limited_commands)}: {limited_commands}"
+        )
+        assert len(full_commands) >= 3, (
+            f"Need at least 3 full commands, got {len(full_commands)}: {full_commands}"
+        )
 
         # Should be the first 3 from the full list (preserving order)
-        assert (
-            limited_commands == full_commands[:3]
-        ), f"Order not preserved: {limited_commands} vs {full_commands[:3]}"
+        assert limited_commands == full_commands[:3], (
+            f"Order not preserved: {limited_commands} vs {full_commands[:3]}"
+        )
 
 
 class TestInitForceMtimePreservation:
@@ -297,7 +297,7 @@ class TestCommandFiltering:
                     and not line.startswith("#")
                 ):
                     command_lines.append(line)
-        assert len(command_lines) == 0, f"Expected no commands, but got: {command_lines}"
+        assert not command_lines, f"Expected no commands, but got: {command_lines}"
 
     def test_keyword_match_shows_command(self, tmp_path):
         """Test that keyword matches show relevant commands."""
@@ -321,9 +321,9 @@ class TestCommandFiltering:
                     and not line.startswith("#")
                 ):
                     command_lines.append(line)
-        assert (
-            len(command_lines) > 0
-        ), f"Expected commands due to pytest keyword match, got: {command_lines}"
+        assert len(command_lines) > 0, (
+            f"Expected commands due to pytest keyword match, got: {command_lines}"
+        )
 
         # At least one should be pytest related
         pytest_commands = [line for line in command_lines if "pytest" in line]
@@ -356,9 +356,9 @@ class TestCommandFiltering:
                     and not line.startswith("#")
                 ):
                     command_lines.append(line)
-        assert (
-            len(command_lines) > 0
-        ), f"Expected commands due to Python language detection, got: {command_lines}"
+        assert len(command_lines) > 0, (
+            f"Expected commands due to Python language detection, got: {command_lines}"
+        )
 
         # Should have Python-related commands
         python_commands = [
@@ -392,14 +392,14 @@ class TestIntegrationExitCodes:
         """Test that CLI misuse returns exit code 2."""
         # Test plan without required --desc
         result = run_cli_subprocess(["plan"], cwd=tmp_path)
-        assert (
-            result.returncode == 2
-        ), f"plan without --desc should return 2, got {result.returncode}"
+        assert result.returncode == 2, (
+            f"plan without --desc should return 2, got {result.returncode}"
+        )
 
         # Test invalid --repo path
         result = run_cli_subprocess(
             ["plan", "--desc", "test", "--repo", "/nonexistent/path"], cwd=tmp_path
         )
-        assert (
-            result.returncode == 2
-        ), f"plan with invalid --repo should return 2, got {result.returncode}"
+        assert result.returncode == 2, (
+            f"plan with invalid --repo should return 2, got {result.returncode}"
+        )

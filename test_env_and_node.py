@@ -44,9 +44,9 @@ def test_plan_infers_env_presence():
         print(f"Return code: {result.returncode}")
 
         # Should succeed
-        assert (
-            result.returncode == 0
-        ), f"Expected success, got {result.returncode}. STDERR: {result.stderr}"
+        assert result.returncode == 0, (
+            f"Expected success, got {result.returncode}. STDERR: {result.stderr}"
+        )
 
         # Assert repro.md contains devcontainer: present in Needed Files/Env
         repro_file = tmp_path / "repro.md"
@@ -87,9 +87,9 @@ def test_plan_node_keywords():
         print(f"Return code: {result.returncode}")
 
         # Should succeed
-        assert (
-            result.returncode == 0
-        ), f"Expected success, got {result.returncode}. STDERR: {result.stderr}"
+        assert result.returncode == 0, (
+            f"Expected success, got {result.returncode}. STDERR: {result.stderr}"
+        )
 
         # Assert output contains either npm test -s or npx jest -w=1
         repro_file = tmp_path / "repro.md"
@@ -105,9 +105,9 @@ def test_plan_node_keywords():
         print(f"Has npm test -s: {has_npm_test}")
         print(f"Has npx jest -w=1: {has_npx_jest}")
 
-        assert (
-            has_npm_test or has_npx_jest
-        ), f"Should contain either 'npm test -s' or 'npx jest -w=1' in content: {content}"
+        assert has_npm_test or has_npx_jest, (
+            f"Should contain either 'npm test -s' or 'npx jest -w=1' in content: {content}"
+        )
 
         # Show the commands section
         lines = content.split("\n")

@@ -1,0 +1,22 @@
+Name                                 Stmts   Miss Branch BrPart  Cover
+----------------------------------------------------------------------
+autorepro/__init__.py                    2      0      0      0   100%
+autorepro/cli.py                       562    293    196     30    46%
+autorepro/core/__init__.py               0      0      0      0   100%
+autorepro/core/planning.py             120      1     56      3    98%
+autorepro/detect.py                     59      7     36      3    87%
+autorepro/env.py                       126     24     44      7    77%
+autorepro/io/__init__.py                 0      0      0      0   100%
+autorepro/io/github.py                 230    230     60      0     0%
+autorepro/issue.py                      85     85     18      0     0%
+autorepro/planner.py                    11      0      0      0   100%
+autorepro/pr.py                        118    118     34      0     0%
+autorepro/report.py                    186    186     42      0     0%
+autorepro/rules.py                      49      2     24      5    90%
+autorepro/sync.py                       84      0     28      0   100%
+autorepro/utils/__init__.py              0      0      0      0   100%
+autorepro/utils/github_api.py           20     20      2      0     0%
+autorepro/utils/plan_processing.py      75     75     32      0     0%
+autorepro/utils/repro_bundle.py         15     15      2      0     0%
+----------------------------------------------------------------------
+TOTAL                                 1742   1056    574     48    40%

@@ -5,6 +5,7 @@ Common GitHub API utilities.
 
 from __future__ import annotations
 
+import contextlib
 import os
 import subprocess
 import tempfile
@@ -60,7 +61,5 @@ def update_comment(
         raise RuntimeError(f"Failed to update {context} comment: {e}") from e
     finally:
         # Clean up temp file
-        try:
+        with contextlib.suppress(OSError):
             os.unlink(body_file)
-        except OSError:
-            pass

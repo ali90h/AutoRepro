@@ -134,6 +134,6 @@ class TestRepoPathStability:
         repo_devcontainer = repo_dir / ".devcontainer" / "devcontainer.json"
         current_devcontainer = tmp_path / ".devcontainer" / "devcontainer.json"
         assert repo_devcontainer.exists(), "Devcontainer should be created in repo directory"
-        assert (
-            not current_devcontainer.exists()
-        ), "Devcontainer should NOT be created in current directory"
+        assert not current_devcontainer.exists(), (
+            "Devcontainer should NOT be created in current directory"
+        )

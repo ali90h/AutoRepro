@@ -430,9 +430,9 @@ class TestInitIntegration:
 
         # mtime should be unchanged since content is identical
         mtime2 = os.path.getmtime(devcontainer_file)
-        assert (
-            mtime2 == mtime1
-        ), f"mtime should be preserved when content is unchanged. mtime1={mtime1}, mtime2={mtime2}"
+        assert mtime2 == mtime1, (
+            f"mtime should be preserved when content is unchanged. mtime1={mtime1}, mtime2={mtime2}"
+        )
 
     def test_init_dry_run_ignores_force_flag(self, tmp_path):
         """Test that --dry-run ignores --force flag and outputs to stdout."""
@@ -495,6 +495,6 @@ class TestInitIntegration:
 
         # mtime should be unchanged since content is identical
         mtime2 = os.path.getmtime(devcontainer_file)
-        assert (
-            mtime2 == mtime1
-        ), f"mtime should be preserved when content is unchanged. mtime1={mtime1}, mtime2={mtime2}"
+        assert mtime2 == mtime1, (
+            f"mtime should be preserved when content is unchanged. mtime1={mtime1}, mtime2={mtime2}"
+        )

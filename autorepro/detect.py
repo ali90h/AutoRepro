@@ -4,6 +4,8 @@ import glob
 import os
 from pathlib import Path
 
+from .config import config
+
 # Language detection patterns: language -> list of file patterns
 # MVP limitation: source-file globs may cause false positives in sparse repos
 LANGUAGE_PATTERNS = {
@@ -17,39 +19,83 @@ LANGUAGE_PATTERNS = {
 
 # Weighted index table for scoring language detection
 WEIGHTED_PATTERNS = {
-    # Lock files (weight 4)
-    "pnpm-lock.yaml": {"weight": 4, "kind": "lock", "language": "node"},
-    "yarn.lock": {"weight": 4, "kind": "lock", "language": "node"},
-    "npm-shrinkwrap.json": {"weight": 4, "kind": "lock", "language": "node"},
-    "package-lock.json": {"weight": 4, "kind": "lock", "language": "node"},
-    "go.sum": {"weight": 4, "kind": "lock", "language": "go"},
-    "Cargo.lock": {"weight": 4, "kind": "lock", "language": "rust"},
-    # Config/manifest files (weight 3)
-    "pyproject.toml": {"weight": 3, "kind": "config", "language": "python"},
-    "go.mod": {"weight": 3, "kind": "config", "language": "go"},
-    "Cargo.toml": {"weight": 3, "kind": "config", "language": "rust"},
-    "pom.xml": {"weight": 3, "kind": "config", "language": "java"},
-    "package.json": {"weight": 3, "kind": "config", "language": "node"},
-    # Setup/requirements files (weight 2)
-    "setup.py": {"weight": 2, "kind": "setup", "language": "python"},
-    "requirements.txt": {"weight": 2, "kind": "setup", "language": "python"},
+    # Lock files (configurable weight)
+    "pnpm-lock.yaml": {
+        "weight": config.detection.weights["lock"],
+        "kind": "lock",
+        "language": "node",
+    },
+    "yarn.lock": {"weight": config.detection.weights["lock"], "kind": "lock", "language": "node"},
+    "npm-shrinkwrap.json": {
+        "weight": config.detection.weights["lock"],
+        "kind": "lock",
+        "language": "node",
+    },
+    "package-lock.json": {
+        "weight": config.detection.weights["lock"],
+        "kind": "lock",
+        "language": "node",
+    },
+    "go.sum": {"weight": config.detection.weights["lock"], "kind": "lock", "language": "go"},
+    "Cargo.lock": {"weight": config.detection.weights["lock"], "kind": "lock", "language": "rust"},
+    # Config/manifest files (configurable weight)
+    "pyproject.toml": {
+        "weight": config.detection.weights["config"],
+        "kind": "config",
+        "language": "python",
+    },
+    "go.mod": {"weight": config.detection.weights["config"], "kind": "config", "language": "go"},
+    "Cargo.toml": {
+        "weight": config.detection.weights["config"],
+        "kind": "config",
+        "language": "rust",
+    },
+    "pom.xml": {"weight": config.detection.weights["config"], "kind": "config", "language": "java"},
+    "package.json": {
+        "weight": config.detection.weights["config"],
+        "kind": "config",
+        "language": "node",
+    },
+    # Setup/requirements files (configurable weight)
+    "setup.py": {
+        "weight": config.detection.weights["setup"],
+        "kind": "setup",
+        "language": "python",
+    },
+    "requirements.txt": {
+        "weight": config.detection.weights["setup"],
+        "kind": "setup",
+        "language": "python",
+    },
 }
 
-# Source file patterns with weight 1
+# Source file patterns with configurable weights
 SOURCE_PATTERNS = {
-    "*.py": {"weight": 1, "kind": "source", "language": "python"},
-    "*.go": {"weight": 1, "kind": "source", "language": "go"},
-    "*.rs": {"weight": 1, "kind": "source", "language": "rust"},
-    "*.java": {"weight": 1, "kind": "source", "language": "java"},
-    "*.cs": {"weight": 1, "kind": "source", "language": "csharp"},
-    "*.js": {"weight": 1, "kind": "source", "language": "node"},
-    "*.ts": {"weight": 1, "kind": "source", "language": "node"},
-    "*.jsx": {"weight": 1, "kind": "source", "language": "node"},
-    "*.tsx": {"weight": 1, "kind": "source", "language": "node"},
-    "*.csproj": {"weight": 3, "kind": "config", "language": "csharp"},
-    "*.sln": {"weight": 3, "kind": "config", "language": "csharp"},
-    "build.gradle": {"weight": 3, "kind": "config", "language": "java"},
-    "build.gradle.kts": {"weight": 3, "kind": "config", "language": "java"},
+    "*.py": {"weight": config.detection.weights["source"], "kind": "source", "language": "python"},
+    "*.go": {"weight": config.detection.weights["source"], "kind": "source", "language": "go"},
+    "*.rs": {"weight": config.detection.weights["source"], "kind": "source", "language": "rust"},
+    "*.java": {"weight": config.detection.weights["source"], "kind": "source", "language": "java"},
+    "*.cs": {"weight": config.detection.weights["source"], "kind": "source", "language": "csharp"},
+    "*.js": {"weight": config.detection.weights["source"], "kind": "source", "language": "node"},
+    "*.ts": {"weight": config.detection.weights["source"], "kind": "source", "language": "node"},
+    "*.jsx": {"weight": config.detection.weights["source"], "kind": "source", "language": "node"},
+    "*.tsx": {"weight": config.detection.weights["source"], "kind": "source", "language": "node"},
+    "*.csproj": {
+        "weight": config.detection.weights["config"],
+        "kind": "config",
+        "language": "csharp",
+    },
+    "*.sln": {"weight": config.detection.weights["config"], "kind": "config", "language": "csharp"},
+    "build.gradle": {
+        "weight": config.detection.weights["config"],
+        "kind": "config",
+        "language": "java",
+    },
+    "build.gradle.kts": {
+        "weight": config.detection.weights["config"],
+        "kind": "config",
+        "language": "java",
+    },
 }
 
 

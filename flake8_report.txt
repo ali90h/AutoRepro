@@ -1,0 +1,61 @@
+autorepro/cli.py:496:1: D202 No blank lines allowed after function docstring
+autorepro/cli.py:727:1: D202 No blank lines allowed after function docstring
+autorepro/cli.py:1185:1: D103 Missing docstring in public function
+autorepro/core/__init__.py:1:1: D200 One-line docstring should fit on one line with quotes
+autorepro/core/planning.py:2:1: D200 One-line docstring should fit on one line with quotes
+autorepro/env.py:13:1: D103 Missing docstring in public function
+autorepro/env.py:34:1: D107 Missing docstring in __init__
+autorepro/env.py:42:1: D107 Missing docstring in __init__
+autorepro/env.py:63:1: D205 1 blank line required between summary line and description
+autorepro/env.py:77:1: D205 1 blank line required between summary line and description
+autorepro/env.py:77:1: D400 First line should end with a period
+autorepro/io/__init__.py:1:1: D200 One-line docstring should fit on one line with quotes
+autorepro/io/github.py:2:1: D200 One-line docstring should fit on one line with quotes
+autorepro/issue.py:25:1: F401 '.planner.safe_truncate_60' imported but unused
+autorepro/issue.py:29:1: F401 '.utils.plan_processing.process_plan_input' imported but unused
+autorepro/planner.py:7:1: F401 'typing.Any' imported but unused
+autorepro/planner.py:10:1: F401 '.core.planning.KEYWORD_PATTERNS' imported but unused
+autorepro/planner.py:10:1: F401 '.core.planning.extract_keywords' imported but unused
+autorepro/planner.py:10:1: F401 '.core.planning.normalize' imported but unused
+autorepro/planner.py:10:1: F401 '.core.planning.safe_truncate_60' imported but unused
+autorepro/planner.py:10:1: F401 '.core.planning.suggest_commands' imported but unused
+autorepro/planner.py:17:1: F401 '.render.formats.build_repro_json' imported but unused
+autorepro/planner.py:17:1: F401 '.render.formats.build_repro_md' imported but unused
+autorepro/render/__init__.py:1:1: D200 One-line docstring should fit on one line with quotes
+autorepro/render/formats.py:2:1: D200 One-line docstring should fit on one line with quotes
+autorepro/report.py:34:1: D205 1 blank line required between summary line and description
+autorepro/report.py:34:1: D400 First line should end with a period
+autorepro/report.py:97:1: D202 No blank lines allowed after function docstring
+autorepro/utils/__init__.py:1:1: D200 One-line docstring should fit on one line with quotes
+autorepro/utils/github_api.py:2:1: D200 One-line docstring should fit on one line with quotes
+autorepro/utils/plan_processing.py:2:1: D200 One-line docstring should fit on one line with quotes
+autorepro/utils/repro_bundle.py:2:1: D200 One-line docstring should fit on one line with quotes
+scripts/regold.py:191:1: D401 First line should be in imperative mood; try rephrasing
+tests/__init__.py:1:1: D104 Missing docstring in public package
+tests/_golden_utils.py:10:1: D103 Missing docstring in public function
+tests/_golden_utils.py:14:1: D103 Missing docstring in public function
+tests/_golden_utils.py:21:1: D103 Missing docstring in public function
+tests/_golden_utils.py:27:1: D103 Missing docstring in public function
+tests/_golden_utils.py:44:1: D103 Missing docstring in public function
+tests/_golden_utils.py:49:1: D103 Missing docstring in public function
+tests/_golden_utils.py:54:1: D103 Missing docstring in public function
+tests/fixtures/__init__.py:1:1: D104 Missing docstring in public package
+tests/test_cli.py:9:1: I100 Import statements are in the wrong order. 'from autorepro.cli import main' should be before 'import pytest' and in a different group.
+tests/test_golden_plan.py:15:1: D202 No blank lines allowed after function docstring
+tests/test_golden_scan.py:34:1: D202 No blank lines allowed after function docstring
+tests/test_init.py:10:1: I100 Import statements are in the wrong order. 'from autorepro.cli import main' should be before 'import pytest' and in a different group.
+tests/test_init_diff.py:201:1: D400 First line should end with a period
+tests/test_newline_endings.py:7:1: D401 First line should be in imperative mood; try rephrasing
+tests/test_plan_cli.py:9:1: I100 Import statements are in the wrong order. 'from autorepro.cli import main' should be before 'import pytest' and in a different group.
+tests/test_plan_cli.py:10:1: I201 Missing newline between import groups. 'from tests.test_utils import run_autorepro_subprocess' is identified as Third Party and 'from autorepro.cli import main' is identified as Third Party.
+tests/test_plan_cli.py:14:1: D401 First line should be in imperative mood; try rephrasing
+tests/test_plan_cli.py:64:1: D401 First line should be in imperative mood; try rephrasing
+tests/test_plan_json_cli.py:9:1: D401 First line should be in imperative mood; try rephrasing
+tests/test_plan_strict_mode.py:5:1: I100 Import statements are in the wrong order. 'from autorepro.planner import suggest_commands' should be before 'import pytest' and in a different group.
+tests/test_plan_strict_mode.py:6:1: I201 Missing newline between import groups. 'from tests.test_utils import run_autorepro_subprocess' is identified as Third Party and 'from autorepro.planner import suggest_commands' is identified as Third Party.
+tests/test_plan_strict_mode.py:10:1: D401 First line should be in imperative mood; try rephrasing
+tests/test_pr_enrichment_integration.py:11:1: I100 Import statements are in the wrong order. 'from autorepro.env import python_bin' should be before 'import pytest' and in a different group.
+tests/test_repo_stability.py:9:1: D401 First line should be in imperative mood; try rephrasing
+tests/test_scan_json_cli.py:16:1: D401 First line should be in imperative mood; try rephrasing
+tests/test_sync_core.py:7:1: I100 Import statements are in the wrong order. 'from autorepro.sync import ReportMeta, build_cross_reference_links, find_autorepro_content, find_synced_block, render_sync_comment, replace_synced_block' should be before 'import pytest' and in a different group.
+tests/test_utils.py:14:1: D401 First line should be in imperative mood; try rephrasing

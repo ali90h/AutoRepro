@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "tool": "autorepro",
+  "tool_version": "0.0.1",
+  "title": "Pytest Failing Tests",
+  "assumptions": [
+    "Project uses python based on detected files"
+  ],
+  "needs": {
+    "devcontainer_present": true
+  },
+  "commands": [
+    {
+      "cmd": "pytest -q",
+      "score": 6,
+      "rationale": "matched keywords: pytest; detected langs: python; bonuses: direct: pytest (+3), lang: python (+2), specific (+1)",
+      "matched_keywords": [
+        "pytest"
+      ],
+      "matched_langs": [
+        "python"
+      ]
+    },
+    {
+      "cmd": "python -m pytest -q",
+      "score": 6,
+      "rationale": "matched keywords: pytest; detected langs: python; bonuses: direct: pytest (+3), lang: python (+2), specific (+1)",
+      "matched_keywords": [
+        "pytest"
+      ],
+      "matched_langs": [
+        "python"
+      ]
+    },
+    {
+      "cmd": "pytest",
+      "score": 5,
+      "rationale": "matched keywords: pytest; detected langs: python; bonuses: direct: pytest (+3), lang: python (+2)",
+      "matched_keywords": [
+        "pytest"
+      ],
+      "matched_langs": [
+        "python"
+      ]
+    },
+    {
+      "cmd": "python -m unittest -v",
+      "score": 3,
+      "rationale": "detected langs: python; bonuses: lang: python (+2), specific (+1)",
+      "matched_keywords": [],
+      "matched_langs": [
+        "python"
+      ]
+    },
+    {
+      "cmd": "tox -e py311",
+      "score": 3,
+      "rationale": "detected langs: python; bonuses: lang: python (+2), specific (+1)",
+      "matched_keywords": [],
+      "matched_langs": [
+        "python"
+      ]
+    }
+  ],
+  "next_steps": [
+    "Run the suggested commands in order of priority",
+    "Check logs and error messages for patterns",
+    "Review environment setup if commands fail",
+    "Document any additional reproduction steps found"
+  ]
+}
