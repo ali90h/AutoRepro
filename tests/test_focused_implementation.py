@@ -97,7 +97,8 @@ class TestPlanMaxLimitsCommands:
 
         # Test with --max 3
         result_limited = run_cli_subprocess(
-            ["plan", "--desc", "pytest failing", "--max", "3", "--dry-run"], cwd=tmp_path
+            ["plan", "--desc", "pytest failing", "--max", "3", "--dry-run"],
+            cwd=tmp_path,
         )
         assert result_limited.returncode == 0, f"Limited command failed: {result_limited.stderr}"
         limited_commands = extract_commands(result_limited.stdout)
@@ -161,14 +162,30 @@ class TestRepoPathStability:
 
         # Test with absolute path
         result_abs = run_cli_subprocess(
-            ["plan", "--desc", "pytest failing", "--out", "plan_abs.md", "--repo", str(repo_dir)],
+            [
+                "plan",
+                "--desc",
+                "pytest failing",
+                "--out",
+                "plan_abs.md",
+                "--repo",
+                str(repo_dir),
+            ],
             cwd=tmp_path,
         )
         assert result_abs.returncode == 0
 
         # Test with relative path
         result_rel = run_cli_subprocess(
-            ["plan", "--desc", "pytest failing", "--out", "plan_rel.md", "--repo", "test_repo"],
+            [
+                "plan",
+                "--desc",
+                "pytest failing",
+                "--out",
+                "plan_rel.md",
+                "--repo",
+                "test_repo",
+            ],
             cwd=tmp_path,
         )
         assert result_rel.returncode == 0
@@ -297,7 +314,7 @@ class TestCommandFiltering:
                     and not line.startswith("#")
                 ):
                     command_lines.append(line)
-        assert len(command_lines) == 0, f"Expected no commands, but got: {command_lines}"
+        assert not command_lines, f"Expected no commands, but got: {command_lines}"
 
     def test_keyword_match_shows_command(self, tmp_path):
         """Test that keyword matches show relevant commands."""

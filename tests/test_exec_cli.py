@@ -367,7 +367,10 @@ requires = ["setuptools", "wheel"]
     def test_exec_missing_required_args(self):
         """Test exec requires --desc or --file."""
         result = subprocess.run(
-            [sys.executable, "-m", "autorepro.cli", "exec"], capture_output=True, text=True, cwd="."
+            [sys.executable, "-m", "autorepro.cli", "exec"],
+            capture_output=True,
+            text=True,
+            cwd=".",
         )
 
         assert result.returncode == 2  # argparse error

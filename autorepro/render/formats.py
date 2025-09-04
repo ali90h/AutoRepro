@@ -12,10 +12,7 @@ from .. import __version__
 
 def _parse_devcontainer_status(needs: list[str]) -> bool:
     """Check if devcontainer is present in needs list."""
-    for need in needs:
-        if "devcontainer" in need.lower() and "present" in need.lower():
-            return True
-    return False
+    return any("devcontainer" in need.lower() and "present" in need.lower() for need in needs)
 
 
 def _extract_section_from_rationale(
@@ -77,22 +74,16 @@ def _extract_matched_languages(rationale: str) -> list[str]:
 
 def _process_commands(commands: list[tuple[str, int, str]]) -> list[dict[str, Any]]:
     """Process commands to extract matched keywords and languages."""
-    processed_commands = []
-    for cmd, score, rationale in commands:
-        matched_keywords = _extract_matched_keywords(rationale)
-        matched_langs = _extract_matched_languages(rationale)
-
-        processed_commands.append(
-            {
-                "cmd": cmd,
-                "score": score,
-                "rationale": rationale,
-                "matched_keywords": matched_keywords,
-                "matched_langs": matched_langs,
-            }
-        )
-
-    return processed_commands
+    return [
+        {
+            "cmd": cmd,
+            "score": score,
+            "rationale": rationale,
+            "matched_keywords": _extract_matched_keywords(rationale),
+            "matched_langs": _extract_matched_languages(rationale),
+        }
+        for cmd, score, rationale in commands
+    ]
 
 
 def build_repro_json(

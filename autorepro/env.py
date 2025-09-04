@@ -9,8 +9,22 @@ from pathlib import Path
 from shutil import which
 from typing import Any
 
+from .config import config
+
 
 def python_bin() -> str:
+    """
+    Return path to Python executable using priority-based detection.
+
+    Searches for Python executable in the following order:
+    1. PYTHON_BIN environment variable (if exists and valid)
+    2. VIRTUAL_ENV/bin/python (or Scripts/python on Windows)
+    3. sys.executable (current Python interpreter)
+    4. which("python3") then which("python") from PATH
+
+    Returns:
+        str: Path to Python executable, or "python" as fallback
+    """
     env_bin = os.environ.get("PYTHON_BIN")
     if env_bin and Path(env_bin).exists():
         return env_bin
@@ -21,10 +35,10 @@ def python_bin() -> str:
             return str(cand)
     if Path(sys.executable).exists():
         return sys.executable
-    for name in ("python3", "python"):
-        p = which(name)
-        if p:
-            return p
+    for name in config.executables.python_names:
+        path = which(name)
+        if path:
+            return path
     return "python"
 
 
@@ -32,6 +46,12 @@ class DevcontainerExistsError(Exception):
     """Raised when devcontainer file already exists and force=False."""
 
     def __init__(self, path: Path):
+        """
+        Initialize DevcontainerExistsError.
+
+        Args:
+            path (Path): The path where devcontainer file already exists
+        """
         self.path = path
         super().__init__(f"File already exists: {path}")
 
@@ -40,6 +60,12 @@ class DevcontainerMisuseError(Exception):
     """Raised when arguments are invalid (e.g., output path is a directory)."""
 
     def __init__(self, message: str):
+        """
+        Initialize DevcontainerMisuseError.
+
+        Args:
+            message (str): Error message describing the misuse
+        """
         self.message = message
         super().__init__(message)
 
@@ -59,11 +85,14 @@ def default_devcontainer() -> dict[str, str | dict[str, dict[str, str]]]:
     }
 
 
-def _shorten_value(value_str: str, max_length: int = 80) -> str:
+def _shorten_value(value_str: str, max_length: int | None = None) -> str:
     """
     Shorten a JSON string representation if it's too long.
     Show first/last portions with length indicator for long values.
     """
+    if max_length is None:
+        max_length = config.limits.max_display_length
+
     if len(value_str) <= max_length:
         return value_str
 
@@ -136,7 +165,9 @@ def json_diff(old: dict[str, Any], new: dict[str, Any]) -> list[str]:
 
 
 def write_devcontainer(
-    content: dict[str, str | dict[str, dict[str, str]]], force: bool = False, out: str | None = None
+    content: dict[str, str | dict[str, dict[str, str]]],
+    force: bool = False,
+    out: str | None = None,
 ) -> tuple[Path, list[str] | None]:
     """
     Write devcontainer configuration to file with atomic and idempotent behavior.
@@ -158,10 +189,11 @@ def write_devcontainer(
         OSError: I/O or permission errors
     """
     # Determine output path
-    if out is None:
-        output_path = Path(".devcontainer") / "devcontainer.json"
-    else:
-        output_path = Path(out)
+    output_path = (
+        Path(config.paths.devcontainer_dir) / config.paths.devcontainer_file
+        if out is None
+        else Path(out)
+    )
 
     # Validate output path
     try:
@@ -234,7 +266,7 @@ def write_devcontainer(
     # Write file atomically
     try:
         # Write to temporary file first, then move (atomic operation)
-        temp_path = output_path.with_suffix(output_path.suffix + ".tmp")
+        temp_path = output_path.with_suffix(output_path.suffix + config.paths.temp_file_suffix)
 
         try:
             with open(temp_path, "w", encoding="utf-8") as f:

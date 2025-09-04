@@ -73,7 +73,13 @@ class TestBuildReproJsonStructure:
 
         # Check command structure and key order
         for cmd_obj in result["commands"]:
-            expected_cmd_keys = ["cmd", "score", "rationale", "matched_keywords", "matched_langs"]
+            expected_cmd_keys = [
+                "cmd",
+                "score",
+                "rationale",
+                "matched_keywords",
+                "matched_langs",
+            ]
             assert list(cmd_obj.keys()) == expected_cmd_keys
 
             assert isinstance(cmd_obj["cmd"], str)
@@ -134,7 +140,11 @@ class TestBuildReproJsonCommandParsing:
     def test_matched_langs_parsing(self):
         """Test that matched languages are correctly parsed from rationale."""
         commands = [
-            ("pytest -q", 6, "matched keywords: pytest; detected langs: python; bonuses: (+5)"),
+            (
+                "pytest -q",
+                6,
+                "matched keywords: pytest; detected langs: python; bonuses: (+5)",
+            ),
             ("go test", 4, "detected langs: go, golang; bonuses: lang (+2)"),
         ]
 
@@ -161,7 +171,11 @@ class TestBuildReproJsonCommandParsing:
     def test_special_characters_filtered_from_keywords(self):
         """Test that special characters are filtered from parsed keywords."""
         commands = [
-            ("test cmd", 5, "matched keywords: py*test, n@pm; detected langs: py-thon, no_de")
+            (
+                "test cmd",
+                5,
+                "matched keywords: py*test, n@pm; detected langs: py-thon, no_de",
+            )
         ]
 
         result = build_repro_json("Test", [], commands, [], [])

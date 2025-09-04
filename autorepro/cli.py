@@ -16,6 +16,7 @@ from datetime import datetime
 from pathlib import Path
 
 from autorepro import __version__
+from autorepro.config import config
 from autorepro.detect import collect_evidence, detect_languages
 from autorepro.env import (
     DevcontainerExistsError,
@@ -276,8 +277,8 @@ For more information, visit: https://github.com/ali90h/AutoRepro
 
     plan_parser.add_argument(
         "--out",
-        default="repro.md",
-        help="Output path (default: repro.md)",
+        default=config.paths.default_plan_file,
+        help=f"Output path (default: {config.paths.default_plan_file})",
     )
     plan_parser.add_argument(
         "--force",
@@ -484,14 +485,14 @@ def cmd_scan(json_output: bool = False, show_scores: bool = False) -> int:
 def cmd_plan(
     desc: str | None = None,
     file: str | None = None,
-    out: str = "repro.md",
+    out: str = config.paths.default_plan_file,
     force: bool = False,
-    max_commands: int = 5,
+    max_commands: int = config.limits.max_plan_suggestions,
     format_type: str = "md",
     dry_run: bool = False,
     repo: str | None = None,
     strict: bool = False,
-    min_score: int = 2,
+    min_score: int = config.limits.min_score_threshold,
 ) -> int:
     """Handle the plan command."""
 
@@ -508,7 +509,8 @@ def cmd_plan(
                 return 2
         except (OSError, ValueError):
             print(
-                f"Error: --repo path does not exist or is not a directory: {repo}", file=sys.stderr
+                f"Error: --repo path does not exist or is not a directory: {repo}",
+                file=sys.stderr,
             )
             return 2
 
@@ -626,7 +628,9 @@ def cmd_plan(
 
     # Add filtering note to assumptions if commands were filtered and user explicitly set min-score
     # Only show filtering notes when user explicitly used --min-score (not default) or --strict
-    min_score_explicit = min_score != 2  # 2 is the default value
+    min_score_explicit = (
+        min_score != config.limits.min_score_threshold
+    )  # Check if non-default value
     if filtered_count > 0 and (min_score_explicit or strict):
         assumptions.append(
             f"Filtered {filtered_count} low-scoring command suggestions (min-score={min_score})"
@@ -675,7 +679,7 @@ def cmd_plan(
         # Use the standardized JSON function
         json_output = build_repro_json(
             title=safe_truncate_60(title),
-            assumptions=assumptions if assumptions else ["Standard development environment"],
+            assumptions=(assumptions if assumptions else ["Standard development environment"]),
             commands=limited_suggestions,
             needs=needs if needs else ["Standard development environment"],
             next_steps=(
@@ -739,7 +743,8 @@ def cmd_init(
                 return 2
         except (OSError, ValueError):
             print(
-                f"Error: --repo path does not exist or is not a directory: {repo}", file=sys.stderr
+                f"Error: --repo path does not exist or is not a directory: {repo}",
+                file=sys.stderr,
             )
             return 2
 
@@ -846,13 +851,13 @@ def cmd_exec(
     file: str | None = None,
     repo: str | None = None,
     index: int = 0,
-    timeout: int = 120,
+    timeout: int = config.timeouts.default_seconds,
     env_vars: list[str] | None = None,
     env_file: str | None = None,
     tee_path: str | None = None,
     jsonl_path: str | None = None,
     dry_run: bool = False,
-    min_score: int = 2,
+    min_score: int = config.limits.min_score_threshold,
     strict: bool = False,
 ) -> int:
     """Handle the exec command."""
@@ -1080,7 +1085,7 @@ def cmd_pr(
     label: list[str] | None = None,
     assignee: list[str] | None = None,
     reviewer: list[str] | None = None,
-    min_score: int = 2,
+    min_score: int = config.limits.min_score_threshold,
     strict: bool = False,
     comment: bool = False,
     update_pr_body: bool = False,
@@ -1124,7 +1129,15 @@ def cmd_pr(
         try:
             # Look for existing PR
             result = subprocess.run(
-                ["gh", "pr", "list", "--head", "feature/test-pr", "--json", "number,isDraft"],
+                [
+                    "gh",
+                    "pr",
+                    "list",
+                    "--head",
+                    "feature/test-pr",
+                    "--json",
+                    "number,isDraft",
+                ],
                 capture_output=True,
                 text=True,
                 check=True,
@@ -1139,14 +1152,33 @@ def cmd_pr(
                 return 1
 
     if dry_run:
-        # Show what would be done — print to stdout so tests can assert on stdout
-        print("Would run: gh pr create")
+        # Show what would be done - print to stdout for test compatibility
+        base_cmd = ["gh", "pr", "create"]
+        if title:
+            base_cmd.extend(["--title", title])
+        if body:
+            base_cmd.extend(["--body", body])
+        if repo_slug:
+            base_cmd.extend(["--repo", repo_slug])
+        if not ready:
+            base_cmd.append("--draft")
+        if label:
+            for lbl in label:
+                base_cmd.extend(["--label", lbl])
+        if assignee:
+            for assign in assignee:
+                base_cmd.extend(["--assignee", assign])
+        if reviewer:
+            for rev in reviewer:
+                base_cmd.extend(["--reviewer", rev])
+
+        # Print the command with safe quoting to stdout
+        quoted_cmd = " ".join(shlex.quote(arg) for arg in base_cmd)
+        print(f"Would run: {quoted_cmd}")
+
         if comment:
-            # include phrasing expected by tests
-            print("Would create PR comment with sync block")
             print("Would update PR comment")
         if update_pr_body:
-            print("Would update PR body with sync block")
             print("Would add sync block")
         if add_labels:
             print(f"Would add labels: {add_labels}")

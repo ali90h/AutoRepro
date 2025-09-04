@@ -213,11 +213,9 @@ def _calculate_rule_score(
                     break
 
     # Only apply bonuses if there are matches
-    if matched_keywords or detected_ecosystems:
-        # +1 for more specific/stable spellings (weight > 0)
-        if rule.weight > 0:
-            score += 1
-            bonuses_applied.append("specific (+1)")
+    if (matched_keywords or detected_ecosystems) and rule.weight > 0:
+        score += 1
+        bonuses_applied.append("specific (+1)")
 
     return {
         "score": score,
@@ -300,9 +298,7 @@ def suggest_commands(
     relevant_candidates = _sort_candidates(relevant_candidates)
 
     # Build final suggestions with detailed rationales
-    suggestions = []
-    for candidate in relevant_candidates:
-        rationale = _build_rationale(candidate)
-        suggestions.append((candidate["cmd"], candidate["score"], rationale))
-
-    return suggestions
+    return [
+        (candidate["cmd"], candidate["score"], _build_rationale(candidate))
+        for candidate in relevant_candidates
+    ]

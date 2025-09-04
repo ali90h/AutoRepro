@@ -17,7 +17,10 @@ if result.stderr:
 print("\n=== Test 2: Scan in empty directory ===")
 with tempfile.TemporaryDirectory() as tmpdir:
     result = subprocess.run(
-        [sys.executable, "-m", "autorepro", "scan"], cwd=tmpdir, capture_output=True, text=True
+        [sys.executable, "-m", "autorepro", "scan"],
+        cwd=tmpdir,
+        capture_output=True,
+        text=True,
     )
     print(f"Exit code: {result.returncode}")
     print(f"Stdout: {result.stdout.strip()}")

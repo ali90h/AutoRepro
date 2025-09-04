@@ -32,12 +32,16 @@ class TestPREnrichmentCommand:
             subprocess.run(["git", "init"], cwd=work_repo, check=True)
             subprocess.run(["git", "config", "user.name", "Test User"], cwd=work_repo, check=True)
             subprocess.run(
-                ["git", "config", "user.email", "test@example.com"], cwd=work_repo, check=True
+                ["git", "config", "user.email", "test@example.com"],
+                cwd=work_repo,
+                check=True,
             )
 
             # Set up remote
             subprocess.run(
-                ["git", "remote", "add", "origin", str(bare_repo)], cwd=work_repo, check=True
+                ["git", "remote", "add", "origin", str(bare_repo)],
+                cwd=work_repo,
+                check=True,
             )
             subprocess.run(
                 [
@@ -75,7 +79,9 @@ class TestPREnrichmentCommand:
             subprocess.run(["git", "add", "test.py"], cwd=work_repo, check=True)
             subprocess.run(["git", "commit", "-m", "Add test file"], cwd=work_repo, check=True)
             subprocess.run(
-                ["git", "push", "-u", "origin", "feature/test-pr"], cwd=work_repo, check=True
+                ["git", "push", "-u", "origin", "feature/test-pr"],
+                cwd=work_repo,
+                check=True,
             )
 
             # Create fake gh CLI tool directory
