@@ -124,14 +124,12 @@ def build_pr_body(plan_content: str, format_type: str) -> str:
                 in_commands = False
                 continue
 
-            if in_assumptions and line.strip():
-                if line.startswith("- "):
-                    assumptions_section.append(line)
-            elif in_commands and line.strip():
-                if line.startswith("- "):
-                    commands_section.append(line)
-                    if len(commands_section) >= 3:  # Limit to top 3
-                        break
+            if in_assumptions and line.strip() and line.startswith("- "):
+                assumptions_section.append(line)
+            elif in_commands and line.strip() and line.startswith("- "):
+                commands_section.append(line)
+                if len(commands_section) >= 3:  # Limit to top 3
+                    break
 
         body_parts = [
             f"# {title}",

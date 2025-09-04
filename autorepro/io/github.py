@@ -5,6 +5,7 @@ AutoRepro I/O layer - GitHub API and git operations.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import os
@@ -222,10 +223,8 @@ def create_pr_comment(
         raise RuntimeError(f"Failed to create PR comment: {e}") from e
     finally:
         # Clean up temp file
-        try:
+        with contextlib.suppress(OSError):
             os.unlink(body_file)
-        except OSError:
-            pass
 
 
 def update_pr_body(
@@ -275,10 +274,8 @@ def update_pr_body(
         raise RuntimeError(f"Failed to update PR body: {e}") from e
     finally:
         # Clean up temp file
-        try:
+        with contextlib.suppress(OSError):
             os.unlink(body_file)
-        except OSError:
-            pass
 
 
 def add_pr_labels(
@@ -449,10 +446,8 @@ def create_or_update_pr(
 
     finally:
         # Clean up temp file
-        try:
+        with contextlib.suppress(OSError):
             os.unlink(body_file)
-        except OSError:
-            pass
 
 
 def get_current_pr_for_branch(branch_name: str, gh_path: str = "gh") -> int | None:
@@ -585,10 +580,8 @@ def create_issue_comment(
         raise RuntimeError(f"Failed to create issue comment: {e}") from e
     finally:
         # Clean up temp file
-        try:
+        with contextlib.suppress(OSError):
             os.unlink(body_file)
-        except OSError:
-            pass
 
 
 def create_issue(
@@ -655,10 +648,8 @@ def create_issue(
     finally:
         # Clean up temp file
         if body_file:
-            try:
+            with contextlib.suppress(OSError):
                 os.unlink(body_file)
-            except OSError:
-                pass
 
 
 def add_issue_labels(

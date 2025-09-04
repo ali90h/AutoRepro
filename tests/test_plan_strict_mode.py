@@ -54,7 +54,7 @@ class TestPlanCoreFiltering:
 
         # Test with high min_score=4 - should exclude Python-only commands (score 2)
         suggestions_high = suggest_commands(keywords, detected_langs, min_score=4)
-        assert len(suggestions_high) == 0, "Should exclude commands with score < 4"
+        assert not suggestions_high, "Should exclude commands with score < 4"
 
         # Test with low min_score=1 - should include more commands
         suggestions_low = suggest_commands(keywords, detected_langs, min_score=1)
@@ -73,7 +73,7 @@ class TestPlanCoreFiltering:
 
         # With min_score=5, should exclude all pytest commands (max score is 4)
         suggestions_high = suggest_commands(keywords, detected_langs, min_score=5)
-        assert len(suggestions_high) == 0, "Should exclude commands with score < min_score"
+        assert not suggestions_high, "Should exclude commands with score < min_score"
 
     def test_language_match_respects_min_score(self):
         """Test that language detection matches are filtered by min_score."""
@@ -86,7 +86,7 @@ class TestPlanCoreFiltering:
 
         # With min_score=4, should exclude python commands (max score is 3)
         suggestions_high = suggest_commands(keywords, detected_langs, min_score=4)
-        assert len(suggestions_high) == 0, "Should exclude commands with score < min_score"
+        assert not suggestions_high, "Should exclude commands with score < min_score"
 
 
 class TestPlanCLIStrictMode:

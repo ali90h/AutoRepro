@@ -35,6 +35,46 @@ The project targets multilingualism (initially Python/JS/Go) and emphasizes simp
    python -m pip install -e .
    ```
 
+### Development Environment Setup
+
+For contributors and maintainers, additional development tools are configured for code quality and consistency:
+
+4. **Install development dependencies:**
+   ```bash
+   python -m pip install radon cloc coverage pre-commit
+   ```
+
+5. **Set up pre-commit hooks for automated code quality:**
+   ```bash
+   pre-commit install
+   ```
+
+**Code Quality Tools:**
+- **Black**: Code formatting (configured in `pyproject.toml`)
+- **isort**: Import organization (black-compatible profile)
+- **Ruff**: Fast linting and additional checks
+- **Flake8**: Comprehensive linting with plugins
+
+**Quality Metrics:**
+- **Radon**: Cyclomatic complexity and maintainability metrics
+- **cloc**: Line count analysis
+- **Coverage**: Test coverage reporting
+
+**Running Quality Checks:**
+```bash
+# Format code
+black autorepro/
+isort autorepro/
+
+# Run linting
+ruff check autorepro/
+flake8 autorepro/
+
+# Generate metrics
+radon cc autorepro/ -a
+coverage report
+```
+
 ## Usage
 
 ### Running AutoRepro

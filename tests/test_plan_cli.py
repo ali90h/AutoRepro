@@ -895,9 +895,13 @@ class TestPlanCLICommandFiltering:
         ]
 
         # Should show NO commands when no keyword or language matches
+<<<<<<< HEAD
         assert len(command_lines) == 0, (
             f"Should show no commands when no matches. Got: {command_lines}"
         )
+=======
+        assert not command_lines, f"Should show no commands when no matches. Got: {command_lines}"
+>>>>>>> d5f84ac (Complete Technique 1: Avoid Hard Coding - Final formatting)
 
     def test_plan_dry_run_ignores_force_flag(self, tmp_path):
         """Test that --dry-run ignores --force flag and outputs to stdout."""
@@ -989,6 +993,10 @@ class TestPlanCLICommandFilteringAlt:
         ]
 
         # Should show NO commands when no keyword or language matches
+<<<<<<< HEAD
         assert len(command_lines) == 0, (
             f"Should show no commands when no matches. Got: {command_lines}"
         )
+=======
+        assert not command_lines, f"Should show no commands when no matches. Got: {command_lines}"
+>>>>>>> d5f84ac (Complete Technique 1: Avoid Hard Coding - Final formatting)

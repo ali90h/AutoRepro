@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "tool": "autorepro",
+  "tool_version": "0.0.1",
+  "root": "/Users/ali/autorepro",
+  "detected": [
+    "python"
+  ],
+  "languages": {
+    "python": {
+      "score": 4,
+      "reasons": [
+        {
+          "pattern": "pyproject.toml",
+          "path": "./pyproject.toml",
+          "kind": "config",
+          "weight": 3
+        },
+        {
+          "pattern": "*.py",
+          "path": "./demo_plugin.py",
+          "kind": "source",
+          "weight": 1
+        }
+      ]
+    }
+  }
+}

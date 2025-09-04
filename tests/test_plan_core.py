@@ -224,7 +224,7 @@ class TestSuggestCommands:
         suggestions = suggest_commands(keywords, detected_langs)
 
         # Should return empty list when no keyword or language matches
-        assert len(suggestions) == 0, f"Expected no suggestions, got: {suggestions}"
+        assert not suggestions, f"Expected no suggestions, got: {suggestions}"
 
     def test_suggest_commands_weighting(self):
         """Test that pytest -q ranks above npx vitest run with correct weighting."""

@@ -1,0 +1,7 @@
+You are not logged in. Login is required for closed-source projects.
+Please run:
+$ sourcery login
+to obtain your token through your browser.
+
+Or input your token directly with:
+$ sourcery login --token TOKEN

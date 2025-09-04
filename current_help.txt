@@ -1,0 +1,27 @@
+usage: autorepro [-h] [--version] {pr,scan,init,plan,exec} ...
+
+CLI for AutoRepro - transforms issues into repro steps
+
+positional arguments:
+  {pr,scan,init,plan,exec}
+                        Available commands
+    pr                  Create or update GitHub pull request
+    scan                Detect languages/frameworks from file pointers
+    init                Create a developer container
+    plan                Derive execution plan from issue description
+    exec                Execute the top plan command
+
+options:
+  -h, --help            show this help message and exit
+  --version             show program's version number and exit
+
+AutoRepro automatically detects repository technologies, generates ready-made
+devcontainers, and writes prioritized repro plans with explicit assumptions.
+
+MVP commands:
+  scan    Detect languages/frameworks from file pointers
+  init    Create a developer container
+  plan    Derive execution plan from issue description
+  pr      Create or update GitHub pull request
+
+For more information, visit: https://github.com/ali90h/AutoRepro

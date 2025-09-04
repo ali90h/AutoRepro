@@ -297,7 +297,7 @@ class TestCommandFiltering:
                     and not line.startswith("#")
                 ):
                     command_lines.append(line)
-        assert len(command_lines) == 0, f"Expected no commands, but got: {command_lines}"
+        assert not command_lines, f"Expected no commands, but got: {command_lines}"
 
     def test_keyword_match_shows_command(self, tmp_path):
         """Test that keyword matches show relevant commands."""

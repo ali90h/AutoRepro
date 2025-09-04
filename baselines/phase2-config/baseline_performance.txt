@@ -1,0 +1,4 @@
+Performance baseline (scan command):
+Detected: python
+- python -> demo_plugin.py, pyproject.toml, test_env_and_node.py, test_exit_codes.py, test_scan_exit.py
+autorepro scan  0.03s user 0.01s system 96% cpu 0.041 total
