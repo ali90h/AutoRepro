@@ -22,7 +22,7 @@ python -m pip install -e ".[dev]"
 ### Essential Commands Overview
 AutoRepro provides 5 core commands:
 - `autorepro scan`: Detect languages/frameworks in repository
-- `autorepro init`: Create devcontainer.json configuration  
+- `autorepro init`: Create devcontainer.json configuration
 - `autorepro plan`: Generate reproduction plan from issue description
 - `autorepro exec`: Execute the top suggested command from a plan
 - `autorepro pr`: Create GitHub Draft PR from reproduction plan
@@ -43,7 +43,7 @@ pytest -v
 # Run linting (fast)
 ruff check .
 
-# Check code formatting  
+# Check code formatting
 black --check .
 
 # Format code
@@ -79,7 +79,7 @@ pre-commit run --all-files
    ```bash
    # Test plan generation
    autorepro plan --desc "pytest tests failing" --dry-run
-   
+
    # Test with file input
    echo "npm test issues" > test_issue.txt
    autorepro plan --file test_issue.txt --dry-run
@@ -90,7 +90,7 @@ pre-commit run --all-files
    ```bash
    # Test scanning in current repo (should detect Python)
    autorepro scan
-   
+
    # Test JSON output format
    autorepro scan --json
    ```
@@ -117,7 +117,7 @@ autorepro --version
 # 2. Run tests
 pytest
 
-# 3. Lint code  
+# 3. Lint code
 ruff check .
 black --check .
 
@@ -140,7 +140,7 @@ cat repro.md  # Verify output format and content
 rm repro.md
 ```
 
-**Scenario 2: Node.js Issue Investigation**  
+**Scenario 2: Node.js Issue Investigation**
 ```bash
 # Test detection in mixed environment
 echo '{"name": "test"}' > package.json
@@ -208,7 +208,7 @@ AUTOREPRO_PLUGINS="demo_plugin.py" autorepro plan --desc "custom test"
 # Generate markdown plan
 autorepro plan --desc "issue description" --out repro.md
 
-# Generate JSON plan  
+# Generate JSON plan
 autorepro plan --desc "issue description" --format json --out repro.json
 
 # Execute with timeout and logging
@@ -260,7 +260,7 @@ autorepro scan --json
 
 **NEVER CANCEL these operations** - they are expected to take time:
 - **Package installation**: ~15 seconds (set timeout: 300+ seconds)
-- **Full test suite**: ~14 seconds (set timeout: 1800+ seconds for safety)  
+- **Full test suite**: ~14 seconds (set timeout: 1800+ seconds for safety)
 - **Linting**: <1 second
 - **Pre-commit setup**: May timeout due to network, this is normal
 - **Golden test regeneration**: ~5 seconds
@@ -272,7 +272,7 @@ autorepro/
 ├── autorepro/          # Main package code
 │   ├── cli.py         # CLI entry point and commands
 │   ├── detect.py      # Language detection
-│   ├── planner.py     # Plan generation  
+│   ├── planner.py     # Plan generation
 │   └── rules.py       # Command rules
 ├── tests/             # Test suite (383 tests)
 │   ├── golden/        # Golden test fixtures
