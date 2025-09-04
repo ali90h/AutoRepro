@@ -58,9 +58,9 @@ class TestPlanCoreFiltering:
 
         # Test with low min_score=1 - should include more commands
         suggestions_low = suggest_commands(keywords, detected_langs, min_score=1)
-        assert len(suggestions_low) >= len(
-            suggestions_default
-        ), "Lower min_score should include more commands"
+        assert len(suggestions_low) >= len(suggestions_default), (
+            "Lower min_score should include more commands"
+        )
 
     def test_keyword_match_respects_min_score(self):
         """Test that direct keyword matches are filtered by min_score."""
@@ -110,9 +110,9 @@ class TestPlanCLIStrictMode:
             ["--desc", "pytest failing", "--min-score", "2", "--strict"], cwd=tmp_path
         )
 
-        assert (
-            result.returncode == 0
-        ), f"Expected exit code 0, got {result.returncode}. STDERR: {result.stderr}"
+        assert result.returncode == 0, (
+            f"Expected exit code 0, got {result.returncode}. STDERR: {result.stderr}"
+        )
 
     def test_non_strict_mode_always_exit_0(self, tmp_path):
         """Test non-strict mode always exits 0 even with no commands."""
@@ -121,9 +121,9 @@ class TestPlanCLIStrictMode:
             ["--desc", "random generic issue", "--min-score", "5"], cwd=tmp_path
         )
 
-        assert (
-            result.returncode == 0
-        ), f"Non-strict mode should always exit 0, got {result.returncode}"
+        assert result.returncode == 0, (
+            f"Non-strict mode should always exit 0, got {result.returncode}"
+        )
 
 
 class TestPlanCLIMinScore:
