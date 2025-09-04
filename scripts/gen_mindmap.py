@@ -17,8 +17,20 @@ BIG_FILE = 500
 BIG_FUNC = 80
 
 INCLUDE_DIRS = None  # None = include all; or set like {"autorepro", "src"}
-EXCLUDE_DIRS = {".git", ".github", ".venv", "venv", "env", "__pycache__", ".mypy_cache", ".ruff_cache", "dist", "build", ".idea", ".vscode"}
-
+EXCLUDE_DIRS = {
+    ".git",
+    ".github",
+    ".venv",
+    "venv",
+    "env",
+    "__pycache__",
+    ".mypy_cache",
+    ".ruff_cache",
+    "dist",
+    "build",
+    ".idea",
+    ".vscode",
+}
 def repo_name() -> str:
     return REPO_ROOT.name
 
@@ -95,7 +107,11 @@ def build_mermaid(tree):
     lines.append("mindmap")
     lines.append(f"  {repo_name()}")
     # gather top-level dirs
-    top_dirs = sorted({pathlib.Path(d).parts[-1] for d in tree.keys() if pathlib.Path(d) != REPO_ROOT})
+    top_dirs = sorted({
+        pathlib.Path(d).parts[-1]
+        for d in tree.keys()
+        if pathlib.Path(d) != REPO_ROOT
+    })
     for d in top_dirs:
         lines.append(f"    {d}")
         # collect sub-items under any folder with that tail
@@ -116,7 +132,7 @@ def build_mermaid(tree):
                     for fname, flen in funcs:
                         lines.append(f"          {symbol_line('func', fname, flen)}")
     # also include top-level .py files at repo root
-    root_py = [p for p in (REPO_ROOT.glob("*.py"))]
+    root_py = list(REPO_ROOT.glob("*.py"))  # C416
     if root_py:
         lines.append("    __root__")
         for fp in sorted(root_py, key=lambda p: p.name):
@@ -139,7 +155,10 @@ def main():
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     tree = collect_tree()
     content = build_mermaid(tree)
-    header = f"# Repository Mindmap\n\nGenerated automatically. Big files marked 🔴, big functions marked 🟠.\n\n"
+    header = (
+        "# Repository Mindmap\n\n"
+        "Generated automatically. Big files marked 🔴, big functions marked 🟠.\n\n"
+    )
     OUT_PATH.write_text(header + content, encoding="utf-8")
     print(f"wrote {rel(OUT_PATH)}")
 
