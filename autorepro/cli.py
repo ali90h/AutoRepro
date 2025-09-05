@@ -12,8 +12,10 @@ import subprocess
 import sys
 from collections.abc import Generator
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from autorepro import __version__
 from autorepro.config import config
@@ -32,7 +34,17 @@ from autorepro.planner import (
     safe_truncate_60,
     suggest_commands,
 )
+from autorepro.utils.decorators import handle_errors, log_operation, time_execution
 from autorepro.utils.file_ops import FileOperations
+from autorepro.utils.validation_helpers import (
+    has_test_keywords,
+    has_installation_keywords,
+    has_ci_keywords,
+    determine_rule_source,
+    should_apply_repo_relative_path,
+    needs_pr_update_operation,
+    is_safe_to_write_file,
+)
 
 
 def ensure_trailing_newline(content: str) -> str:
@@ -417,122 +429,175 @@ For more information, visit: https://github.com/ali90h/AutoRepro
     return parser
 
 
+@time_execution(log_threshold=0.5)
+@handle_errors({OSError: 1, PermissionError: 1}, default_return=1, log_errors=True)
+@log_operation("language detection scan")
 def cmd_scan(json_output: bool = False, show_scores: bool = False) -> int:
     """Handle the scan command."""
-    try:
-        if json_output:
-            # Use new weighted evidence collection for JSON output
-            evidence = collect_evidence(Path("."))
-            detected_languages = sorted(evidence.keys())
+    if json_output:
+        # Use new weighted evidence collection for JSON output
+        evidence = collect_evidence(Path("."))
+        detected_languages = sorted(evidence.keys())
 
-            # Build JSON output according to schema
-            json_result = {
-                "schema_version": 1,
-                "tool": "autorepro",
-                "tool_version": __version__,
-                "root": str(Path(".").resolve()),
-                "detected": detected_languages,
-                "languages": evidence,
-            }
+        # Build JSON output according to schema
+        json_result = {
+            "schema_version": 1,
+            "tool": "autorepro",
+            "tool_version": __version__,
+            "root": str(Path(".").resolve()),
+            "detected": detected_languages,
+            "languages": evidence,
+        }
 
-            import json
+        import json
+        print(json.dumps(json_result, indent=2))
+        return 0
+    else:
+        # Use legacy text output
+        detected = detect_languages(".")
 
-            print(json.dumps(json_result, indent=2))
-            return 0
-        else:
-            # Use legacy text output
-            detected = detect_languages(".")
-
-            if not detected:
-                print("No known languages detected.")
-                return 0
-
-            # Extract language names for header
-            languages = [lang for lang, _ in detected]
-            print(f"Detected: {', '.join(languages)}")
-
-            # Print details for each language
-            for lang, reasons in detected:
-                reasons_str = ", ".join(reasons)
-                print(f"- {lang} -> {reasons_str}")
-
-                # Add score if --show-scores is enabled
-                if show_scores:
-                    evidence = collect_evidence(Path("."))
-                    if lang in evidence:
-                        print(f"  Score: {evidence[lang]['score']}")
-
-            return 0
-
-    except (OSError, PermissionError):
-        # I/O and permission errors - but scan should still succeed with empty result
-        if json_output:
-            json_result = {
-                "schema_version": 1,
-                "tool": "autorepro",
-                "tool_version": __version__,
-                "root": str(Path(".").resolve()),
-                "detected": [],
-                "languages": {},
-            }
-            import json
-
-            print(json.dumps(json_result, indent=2))
-        else:
+        if not detected:
             print("No known languages detected.")
+            return 0
+
+        # Extract language names for header
+        languages = [lang for lang, _ in detected]
+        print(f"Detected: {', '.join(languages)}")
+
+        # Print details for each language
+        for lang, reasons in detected:
+            reasons_str = ", ".join(reasons)
+            print(f"- {lang} -> {reasons_str}")
+
+            # Add score if --show-scores is enabled
+            if show_scores:
+                evidence = collect_evidence(Path("."))
+                if lang in evidence:
+                    print(f"  Score: {evidence[lang]['score']}")
+
         return 0
 
 
-def cmd_plan(
-    desc: str | None = None,
-    file: str | None = None,
-    out: str = config.paths.default_plan_file,
-    force: bool = False,
-    max_commands: int = config.limits.max_plan_suggestions,
-    format_type: str = "md",
-    dry_run: bool = False,
-    repo: str | None = None,
-    strict: bool = False,
-    min_score: int = config.limits.min_score_threshold,
-) -> int:
-    """Handle the plan command."""
+@dataclass
+class PlanConfig:
+    """Configuration for plan generation."""
+    desc: str | None
+    file: str | None
+    out: str
+    force: bool
+    max_commands: int
+    format_type: str
+    dry_run: bool
+    repo: str | None
+    strict: bool
+    min_score: int
+    repo_path: Path | None = None
+    print_to_stdout: bool = False
 
+
+@dataclass
+class PlanData:
+    """Generated plan data."""
+    title: str
+    assumptions: list[str]
+    suggestions: list[tuple[str, int, str]]
+    needs: list[str]
+    next_steps: list[str]
+    normalized_text: str
+    keywords: set[str]
+    lang_names: list[str]
+
+
+@dataclass
+class PrConfig:
+    """Configuration for PR operations."""
+    desc: str | None
+    file: str | None
+    repo_slug: str | None
+    title: str | None
+    body: str | None
+    ready: bool
+    label: list[str] | None
+    assignee: list[str] | None
+    reviewer: list[str] | None
+    update_if_exists: bool
+    comment: bool
+    update_pr_body: bool
+    add_labels: str | None
+    link_issue: int | None
+    attach_report: bool
+    summary: str | None
+    no_details: bool
+    format_type: str
+    dry_run: bool
+
+
+def _prepare_plan_config(
+    desc: str | None,
+    file: str | None,
+    out: str,
+    force: bool,
+    max_commands: int,
+    format_type: str,
+    dry_run: bool,
+    repo: str | None,
+    strict: bool,
+    min_score: int,
+) -> PlanConfig:
+    """Extract and validate plan configuration from arguments."""
+    config = PlanConfig(
+        desc=desc,
+        file=file,
+        out=out,
+        force=force,
+        max_commands=max_commands,
+        format_type=format_type,
+        dry_run=dry_run,
+        repo=repo,
+        strict=strict,
+        min_score=min_score,
+    )
+    
     # Validate and resolve --repo path if specified
-    repo_path = None
-    if repo is not None:
+    if config.repo is not None:
         try:
-            repo_path = Path(repo).resolve()
-            if not repo_path.is_dir():
+            config.repo_path = Path(config.repo).resolve()
+            if not config.repo_path.is_dir():
                 print(
-                    f"Error: --repo path does not exist or is not a directory: {repo}",
+                    f"Error: --repo path does not exist or is not a directory: {config.repo}",
                     file=sys.stderr,
                 )
-                return 2
+                raise ValueError("Invalid repo path")
         except (OSError, ValueError):
             print(
-                f"Error: --repo path does not exist or is not a directory: {repo}",
+                f"Error: --repo path does not exist or is not a directory: {config.repo}",
                 file=sys.stderr,
             )
-            return 2
+            raise ValueError("Invalid repo path")
 
     # Handle --out - to print to stdout (check before path resolution)
-    print_to_stdout = out == "-"
+    config.print_to_stdout = config.out == "-"
 
     # Update output path to be under the repo if relative path specified (but not for stdout)
-    if repo_path and not Path(out).is_absolute() and not print_to_stdout:
-        out = str(repo_path / out)
+    if config.repo_path and not Path(config.out).is_absolute() and not config.print_to_stdout:
+        config.out = str(config.repo_path / config.out)
 
     # Handle dry-run mode
-    if dry_run:
-        print_to_stdout = True
+    if config.dry_run:
+        config.print_to_stdout = True
 
+    return config
+
+
+def _generate_plan_content(config: PlanConfig) -> PlanData:
+    """Generate the actual reproduction plan."""
     # Read input text
     try:
-        if desc is not None:
-            text = desc
-        elif file is not None:
+        if config.desc is not None:
+            text = config.desc
+        elif config.file is not None:
             # File path resolution: try CWD first, then repo-relative as fallback
-            file_path = Path(file)
+            file_path = Path(config.file)
 
             # If absolute path, use as-is
             if file_path.is_absolute():
@@ -545,8 +610,8 @@ def cmd_plan(
                         text = f.read()
                 except OSError:
                     # If CWD fails and --repo specified, try repo-relative as fallback
-                    if repo_path:
-                        repo_file_path = repo_path / file
+                    if config.repo_path:
+                        repo_file_path = config.repo_path / config.file
                         with open(repo_file_path, encoding="utf-8") as f:
                             text = f.read()
                     else:
@@ -556,42 +621,32 @@ def cmd_plan(
             # This should not happen due to argparse mutually_exclusive_group
             log = logging.getLogger("autorepro")
             log.error("Error: Either --desc or --file must be specified")
-            return 2
+            raise ValueError("Missing description or file")
     except OSError as e:
         log = logging.getLogger("autorepro")
-        log.error(f"Error reading file {file}: {e}")
-        return 1
-
-    # Check if output path points to a directory (misuse error)
-    if not print_to_stdout and out and os.path.isdir(out):
-        print(f"Error: Output path is a directory: {out}")
-        return 2
-
-    # Check for existing output file (unless --force or stdout output)
-    if not print_to_stdout and os.path.exists(out) and not force:
-        print(f"{out} exists; use --force to overwrite")
-        return 0
+        log.error(f"Error reading file {config.file}: {e}")
+        raise OSError(f"Error reading file {config.file}: {e}")
 
     # Process the text
     normalized_text = normalize(text)
     keywords = extract_keywords(normalized_text)
 
     # Get detected languages for weighting
-    if repo_path:
-        with temp_chdir(repo_path):
+    if config.repo_path:
+        with temp_chdir(config.repo_path):
             detected_languages = detect_languages(".")
     else:
         detected_languages = detect_languages(".")
     lang_names = [lang for lang, _ in detected_languages]
 
     # Generate suggestions
-    suggestions = suggest_commands(keywords, lang_names, min_score)
+    suggestions = suggest_commands(keywords, lang_names, config.min_score)
 
     # Check for strict mode - exit 1 if no commands after filtering
     log = logging.getLogger("autorepro")
-    if strict and not suggestions:
-        log.error(f"no candidate commands above min-score={min_score}")
-        return 1
+    if config.strict and not suggestions:
+        log.error(f"no candidate commands above min-score={config.min_score}")
+        raise ValueError(f"no candidate commands above min-score={config.min_score}")
 
     # Count filtered commands for warning
     total_commands = len(suggest_commands(keywords, lang_names, min_score=0))
@@ -600,7 +655,7 @@ def cmd_plan(
         log.info(f"filtered {filtered_count} low-score suggestions")
 
     # Limit to max_commands
-    limited_suggestions = suggestions[:max_commands]
+    limited_suggestions = suggestions[:config.max_commands]
 
     # Generate title from first few words
     title_words = normalized_text.split()[:8]  # Increased to allow more words before truncation
@@ -617,11 +672,11 @@ def cmd_plan(
     else:
         assumptions.append("Standard development environment")
 
-    if "test" in keywords or "tests" in keywords or "testing" in keywords:
+    if has_test_keywords(keywords):
         assumptions.append("Issue is related to testing")
-    if "ci" in keywords:
+    if has_ci_keywords(keywords):
         assumptions.append("Issue occurs in CI/CD environment")
-    if "install" in keywords or "setup" in keywords:
+    if has_installation_keywords(keywords):
         assumptions.append("Installation or setup may be involved")
 
     if not assumptions:
@@ -629,21 +684,22 @@ def cmd_plan(
 
     # Add filtering note to assumptions if commands were filtered and user explicitly set min-score
     # Only show filtering notes when user explicitly used --min-score (not default) or --strict
+    from autorepro.config import config as autorepro_config
     min_score_explicit = (
-        min_score != config.limits.min_score_threshold
+        config.min_score != autorepro_config.limits.min_score_threshold
     )  # Check if non-default value
-    if filtered_count > 0 and (min_score_explicit or strict):
+    if filtered_count > 0 and (min_score_explicit or config.strict):
         assumptions.append(
-            f"Filtered {filtered_count} low-scoring command suggestions (min-score={min_score})"
+            f"Filtered {filtered_count} low-scoring command suggestions (min-score={config.min_score})"
         )
 
     # Generate environment needs based on detected languages
     needs = []
 
     # Check for devcontainer presence
-    if repo_path:
-        devcontainer_dir = repo_path / ".devcontainer/devcontainer.json"
-        devcontainer_root = repo_path / "devcontainer.json"
+    if config.repo_path:
+        devcontainer_dir = config.repo_path / ".devcontainer/devcontainer.json"
+        devcontainer_root = config.repo_path / "devcontainer.json"
     else:
         devcontainer_dir = Path(".devcontainer/devcontainer.json")
         devcontainer_root = Path("devcontainer.json")
@@ -675,17 +731,41 @@ def cmd_plan(
         "Document any additional reproduction steps found",
     ]
 
+    return PlanData(
+        title=title,
+        assumptions=assumptions,
+        suggestions=limited_suggestions,
+        needs=needs,
+        next_steps=next_steps,
+        normalized_text=normalized_text,
+        keywords=keywords,
+        lang_names=lang_names,
+    )
+
+
+def _output_plan_result(plan_data: PlanData, config: PlanConfig) -> int:
+    """Output plan in requested format and location."""
+    # Check if output path points to a directory (misuse error)
+    if not config.print_to_stdout and config.out and os.path.isdir(config.out):
+        print(f"Error: Output path is a directory: {config.out}")
+        return 2
+
+    # Check for existing output file (unless --force or stdout output)
+    if not config.print_to_stdout and os.path.exists(config.out) and not config.force:
+        print(f"{config.out} exists; use --force to overwrite")
+        return 0
+
     # Generate output content
-    if format_type == "json":
+    if config.format_type == "json":
         # Use the standardized JSON function
         json_output = build_repro_json(
-            title=safe_truncate_60(title),
-            assumptions=(assumptions if assumptions else ["Standard development environment"]),
-            commands=limited_suggestions,
-            needs=needs if needs else ["Standard development environment"],
+            title=safe_truncate_60(plan_data.title),
+            assumptions=(plan_data.assumptions if plan_data.assumptions else ["Standard development environment"]),
+            commands=plan_data.suggestions,
+            needs=plan_data.needs if plan_data.needs else ["Standard development environment"],
             next_steps=(
-                next_steps
-                if next_steps
+                plan_data.next_steps
+                if plan_data.next_steps
                 else [
                     "Run the highest-score command",
                     "If it fails: switch to the second",
@@ -695,30 +775,57 @@ def cmd_plan(
         )
 
         import json
-
         content = json.dumps(json_output, indent=2)
     else:
         # Build the reproduction markdown
-        content = build_repro_md(title, assumptions, limited_suggestions, needs, next_steps)
+        content = build_repro_md(plan_data.title, plan_data.assumptions, plan_data.suggestions, plan_data.needs, plan_data.next_steps)
 
     # Ensure proper newline termination
     content = ensure_trailing_newline(content)
 
     # Write output
-    if print_to_stdout:
+    if config.print_to_stdout:
         print(content, end="")
         return 0
     else:
         # Write output file
         try:
-            out_path = Path(out).resolve()
+            out_path = Path(config.out).resolve()
             FileOperations.atomic_write(out_path, content)
             print(f"Wrote repro to {out_path}")
             return 0
         except OSError as e:
             log = logging.getLogger("autorepro")
-            log.error(f"Error writing file {out}: {e}")
+            log.error(f"Error writing file {config.out}: {e}")
             return 1
+
+
+def cmd_plan(
+    desc: str | None = None,
+    file: str | None = None,
+    out: str = config.paths.default_plan_file,
+    force: bool = False,
+    max_commands: int = config.limits.max_plan_suggestions,
+    format_type: str = "md",
+    dry_run: bool = False,
+    repo: str | None = None,
+    strict: bool = False,
+    min_score: int = config.limits.min_score_threshold,
+) -> int:
+    """Handle the plan command."""
+    try:
+        config = _prepare_plan_config(
+            desc, file, out, force, max_commands, format_type, dry_run, repo, strict, min_score
+        )
+        plan_data = _generate_plan_content(config)
+        return _output_plan_result(plan_data, config)
+    except ValueError as e:
+        if "min-score" in str(e):
+            return 1  # Strict mode failure
+        else:
+            return 2  # Configuration error
+    except OSError:
+        return 1  # File I/O error
 
 
 def cmd_init(
@@ -1072,6 +1179,182 @@ def cmd_exec(
     return exit_code
 
 
+def _prepare_pr_config(
+    desc: str | None,
+    file: str | None,
+    title: str | None,
+    body: str | None,
+    repo_slug: str | None,
+    update_if_exists: bool,
+    skip_push: bool,
+    ready: bool,
+    label: list[str] | None,
+    assignee: list[str] | None,
+    reviewer: list[str] | None,
+    min_score: int,
+    strict: bool,
+    comment: bool,
+    update_pr_body: bool,
+    link_issue: str | None,
+    add_labels: str | None,
+    attach_report: bool,
+    summary: str | None,
+    no_details: bool,
+    format_type: str,
+    dry_run: bool,
+) -> PrConfig:
+    """Extract and validate PR configuration from arguments."""
+    log = logging.getLogger("autorepro")
+    
+    # Check required arguments
+    if not desc and not file:
+        log.error("Either --desc or --file must be specified")
+        raise ValueError("Either --desc or --file must be specified")
+
+    if not repo_slug:
+        log.error("--repo-slug must be specified")
+        raise ValueError("--repo-slug must be specified")
+
+    # Read input text
+    try:
+        text = desc if desc is not None else ""
+        if file is not None:
+            try:
+                with open(file, encoding="utf-8") as f:
+                    text = f.read()  # noqa: F841
+            except OSError as e:
+                log.error(f"Error reading file {file}: {e}")
+                raise OSError(f"Error reading file {file}: {e}")
+    except Exception as e:
+        log.error(f"Error processing input: {e}")
+        raise ValueError(f"Error processing input: {e}")
+
+    return PrConfig(
+        desc=desc,
+        file=file,
+        repo_slug=repo_slug,
+        title=title,
+        body=body,
+        ready=ready,
+        label=label,
+        assignee=assignee,
+        reviewer=reviewer,
+        update_if_exists=update_if_exists,
+        comment=comment,
+        update_pr_body=update_pr_body,
+        add_labels=add_labels,
+        link_issue=int(link_issue) if link_issue else None,
+        attach_report=attach_report,
+        summary=summary,
+        no_details=no_details,
+        format_type=format_type,
+        dry_run=dry_run,
+    )
+
+
+def _find_existing_pr(config: PrConfig) -> int | None:
+    """Find existing PR if update operations are requested."""
+    log = logging.getLogger("autorepro")
+    
+    # Get existing PR if updating
+    pr_number = None
+    if needs_pr_update_operation(config):
+        try:
+            # Look for existing PR
+            result = subprocess.run(
+                [
+                    "gh",
+                    "pr",
+                    "list",
+                    "--head",
+                    "feature/test-pr",
+                    "--json",
+                    "number,isDraft",
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            prs = json.loads(result.stdout)
+            if prs:
+                pr_number = prs[0]["number"]
+                log.info(f"Found existing PR #{pr_number}")
+        except Exception as e:
+            if not config.dry_run:
+                log.error(f"Error checking for existing PR: {e}")
+                raise RuntimeError(f"Error checking for existing PR: {e}")
+    
+    return pr_number
+
+
+def _handle_pr_dry_run(config: PrConfig, pr_number: int | None) -> None:
+    """Handle dry-run mode for PR operations."""
+    # Show what would be done - print to stdout for test compatibility
+    base_cmd = ["gh", "pr", "create"]
+    if config.title:
+        base_cmd.extend(["--title", config.title])
+    if config.body:
+        base_cmd.extend(["--body", config.body])
+    if config.repo_slug:
+        base_cmd.extend(["--repo", config.repo_slug])
+    if not config.ready:
+        base_cmd.append("--draft")
+    if config.label:
+        for lbl in config.label:
+            base_cmd.extend(["--label", lbl])
+    if config.assignee:
+        for assign in config.assignee:
+            base_cmd.extend(["--assignee", assign])
+    if config.reviewer:
+        for rev in config.reviewer:
+            base_cmd.extend(["--reviewer", rev])
+
+    # Print the command with safe quoting to stdout
+    quoted_cmd = " ".join(shlex.quote(arg) for arg in base_cmd)
+    print(f"Would run: {quoted_cmd}")
+
+    if config.comment:
+        print("Would update PR comment")
+    if config.update_pr_body:
+        print("Would add sync block")
+    if config.add_labels:
+        print(f"Would add labels: {config.add_labels}")
+    if config.link_issue:
+        print(f"Would cross-link with issue #{config.link_issue}")
+
+
+def _execute_pr_operations(config: PrConfig, pr_number: int | None) -> int:
+    """Execute PR creation or update operations."""
+    log = logging.getLogger("autorepro")
+    
+    try:
+        if pr_number:
+            # Update existing PR
+            if config.comment:
+                log.info("Created autorepro comment")
+            if config.update_pr_body:
+                log.info("Updated sync block")
+            if config.add_labels:
+                log.info("Added labels")
+            if config.link_issue:
+                log.info("Created issue comment")
+        else:
+            # Create new PR
+            if config.comment:
+                log.info("Created autorepro comment")
+            if config.update_pr_body:
+                log.info("Added new sync block")
+            if config.add_labels:
+                log.info("Added labels")
+            if config.link_issue:
+                log.info("Created issue comment")
+
+        return 0
+    except Exception as e:
+        log.error(f"Error: {e}")
+        return 1
+
+
 def cmd_pr(
     desc: str | None = None,
     file: str | None = None,
@@ -1097,120 +1380,23 @@ def cmd_pr(
     dry_run: bool = False,
 ) -> int:
     """Handle the pr command."""
-    log = logging.getLogger("autorepro")
-
-    # Check required arguments
-    if not desc and not file:
-        log.error("Either --desc or --file must be specified")
-        return 2
-
-    if not repo_slug:
-        log.error("--repo-slug must be specified")
-        return 2
-
-    # Read input text
     try:
-        text = desc if desc is not None else ""
-        if file is not None:
-            try:
-                with open(file, encoding="utf-8") as f:
-                    text = f.read()  # noqa: F841
-            except OSError as e:
-                log.error(f"Error reading file {file}: {e}")
-                return 1
-    except Exception as e:
-        log.error(f"Error processing input: {e}")
-        return 1
-
-    # Get existing PR if updating
-    pr_number = None
-    if update_if_exists or comment or update_pr_body or add_labels or link_issue:
-        try:
-            # Look for existing PR
-            result = subprocess.run(
-                [
-                    "gh",
-                    "pr",
-                    "list",
-                    "--head",
-                    "feature/test-pr",
-                    "--json",
-                    "number,isDraft",
-                ],
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-            prs = json.loads(result.stdout)
-            if prs:
-                pr_number = prs[0]["number"]
-                log.info(f"Found existing PR #{pr_number}")
-        except Exception as e:
-            if not dry_run:
-                log.error(f"Error checking for existing PR: {e}")
-                return 1
-
-    if dry_run:
-        # Show what would be done - print to stdout for test compatibility
-        base_cmd = ["gh", "pr", "create"]
-        if title:
-            base_cmd.extend(["--title", title])
-        if body:
-            base_cmd.extend(["--body", body])
-        if repo_slug:
-            base_cmd.extend(["--repo", repo_slug])
-        if not ready:
-            base_cmd.append("--draft")
-        if label:
-            for lbl in label:
-                base_cmd.extend(["--label", lbl])
-        if assignee:
-            for assign in assignee:
-                base_cmd.extend(["--assignee", assign])
-        if reviewer:
-            for rev in reviewer:
-                base_cmd.extend(["--reviewer", rev])
-
-        # Print the command with safe quoting to stdout
-        quoted_cmd = " ".join(shlex.quote(arg) for arg in base_cmd)
-        print(f"Would run: {quoted_cmd}")
-
-        if comment:
-            print("Would update PR comment")
-        if update_pr_body:
-            print("Would add sync block")
-        if add_labels:
-            print(f"Would add labels: {add_labels}")
-        if link_issue:
-            print(f"Would cross-link with issue #{link_issue}")
-        return 0
-
-    try:
-        if pr_number:
-            # Update existing PR
-            if comment:
-                log.info("Created autorepro comment")
-            if update_pr_body:
-                log.info("Updated sync block")
-            if add_labels:
-                log.info("Added labels")
-            if link_issue:
-                log.info("Created issue comment")
-        else:
-            # Create new PR
-            if comment:
-                log.info("Created autorepro comment")
-            if update_pr_body:
-                log.info("Added new sync block")
-            if add_labels:
-                log.info("Added labels")
-            if link_issue:
-                log.info("Created issue comment")
-
-        return 0
-    except Exception as e:
-        log.error(f"Error: {e}")
-        return 1
+        config = _prepare_pr_config(
+            desc, file, title, body, repo_slug, update_if_exists, skip_push, ready,
+            label, assignee, reviewer, min_score, strict, comment, update_pr_body,
+            link_issue, add_labels, attach_report, summary, no_details, format_type, dry_run
+        )
+        pr_number = _find_existing_pr(config)
+        
+        if config.dry_run:
+            _handle_pr_dry_run(config, pr_number)
+            return 0
+        
+        return _execute_pr_operations(config, pr_number)
+    except ValueError:
+        return 2  # Configuration error
+    except (OSError, RuntimeError):
+        return 1  # Runtime error
 
 
 def main(argv: list[str] | None = None) -> int:

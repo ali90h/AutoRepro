@@ -165,8 +165,7 @@ def get_pr_details(pr_number: int, gh_path: str = "gh") -> dict[str, Any]:
             check=True,
         )
 
-        pr_data = json.loads(result.stdout)
-        return pr_data
+        return json.loads(result.stdout)
 
     except subprocess.CalledProcessError as e:
         raise RuntimeError(f"Failed to get PR details: {e}") from e
@@ -637,9 +636,7 @@ def create_issue(
         result = subprocess.run(cmd, check=True, capture_output=True, text=True)
 
         # Extract issue number from URL output
-        issue_url = result.stdout.strip()
-        issue_number = int(issue_url.split("/")[-1])
-        return issue_number
+        return int(result.stdout.strip().split("/")[-1])
 
     except subprocess.CalledProcessError as e:
         raise RuntimeError(f"Failed to create issue: {e}") from e
