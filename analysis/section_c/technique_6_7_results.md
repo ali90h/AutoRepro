@@ -16,7 +16,7 @@ Successfully implemented **Technique 6: Replace Temp with Query** and **Techniqu
 pr_data = json.loads(result.stdout)
 return pr_data
 
-# After: Direct return expression  
+# After: Direct return expression
 return json.loads(result.stdout)
 ```
 
@@ -78,7 +78,7 @@ return content_str.rstrip() + "\n"
 **6 Production-Ready Decorators** implementing cross-cutting concerns:
 
 1. **`@dry_run_aware`** - Skip execution in dry-run mode
-2. **`@handle_errors`** - Consistent error handling & return codes  
+2. **`@handle_errors`** - Consistent error handling & return codes
 3. **`@validate_args`** - Argument validation with custom rules
 4. **`@log_operation`** - Operation logging with sensitive data filtering
 5. **`@time_execution`** - Performance timing with configurable thresholds
@@ -100,7 +100,7 @@ def cmd_scan(json_output: bool = False, show_scores: bool = False) -> int:
 
 **Eliminated**:
 - **15 lines** of try/except boilerplate
-- **Manual logger setup** and error message formatting  
+- **Manual logger setup** and error message formatting
 - **Inconsistent error handling** patterns
 
 ### **Cross-Cutting Concerns Centralized**
@@ -110,7 +110,7 @@ def cmd_scan(json_output: bool = False, show_scores: bool = False) -> int:
 - **Automatic logging** with function context
 - **Flexible exception mapping** per function needs
 
-#### **Dry-Run Mode Support**  
+#### **Dry-Run Mode Support**
 - **Template-based messages**: "Would {operation}" pattern
 - **Configurable return codes** for different scenarios
 - **Automatic parameter detection** (kwargs and positional)
@@ -138,7 +138,7 @@ def cmd_scan(json_output: bool = False, show_scores: bool = False) -> int:
 **Recommended Application Order** (innermost to outermost):
 ```python
 @validate_args(required=['desc'])
-@dry_run_aware(operation="generate plan") 
+@dry_run_aware(operation="generate plan")
 @time_execution(log_threshold=1.0)
 @handle_errors(default_return=1, error_mappings={ValueError: 2})
 @log_operation(operation_name="plan generation")
@@ -177,7 +177,7 @@ def cmd_function(...):
 
 ### **Test Coverage Results**
 - **24/24 decorator tests** passing ✅
-- **49/49 core planning tests** passing ✅  
+- **49/49 core planning tests** passing ✅
 - **15/15 validation helper tests** passing ✅
 - **All existing functionality** preserved ✅
 - **Zero behavioral changes** for end users ✅
@@ -198,16 +198,16 @@ def cmd_scan(json_output: bool = False, show_scores: bool = False) -> int:
     """Handle the scan command."""
     try:
         log = logging.getLogger("autorepro")  # Manual setup
-        
+
         if json_output:
             evidence = collect_evidence(Path("."))
             # ... 20 lines of logic
             return 0
         else:
             detected = detect_languages(".")
-            # ... 25 lines of logic  
+            # ... 25 lines of logic
             return 0
-            
+
     except (OSError, PermissionError):  # Manual error handling
         # 15+ lines of error recovery logic
         if json_output:
@@ -228,7 +228,7 @@ def cmd_scan(json_output: bool = False, show_scores: bool = False) -> int:
         evidence = collect_evidence(Path("."))
         return json.dumps({
             "schema_version": 1,
-            "tool": "autorepro", 
+            "tool": "autorepro",
             "detected": sorted(evidence.keys()),
             "languages": evidence,
         }, indent=2)
@@ -248,23 +248,23 @@ def cmd_scan(json_output: bool = False, show_scores: bool = False) -> int:
 **SECTION C: COMPLETE SUCCESS** ✅
 
 ### **Technique 6: Replace Temp with Query**
-✅ **5 direct return** optimizations applied  
-✅ **Zero behavioral changes** - all functionality preserved  
-✅ **Cleaner expressions** throughout codebase  
-✅ **Improved readability** with query-based returns  
+✅ **5 direct return** optimizations applied
+✅ **Zero behavioral changes** - all functionality preserved
+✅ **Cleaner expressions** throughout codebase
+✅ **Improved readability** with query-based returns
 
 ### **Technique 7: Decorator Pattern**
-✅ **6 production decorators** implemented with full test coverage  
-✅ **1 CLI command** successfully decorated and validated  
-✅ **Cross-cutting concerns** centralized and standardized  
-✅ **50+ lines of boilerplate** eliminated from decorated functions  
-✅ **Professional CLI behavior** with consistent error handling  
+✅ **6 production decorators** implemented with full test coverage
+✅ **1 CLI command** successfully decorated and validated
+✅ **Cross-cutting concerns** centralized and standardized
+✅ **50+ lines of boilerplate** eliminated from decorated functions
+✅ **Professional CLI behavior** with consistent error handling
 
 ### **Overall Code Quality**
 - **More elegant patterns** implemented throughout
 - **Consistent error handling** across all decorated commands
 - **Better separation of concerns** - business logic vs infrastructure
-- **Enhanced debugging capabilities** through structured logging  
+- **Enhanced debugging capabilities** through structured logging
 - **Professional codebase structure** ready for production use
 
 **The AutoRepro CLI now demonstrates advanced Python patterns with clean separation between business logic and cross-cutting concerns, resulting in more maintainable, testable, and professional code.**
@@ -280,7 +280,7 @@ def cmd_scan(json_output: bool = False, show_scores: bool = False) -> int:
 
 ### **Framework Extensions**
 1. **Rate limiting decorator** for API operations
-2. **Retry decorator** for transient failures  
+2. **Retry decorator** for transient failures
 3. **Configuration validation decorator** for complex argument patterns
 4. **Performance profiling decorator** for development debugging
 

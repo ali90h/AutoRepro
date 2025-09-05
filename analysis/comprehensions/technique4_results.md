@@ -8,14 +8,14 @@ Successfully implemented **Technique 4: List/Dict Comprehensions** to improve co
 
 ### 🟢 **List Comprehensions (7 conversions)**
 
-1. **`core/planning.py:196`** - Keyword filtering 
+1. **`core/planning.py:196`** - Keyword filtering
    ```python
    # Before: Loop with conditional append
    matched_keywords = []
    for keyword in rule.keywords:
        if keyword in keywords:
            matched_keywords.append(keyword)
-   
+
    # After: List comprehension with filter
    matched_keywords = [keyword for keyword in rule.keywords if keyword in keywords]
    ```
@@ -29,7 +29,7 @@ Successfully implemented **Technique 4: List/Dict Comprehensions** to improve co
            for rule in all_rules[ecosystem]:
                source = "builtin" if ecosystem in builtin_rules and rule in builtin_rules[ecosystem] else "plugin"
                active_rules.append((rule, source))
-   
+
    # After: Nested list comprehension
    return [
        (rule, "builtin" if ecosystem in builtin_rules and rule in builtin_rules[ecosystem] else "plugin")
@@ -44,12 +44,12 @@ Successfully implemented **Technique 4: List/Dict Comprehensions** to improve co
    # Before: Simple loop with f-string
    for assumption in assumptions:
        lines.append(f"- {assumption}")
-   
+
    # After: Generator expression with extend
    lines.extend(f"- {assumption}" for assumption in assumptions)
    ```
 
-4. **`render/formats.py:178`** - Commands formatting  
+4. **`render/formats.py:178`** - Commands formatting
 5. **`render/formats.py:188`** - Needs formatting
 6. **`render/formats.py:196`** - Next steps formatting
 7. **`sync.py:71`** - Link formatting
@@ -65,14 +65,14 @@ Successfully implemented **Technique 4: List/Dict Comprehensions** to improve co
            raise ValueError(f"Invalid environment variable format: {env_str}")
        key, value = env_str.split("=", 1)
        env_vars[key] = value
-   
+
    # After: Validation + dict comprehension
    # Validate all entries first
    for env_str in env_list:
        if "=" not in env_str:
            raise ValueError(f"Invalid environment variable format: {env_str}")
-   
-   # Convert using dictionary comprehension  
+
+   # Convert using dictionary comprehension
    return {
        env_str.split("=", 1)[0]: env_str.split("=", 1)[1]
        for env_str in env_list
@@ -93,7 +93,7 @@ Successfully implemented **Technique 4: List/Dict Comprehensions** to improve co
                clean_token = "".join(c for c in word if c.isalnum() or c in "-_")
                if clean_token and not clean_token.isdigit():
                    tokens.append(clean_token)
-   
+
    # After: Nested comprehension with walrus operator
    return [
        clean_token
@@ -109,11 +109,11 @@ Successfully implemented **Technique 4: List/Dict Comprehensions** to improve co
 
 ### **Readability Improvements**
 - **Reduced line count**: ~45 lines eliminated across conversions
-- **Eliminated temporary variables**: Removed 15+ intermediate list/dict variables  
+- **Eliminated temporary variables**: Removed 15+ intermediate list/dict variables
 - **More declarative code**: Clear intent with functional-style expressions
 - **Reduced nesting**: Flattened complex loop structures
 
-### **Performance Benefits** 
+### **Performance Benefits**
 - **Memory efficiency**: List comprehensions create lists in C, reducing overhead
 - **Speed improvements**: 15-30% faster execution for large datasets
 - **Reduced function calls**: Eliminated repeated `.append()` calls
@@ -129,7 +129,7 @@ Successfully implemented **Technique 4: List/Dict Comprehensions** to improve co
 
 ### **Behavioral Testing - ✅ ALL TESTS PASS**
 - **test_plan_core.py**: 49/49 tests passing ✅
-- **test_plan_cli.py**: 38/38 tests passing ✅  
+- **test_plan_cli.py**: 38/38 tests passing ✅
 - **Manual validation**: All conversions produce identical output ✅
 - **Error handling**: Exception behavior preserved ✅
 
@@ -138,12 +138,12 @@ Successfully implemented **Technique 4: List/Dict Comprehensions** to improve co
 # Core functionality preserved
 autorepro plan --desc "test issue with pytest" --dry-run ✅
 
-# Token extraction working correctly  
+# Token extraction working correctly
 _extract_tokens_from_text('pytest, test framework, CI-CD')
 → ['pytest', 'test', 'framework', 'CI-CD'] ✅
 
 # Environment parsing with error handling
-parse_env_vars(['KEY1=value1', 'KEY2=value2']) 
+parse_env_vars(['KEY1=value1', 'KEY2=value2'])
 → {'KEY1': 'value1', 'KEY2': 'value2'} ✅
 
 parse_env_vars(['INVALID'])
@@ -159,12 +159,12 @@ parse_env_vars(['INVALID'])
 
 ### **Readability Score**
 - **Before**: Multiple temporary variables, explicit loops
-- **After**: Single-expression transformations, clear data flow  
+- **After**: Single-expression transformations, clear data flow
 - **Improvement**: ~40% more concise, 60% fewer variables
 
 ### **Performance Characteristics**
 - **Small datasets** (<100 items): 15-25% speed improvement
-- **Large datasets** (>1000 items): 25-35% speed improvement  
+- **Large datasets** (>1000 items): 25-35% speed improvement
 - **Memory usage**: 10-20% reduction due to generator expressions
 - **Function call overhead**: Eliminated in all converted cases
 
@@ -185,11 +185,11 @@ parse_env_vars(['INVALID'])
 
 **TECHNIQUE 4: COMPLETE SUCCESS**
 
-✅ **9 successful conversions** across 4 core files  
-✅ **Zero regressions** - all functionality preserved  
-✅ **45+ lines eliminated** - significant code reduction  
-✅ **15-35% performance improvement** for data processing  
-✅ **Modern Pythonic patterns** applied throughout  
+✅ **9 successful conversions** across 4 core files
+✅ **Zero regressions** - all functionality preserved
+✅ **45+ lines eliminated** - significant code reduction
+✅ **15-35% performance improvement** for data processing
+✅ **Modern Pythonic patterns** applied throughout
 
 The AutoRepro codebase now uses clean, efficient list and dictionary comprehensions instead of verbose loop+append patterns, resulting in more maintainable, readable, and performant code while preserving all existing functionality.
 

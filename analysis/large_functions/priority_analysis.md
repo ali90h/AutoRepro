@@ -4,12 +4,12 @@
 
 ### 🚨 cmd_plan() in cli.py - COMPLEXITY: F (54)
 - **Risk Level**: EXTREME - Main CLI entry point
-- **Impact**: Very High - Core user functionality  
+- **Impact**: Very High - Core user functionality
 - **Lines**: ~240+ (estimated from LOC analysis)
 - **Responsibilities**: Input validation, language detection, plan generation, output formatting
 - **Priority**: #1 - Split immediately
 
-### 🚨 cmd_pr() in cli.py - COMPLEXITY: F (42)  
+### 🚨 cmd_pr() in cli.py - COMPLEXITY: F (42)
 - **Risk Level**: HIGH - PR integration functionality
 - **Impact**: High - GitHub integration
 - **Lines**: ~200+ (estimated)
@@ -18,7 +18,7 @@
 
 ### 🚨 cmd_exec() in cli.py - COMPLEXITY: E (35)
 - **Risk Level**: HIGH - Command execution core
-- **Impact**: High - Execution functionality 
+- **Impact**: High - Execution functionality
 - **Lines**: ~150+ (estimated)
 - **Responsibilities**: Command parsing, execution, output handling
 - **Priority**: #3
@@ -32,7 +32,7 @@
 - **Responsibilities**: File creation, validation, diff generation
 - **Priority**: #4
 
-### ⚠️ _load_plugin_rules() in rules.py - COMPLEXITY: C (14)  
+### ⚠️ _load_plugin_rules() in rules.py - COMPLEXITY: C (14)
 - **Risk Level**: MEDIUM - Plugin system
 - **Impact**: Medium - Rule loading
 - **Priority**: #5
@@ -51,7 +51,7 @@
 
 ### Phase 2A: Split cmd_plan() (Days 1-3)
 **Current Structure** (~240 lines, CC: 54):
-- Lines 1-30: Argument parsing and validation  
+- Lines 1-30: Argument parsing and validation
 - Lines 31-60: Repository path resolution
 - Lines 61-90: Language detection
 - Lines 91-150: Plan generation and processing
@@ -84,7 +84,7 @@ def _output_plan_result(plan_data: PlanData, config: PlanConfig) -> int:
 ```
 
 ### Phase 2B: Split cmd_pr() (Days 4-5)
-### Phase 2C: Split cmd_exec() (Days 6-7)  
+### Phase 2C: Split cmd_exec() (Days 6-7)
 ### Phase 2D: Split remaining high-priority functions (Days 8-10)
 
 ## Success Metrics

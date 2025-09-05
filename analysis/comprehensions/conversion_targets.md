@@ -14,7 +14,7 @@ These are straightforward list building patterns with no side effects:
            for rule in all_rules[ecosystem]:
                source = "builtin" if ecosystem in builtin_rules and rule in builtin_rules[ecosystem] else "plugin"
                active_rules.append((rule, source))
-   
+
    # Target: Nested comprehension
    ```
 
@@ -25,7 +25,7 @@ These are straightforward list building patterns with no side effects:
    for keyword in rule.keywords:
        if keyword in keywords:
            matched_keywords.append(keyword)
-   
+
    # Target: [keyword for keyword in rule.keywords if keyword in keywords]
    ```
 
@@ -51,7 +51,7 @@ These are straightforward list building patterns with no side effects:
    # Simple append patterns in loops
    ```
 
-### 🟡 **REVIEW** - Complex Logic, Conditional Conversions  
+### 🟡 **REVIEW** - Complex Logic, Conditional Conversions
 These have multiple conditions or complex transformations:
 
 5. **cli.py:676** - Environment needs generation
@@ -67,7 +67,7 @@ These have multiple conditions or complex transformations:
    ```
 
 6. **sync.py:70-72** - Link building with conditions
-   ```python  
+   ```python
    # Current
    for link in links:
        header_lines.append(f"- {link}")
@@ -78,7 +78,7 @@ These have multiple conditions or complex transformations:
 These have logging, state changes, or complex logic:
 
 7. **rules.py:88** - Plugin rule loading (has debug logging)
-8. **report.py:49** - Environment line building (has exception handling)  
+8. **report.py:49** - Environment line building (has exception handling)
 9. **pr.py** - Multiple patterns with complex formatting logic
 
 ## Dictionary Patterns
@@ -93,7 +93,7 @@ These have logging, state changes, or complex logic:
        if "=" in env_str:
            key, value = env_str.split("=", 1)
            env_vars[key] = value
-   
+
    # Target: Dict comprehension
    ```
 
@@ -111,7 +111,7 @@ These have logging, state changes, or complex logic:
 - Simple `append()` in conditional loops
 - Basic list building patterns
 
-### Phase 2 - Dictionary Comprehensions (Lines 4-5)  
+### Phase 2 - Dictionary Comprehensions (Lines 4-5)
 - Environment variable parsing
 - Simple key-value mapping
 

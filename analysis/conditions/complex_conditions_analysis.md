@@ -7,7 +7,7 @@
 #### 1. **cli.py:859-860** - PR Update Operations Check
 ```python
 # Current - Complex multi-condition check
-if not (pr_config.update_if_exists or pr_config.comment or 
+if not (pr_config.update_if_exists or pr_config.comment or
         pr_config.update_pr_body or pr_config.add_labels or pr_config.link_issue):
     return None
 
@@ -15,7 +15,7 @@ if not (pr_config.update_if_exists or pr_config.comment or
 # Strategy: Extract boolean variable with positive logic
 ```
 
-#### 2. **cli.py:548** - Path Resolution Logic  
+#### 2. **cli.py:548** - Path Resolution Logic
 ```python
 # Current - Triple condition with mixed logic
 if repo_path and not Path(out).is_absolute() and not print_to_stdout:
@@ -31,7 +31,7 @@ if repo_path and not Path(out).is_absolute() and not print_to_stdout:
 (rule, "builtin" if ecosystem in builtin_rules and rule in builtin_rules[ecosystem] else "plugin")
 
 # Issues: Complex nested lookup logic
-# Strategy: Helper function for source determination  
+# Strategy: Helper function for source determination
 ```
 
 ### 🟡 **MEDIUM PRIORITY** - Multiple OR Conditions
@@ -45,9 +45,9 @@ if "test" in keywords or "tests" in keywords or "testing" in keywords:
 # Strategy: Helper function for keyword set checking
 ```
 
-#### 5. **cli.py:659** - Installation Keywords Detection  
+#### 5. **cli.py:659** - Installation Keywords Detection
 ```python
-# Current - Double OR condition  
+# Current - Double OR condition
 if "install" in keywords or "setup" in keywords:
     assumptions.append("Installation or setup may be involved")
 
@@ -71,7 +71,7 @@ if "install" in keywords or "setup" in keywords:
 #### 7. **cli.py:588** - Directory Check
 ```python
 if not print_to_stdout and out and os.path.isdir(out):
-    
+
 # Strategy: Extract boolean for clarity
 ```
 
@@ -124,7 +124,7 @@ if has_any_keyword_variant(keywords, TEST_KEYWORDS):
 - Positive logic instead of complex negations
 - Single responsibility per condition check
 
-### **Maintainability** 
+### **Maintainability**
 - Centralized keyword checking logic
 - Easier to add new keyword variants
 - Clear separation of concerns

@@ -22,10 +22,10 @@ if dry_run:
 
 **Decorator Target**: `@dry_run_aware`
 
-#### 2. **Error Handling & Return Codes** (15+ locations)  
+#### 2. **Error Handling & Return Codes** (15+ locations)
 **Pattern**: Consistent try/except blocks with specific return codes
 ```python
-# Current repeated pattern  
+# Current repeated pattern
 try:
     # operation logic
     return 0
@@ -37,7 +37,7 @@ except ValueError:
 ```
 
 **Locations**:
-- All CLI command functions 
+- All CLI command functions
 - Path validation (cli.py:542-551)
 - File operations throughout
 
@@ -50,7 +50,7 @@ except ValueError:
 if not desc and not file:
     log.error("Error: Must provide either --desc or --file")
     return 2
-    
+
 if repo is not None:
     try:
         repo_path = Path(repo).resolve()
@@ -62,7 +62,7 @@ if repo is not None:
 
 **Locations**:
 - `cmd_plan()` configuration extraction
-- `cmd_pr()` configuration extraction  
+- `cmd_pr()` configuration extraction
 - Path validation throughout
 
 **Decorator Target**: `@validate_args`
@@ -77,7 +77,7 @@ log = logging.getLogger("autorepro")
 
 **Locations**:
 - `cmd_scan()` - cli.py:636
-- `cmd_plan()` - cli.py:820  
+- `cmd_plan()` - cli.py:820
 - `cmd_pr()` - cli.py:871
 - All major CLI functions
 
@@ -97,7 +97,7 @@ else:
 
 **Decorator Target**: `@format_output`
 
-#### 6. **Timing/Performance** (5+ locations) 
+#### 6. **Timing/Performance** (5+ locations)
 **Pattern**: Potential for execution timing (currently not implemented)
 ```python
 # Target pattern
@@ -115,7 +115,7 @@ log.info(f"Operation took {duration.total_seconds():.2f}s")
 
 **Recommended Order** (innermost to outermost):
 1. `@validate_args` - Check inputs first
-2. `@dry_run_aware` - Skip execution if dry-run  
+2. `@dry_run_aware` - Skip execution if dry-run
 3. `@time_execution` - Measure actual operation time
 4. `@handle_errors` - Catch and format errors
 5. `@log_operation` - Log operation details
@@ -129,7 +129,7 @@ log.info(f"Operation took {duration.total_seconds():.2f}s")
 # Planned decorator signatures
 
 @validate_args(required=['repo'], optional=['desc', 'file'])
-@dry_run_aware(message_template="Would {operation}")  
+@dry_run_aware(message_template="Would {operation}")
 @time_execution(log_threshold=1.0)
 @handle_errors(default_return=1, error_mappings={ValueError: 2})
 @log_operation(operation_name="plan generation")
@@ -142,7 +142,7 @@ def cmd_plan(...):
 
 **CLI Commands** (5 functions):
 - `cmd_scan()` - Language detection
-- `cmd_plan()` - Plan generation  
+- `cmd_plan()` - Plan generation
 - `cmd_pr()` - PR operations
 - `cmd_exec()` - Command execution
 - `cmd_version()` - Version info
@@ -163,7 +163,7 @@ def cmd_plan(...):
 ### 🛡️ **Maintainability Benefits**
 - **Single source of truth** for cross-cutting concerns
 - **Easier to modify** error handling behavior
-- **Consistent user experience** across commands  
+- **Consistent user experience** across commands
 - **Better separation of concerns** - business logic vs infrastructure
 
 ### 🚀 **Enhanced Features**
