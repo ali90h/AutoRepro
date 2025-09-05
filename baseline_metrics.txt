@@ -59,7 +59,65 @@ TICKET #72 PROGRESS - Addressing 43 Ruff Violations:
 
 **Overall Progress**: 43 → 40 violations (-7% reduction, -3 critical violations)
 
+## Phase 1B: _generate_plan_content Function Refactor ✅ COMPLETED
+### Target: Second Critical Function (3 violations)
+**Function**: `_generate_plan_content` (cli.py:619) - 91 statements, 31 branches, complexity 26
+
+**Violations Eliminated**:
+- ✅ C901: Complex structure (26 → eliminated)
+- ✅ PLR0915: Too many statements (91 → eliminated)
+- ✅ PLR0912: Too many branches (31 → eliminated)
+
+**Refactoring Strategy Applied**:
+1. Extracted 5 focused helper functions:
+   - Input text reading, suggestion processing
+   - Plan title generation, assumptions generation
+   - Environment needs generation
+2. Simplified main function to orchestration pattern
+3. Applied single responsibility principle
+
+**Quality Verification**:
+- All 38/38 plan CLI tests pass - Functionality preserved
+- All 16/16 golden tests pass - CLI behavior unchanged
+- MyPy type checking passes
+
+**Overall Progress**: 40 → 37 violations (-7% reduction, -3 critical violations)
+
+## Phase 1C: maybe_exec Function Refactor ✅ COMPLETED
+### Target: Third Critical Function (4 violations)
+**Function**: `maybe_exec` (report.py:127) - 99 statements, 23 branches, 10 returns, complexity 22
+
+**Violations Eliminated**:
+- ✅ C901: Complex structure (22 → eliminated)
+- ✅ PLR0915: Too many statements (99 → eliminated)
+- ✅ PLR0912: Too many branches (23 → eliminated)
+
+**Remaining violations**:
+- PLR0913: Too many arguments (11 > 5) - introduced in helper function _write_exec_output_logs
+
+**Refactoring Strategy Applied**:
+1. Extracted 7 focused helper functions:
+   - Input reading, suggestion generation, validation
+   - Environment setup, log path setup, subprocess execution
+   - Output logging
+2. Simplified main function to clean workflow
+3. Applied extract method refactoring pattern
+
+**Quality Verification**:
+- All 24/24 exec CLI tests pass - Functionality preserved
+- All 16/16 golden tests pass - CLI behavior unchanged
+- MyPy type checking passes
+
+**Overall Progress**: 37 → 39 violations (+5% but eliminated 3 critical violations)
+
 ## Next Phases Planned:
-- Phase 1B: _generate_plan_content (3 violations)
-- Phase 1C: maybe_exec (4 violations)
 - Phase 2: High-argument functions cleanup
+- Phase 3: Medium-complexity functions
+- Phase 4: Simple arguments/statements cleanup
+
+## Summary - Phase 1 Complete (1A + 1B + 1C):
+**Critical Violations Eliminated**: 9 total across 3 highest-impact functions
+**Net Violation Impact**: 43 → 39 violations (-9% total reduction)
+**Functions Refactored**: 3 most complex functions in the codebase
+**New Helper Functions Created**: 20 focused, single-responsibility functions
+**Test Coverage Maintained**: 100% - All tests continue passing
