@@ -616,12 +616,11 @@ def _prepare_plan_config(
     return config
 
 
-def _generate_plan_content(config: PlanConfig) -> PlanData:
-    """Generate the actual reproduction plan."""
-    # Read input text
+def _read_plan_input_text(config: PlanConfig) -> str:
+    """Read input text from description or file for plan generation."""
     try:
         if config.desc is not None:
-            text = config.desc
+            return config.desc
         elif config.file is not None:
             # File path resolution: try CWD first, then repo-relative as fallback
             file_path = Path(config.file)
@@ -629,18 +628,18 @@ def _generate_plan_content(config: PlanConfig) -> PlanData:
             # If absolute path, use as-is
             if file_path.is_absolute():
                 with open(file_path, encoding="utf-8") as f:
-                    text = f.read()
+                    return f.read()
             else:
                 # Try CWD first
                 try:
                     with open(file_path, encoding="utf-8") as f:
-                        text = f.read()
+                        return f.read()
                 except OSError:
                     # If CWD fails and --repo specified, try repo-relative as fallback
                     if config.repo_path:
                         repo_file_path = config.repo_path / config.file
                         with open(repo_file_path, encoding="utf-8") as f:
-                            text = f.read()
+                            return f.read()
                     else:
                         # Re-raise the original error if no repo fallback available
                         raise
@@ -654,6 +653,15 @@ def _generate_plan_content(config: PlanConfig) -> PlanData:
         log.error(f"Error reading file {config.file}: {e}")
         raise OSError(f"Error reading file {config.file}: {e}") from e
 
+
+def _process_plan_text_and_generate_suggestions(
+    text: str, config: PlanConfig
+) -> tuple[set[str], list[str], list, int]:
+    """Process text and generate command suggestions.
+
+    Returns:
+        Tuple of (keywords, lang_names, suggestions, filtered_count)
+    """
     # Process the text
     normalized_text = normalize(text)
     keywords = extract_keywords(normalized_text)
@@ -681,17 +689,23 @@ def _generate_plan_content(config: PlanConfig) -> PlanData:
     if filtered_count > 0:
         log.info(f"filtered {filtered_count} low-score suggestions")
 
-    # Limit to max_commands
-    limited_suggestions = suggestions[: config.max_commands]
+    return keywords, lang_names, suggestions, filtered_count
 
-    # Generate title from first few words
+
+def _generate_plan_title(normalized_text: str) -> str:
+    """Generate plan title from normalized text."""
     title_words = normalized_text.split()[:8]  # Increased to allow more words before truncation
     title = "Issue Reproduction Plan"
     if title_words:
         title = " ".join(title_words).title()
         # Note: safe_truncate_60 will be applied in build_repro_md()
+    return title
 
-    # Generate assumptions based on detected languages and keywords
+
+def _generate_plan_assumptions(
+    lang_names: list[str], keywords: set[str], config: PlanConfig, filtered_count: int
+) -> list[str]:
+    """Generate assumptions based on detected languages and keywords."""
     assumptions = []
     if lang_names:
         lang_list = ", ".join(lang_names)
@@ -722,7 +736,13 @@ def _generate_plan_content(config: PlanConfig) -> PlanData:
             f"(min-score={config.min_score})"
         )
 
-    # Generate environment needs based on detected languages
+    return assumptions
+
+
+def _generate_plan_environment_needs(
+    lang_names: list[str], keywords: set[str], config: PlanConfig
+) -> list[str]:
+    """Generate environment needs based on detected languages."""
     needs = []
 
     # Check for devcontainer presence
@@ -751,6 +771,28 @@ def _generate_plan_content(config: PlanConfig) -> PlanData:
 
     if not needs:
         needs.append("Standard development environment")
+
+    return needs
+
+
+def _generate_plan_content(config: PlanConfig) -> PlanData:
+    """Generate the actual reproduction plan."""
+    # Read input text
+    text = _read_plan_input_text(config)
+    normalized_text = normalize(text)
+
+    # Process text and generate suggestions
+    keywords, lang_names, suggestions, filtered_count = _process_plan_text_and_generate_suggestions(
+        text, config
+    )
+
+    # Limit to max_commands
+    limited_suggestions = suggestions[: config.max_commands]
+
+    # Generate plan components
+    title = _generate_plan_title(normalized_text)
+    assumptions = _generate_plan_assumptions(lang_names, keywords, config, filtered_count)
+    needs = _generate_plan_environment_needs(lang_names, keywords, config)
 
     # Generate next steps
     next_steps = [
