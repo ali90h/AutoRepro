@@ -229,3 +229,17 @@ $RECYCLE.BIN/
 
 # Claude Code context files (do not commit)
 CLAUDE_CONTEXT.md
+
+# build / caches / coverage
+htmlcov/
+.autorepro/
+*.egg-info/
+__pycache__/
+.import_linter_cache/
+.coverage
+coverage*.json
+coverage*.txt
+runs.jsonl
+exec.jsonl
+debug.log
+run.log
