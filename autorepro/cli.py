@@ -15,7 +15,6 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 from autorepro import __version__
 from autorepro.config import config
@@ -37,13 +36,10 @@ from autorepro.planner import (
 from autorepro.utils.decorators import handle_errors, log_operation, time_execution
 from autorepro.utils.file_ops import FileOperations
 from autorepro.utils.validation_helpers import (
-    has_test_keywords,
-    has_installation_keywords,
     has_ci_keywords,
-    determine_rule_source,
-    should_apply_repo_relative_path,
+    has_installation_keywords,
+    has_test_keywords,
     needs_pr_update_operation,
-    is_safe_to_write_file,
 )
 
 
@@ -450,6 +446,7 @@ def cmd_scan(json_output: bool = False, show_scores: bool = False) -> int:
         }
 
         import json
+
         print(json.dumps(json_result, indent=2))
         return 0
     else:
@@ -481,6 +478,7 @@ def cmd_scan(json_output: bool = False, show_scores: bool = False) -> int:
 @dataclass
 class PlanConfig:
     """Configuration for plan generation."""
+
     desc: str | None
     file: str | None
     out: str
@@ -498,6 +496,7 @@ class PlanConfig:
 @dataclass
 class PlanData:
     """Generated plan data."""
+
     title: str
     assumptions: list[str]
     suggestions: list[tuple[str, int, str]]
@@ -511,6 +510,7 @@ class PlanData:
 @dataclass
 class PrConfig:
     """Configuration for PR operations."""
+
     desc: str | None
     file: str | None
     repo_slug: str | None
@@ -557,7 +557,7 @@ def _prepare_plan_config(
         strict=strict,
         min_score=min_score,
     )
-    
+
     # Validate and resolve --repo path if specified
     if config.repo is not None:
         try:
@@ -573,7 +573,7 @@ def _prepare_plan_config(
                 f"Error: --repo path does not exist or is not a directory: {config.repo}",
                 file=sys.stderr,
             )
-            raise ValueError("Invalid repo path")
+            raise ValueError("Invalid repo path") from None
 
     # Handle --out - to print to stdout (check before path resolution)
     config.print_to_stdout = config.out == "-"
@@ -625,7 +625,7 @@ def _generate_plan_content(config: PlanConfig) -> PlanData:
     except OSError as e:
         log = logging.getLogger("autorepro")
         log.error(f"Error reading file {config.file}: {e}")
-        raise OSError(f"Error reading file {config.file}: {e}")
+        raise OSError(f"Error reading file {config.file}: {e}") from e
 
     # Process the text
     normalized_text = normalize(text)
@@ -655,7 +655,7 @@ def _generate_plan_content(config: PlanConfig) -> PlanData:
         log.info(f"filtered {filtered_count} low-score suggestions")
 
     # Limit to max_commands
-    limited_suggestions = suggestions[:config.max_commands]
+    limited_suggestions = suggestions[: config.max_commands]
 
     # Generate title from first few words
     title_words = normalized_text.split()[:8]  # Increased to allow more words before truncation
@@ -685,12 +685,14 @@ def _generate_plan_content(config: PlanConfig) -> PlanData:
     # Add filtering note to assumptions if commands were filtered and user explicitly set min-score
     # Only show filtering notes when user explicitly used --min-score (not default) or --strict
     from autorepro.config import config as autorepro_config
+
     min_score_explicit = (
         config.min_score != autorepro_config.limits.min_score_threshold
     )  # Check if non-default value
     if filtered_count > 0 and (min_score_explicit or config.strict):
         assumptions.append(
-            f"Filtered {filtered_count} low-scoring command suggestions (min-score={config.min_score})"
+            f"Filtered {filtered_count} low-scoring command suggestions "
+            f"(min-score={config.min_score})"
         )
 
     # Generate environment needs based on detected languages
@@ -760,9 +762,13 @@ def _output_plan_result(plan_data: PlanData, config: PlanConfig) -> int:
         # Use the standardized JSON function
         json_output = build_repro_json(
             title=safe_truncate_60(plan_data.title),
-            assumptions=(plan_data.assumptions if plan_data.assumptions else ["Standard development environment"]),
+            assumptions=(
+                plan_data.assumptions
+                if plan_data.assumptions
+                else ["Standard development environment"]
+            ),
             commands=plan_data.suggestions,
-            needs=plan_data.needs if plan_data.needs else ["Standard development environment"],
+            needs=(plan_data.needs if plan_data.needs else ["Standard development environment"]),
             next_steps=(
                 plan_data.next_steps
                 if plan_data.next_steps
@@ -775,10 +781,17 @@ def _output_plan_result(plan_data: PlanData, config: PlanConfig) -> int:
         )
 
         import json
+
         content = json.dumps(json_output, indent=2)
     else:
         # Build the reproduction markdown
-        content = build_repro_md(plan_data.title, plan_data.assumptions, plan_data.suggestions, plan_data.needs, plan_data.next_steps)
+        content = build_repro_md(
+            plan_data.title,
+            plan_data.assumptions,
+            plan_data.suggestions,
+            plan_data.needs,
+            plan_data.next_steps,
+        )
 
     # Ensure proper newline termination
     content = ensure_trailing_newline(content)
@@ -1205,7 +1218,7 @@ def _prepare_pr_config(
 ) -> PrConfig:
     """Extract and validate PR configuration from arguments."""
     log = logging.getLogger("autorepro")
-    
+
     # Check required arguments
     if not desc and not file:
         log.error("Either --desc or --file must be specified")
@@ -1224,10 +1237,10 @@ def _prepare_pr_config(
                     text = f.read()  # noqa: F841
             except OSError as e:
                 log.error(f"Error reading file {file}: {e}")
-                raise OSError(f"Error reading file {file}: {e}")
+                raise OSError(f"Error reading file {file}: {e}") from e
     except Exception as e:
         log.error(f"Error processing input: {e}")
-        raise ValueError(f"Error processing input: {e}")
+        raise ValueError(f"Error processing input: {e}") from e
 
     return PrConfig(
         desc=desc,
@@ -1255,7 +1268,7 @@ def _prepare_pr_config(
 def _find_existing_pr(config: PrConfig) -> int | None:
     """Find existing PR if update operations are requested."""
     log = logging.getLogger("autorepro")
-    
+
     # Get existing PR if updating
     pr_number = None
     if needs_pr_update_operation(config):
@@ -1282,8 +1295,8 @@ def _find_existing_pr(config: PrConfig) -> int | None:
         except Exception as e:
             if not config.dry_run:
                 log.error(f"Error checking for existing PR: {e}")
-                raise RuntimeError(f"Error checking for existing PR: {e}")
-    
+                raise RuntimeError(f"Error checking for existing PR: {e}") from e
+
     return pr_number
 
 
@@ -1326,7 +1339,7 @@ def _handle_pr_dry_run(config: PrConfig, pr_number: int | None) -> None:
 def _execute_pr_operations(config: PrConfig, pr_number: int | None) -> int:
     """Execute PR creation or update operations."""
     log = logging.getLogger("autorepro")
-    
+
     try:
         if pr_number:
             # Update existing PR
@@ -1382,16 +1395,35 @@ def cmd_pr(
     """Handle the pr command."""
     try:
         config = _prepare_pr_config(
-            desc, file, title, body, repo_slug, update_if_exists, skip_push, ready,
-            label, assignee, reviewer, min_score, strict, comment, update_pr_body,
-            link_issue, add_labels, attach_report, summary, no_details, format_type, dry_run
+            desc,
+            file,
+            title,
+            body,
+            repo_slug,
+            update_if_exists,
+            skip_push,
+            ready,
+            label,
+            assignee,
+            reviewer,
+            min_score,
+            strict,
+            comment,
+            update_pr_body,
+            link_issue,
+            add_labels,
+            attach_report,
+            summary,
+            no_details,
+            format_type,
+            dry_run,
         )
         pr_number = _find_existing_pr(config)
-        
+
         if config.dry_run:
             _handle_pr_dry_run(config, pr_number)
             return 0
-        
+
         return _execute_pr_operations(config, pr_number)
     except ValueError:
         return 2  # Configuration error
