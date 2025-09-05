@@ -21,7 +21,7 @@ class TestBehavioralValidation:
         """Test that scan command output is identical with configuration."""
         # Run scan command and check it succeeds
         result = subprocess.run(
-            ["python", "-m", "autorepro", "scan", "--json"],
+            ["python3", "-m", "autorepro", "scan", "--json"],
             capture_output=True,
             text=True,
             cwd=Path(__file__).parent.parent,  # Run from repo root
@@ -38,7 +38,7 @@ class TestBehavioralValidation:
     def test_cli_plan_dry_run_identical(self):
         """Test that plan command dry-run output is identical."""
         result = subprocess.run(
-            ["python", "-m", "autorepro", "plan", "--desc", "test issue", "--dry-run"],
+            ["python3", "-m", "autorepro", "plan", "--desc", "test issue", "--dry-run"],
             capture_output=True,
             text=True,
             cwd=Path(__file__).parent.parent,
@@ -52,7 +52,7 @@ class TestBehavioralValidation:
     def test_cli_init_dry_run_identical(self):
         """Test that init command dry-run output is identical."""
         result = subprocess.run(
-            ["python", "-m", "autorepro", "init", "--dry-run"],
+            ["python3", "-m", "autorepro", "init", "--dry-run"],
             capture_output=True,
             text=True,
             cwd=Path(__file__).parent.parent,
@@ -262,7 +262,7 @@ class TestPerformance:
         # Time a scan operation
         start_time = time.time()
         result = subprocess.run(
-            ["python", "-m", "autorepro", "scan"],
+            ["python3", "-m", "autorepro", "scan"],
             capture_output=True,
             text=True,
             cwd=Path(__file__).parent.parent,
