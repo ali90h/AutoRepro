@@ -124,9 +124,219 @@ def write_plan(repo: Path, desc_or_file: str | None, format_type: str) -> tuple[
     return temp_file, content_str
 
 
-def maybe_exec(repo: Path, opts: dict[str, Any]) -> tuple[int, Path | None, Path | None]:
+def _read_exec_input_for_maybe_exec(
+    desc_or_file: str | None,
+) -> str:
+    """Read input text from file or return description directly."""
+    if desc_or_file and Path(desc_or_file).exists():
+        with open(desc_or_file, encoding="utf-8") as f:
+            return f.read()
+    return desc_or_file or ""
+
+
+def _generate_exec_suggestions_for_maybe_exec(
+    text: str, opts: dict[str, Any]
+) -> list[tuple[str, int, str]]:
+    """Generate command suggestions from input text."""
+    normalized_text = normalize(text)
+    keywords = extract_keywords(normalized_text)
+
+    detected_languages = detect_languages(".")
+    lang_names = [lang for lang, _ in detected_languages]
+
+    min_score = opts.get("min_score", config.limits.min_score_threshold)
+    return suggest_commands(keywords, lang_names, min_score)
+
+
+def _validate_and_select_command(
+    suggestions: list[tuple[str, int, str]], opts: dict[str, Any]
+) -> int | None:
+    """Validate suggestions and select command by index.
+
+    Returns:
+        Exit code if validation fails, None if successful
     """
-    Optionally execute the best command and return execution results.
+    log = logging.getLogger("autorepro")
+
+    min_score = opts.get("min_score", config.limits.min_score_threshold)
+
+    # Check strict mode
+    if opts.get("strict", False) and not suggestions:
+        log.error(f"no candidate commands above min-score={min_score}")
+        return 1
+
+    if not suggestions:
+        log.error("No commands to execute")
+        return 1
+
+    # Select command by index
+    index = opts.get("index", 0)
+    if index >= len(suggestions):
+        log.error(f"Index {index} out of range (0-{len(suggestions) - 1})")
+        return 2
+
+    return None  # No error
+
+
+def _prepare_exec_environment_for_maybe_exec(
+    repo: Path, opts: dict[str, Any]
+) -> dict[str, str] | None:
+    """Prepare execution environment with env file and variables.
+
+    Returns:
+        Environment dict or None if error occurred
+    """
+    log = logging.getLogger("autorepro")
+    env = os.environ.copy()
+
+    # Load env file
+    env_file = opts.get("env_file")
+    if env_file:
+        try:
+            env_file_path = Path(env_file)
+            if not env_file_path.is_absolute():
+                env_file_path = repo / env_file
+            with open(env_file_path, encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        key, value = line.split("=", 1)
+                        env[key] = value
+        except OSError as e:
+            log.error(f"Failed to read env file: {e}")
+            return None
+
+    # Apply env vars
+    env_vars = opts.get("env", [])
+    if env_vars:
+        for env_str in env_vars:
+            if "=" not in env_str:
+                log.error(f"Invalid environment variable format: {env_str}")
+                return None
+            key, value = env_str.split("=", 1)
+            env[key] = value
+
+    return env
+
+
+def _setup_exec_log_paths(repo: Path, opts: dict[str, Any]) -> tuple[Path, Path]:
+    """Setup log file paths for execution output."""
+    # Setup log files in temp directory
+    temp_dir = Path(tempfile.mkdtemp())
+    log_path = temp_dir / "run.log"
+    jsonl_path = temp_dir / "runs.jsonl"
+
+    # Override with user-specified paths if provided
+    if opts.get("tee"):
+        user_tee = Path(opts["tee"])
+        if not user_tee.is_absolute():
+            user_tee = repo / user_tee
+        log_path = user_tee
+
+    if opts.get("jsonl"):
+        user_jsonl = Path(opts["jsonl"])
+        if not user_jsonl.is_absolute():
+            user_jsonl = repo / user_jsonl
+        jsonl_path = user_jsonl
+
+    return log_path, jsonl_path
+
+
+def _execute_command_subprocess(
+    command_str: str, cmd_parts: list[str], repo: Path, env: dict[str, str], timeout: int
+) -> tuple[int, str, str, bool] | None:
+    """Execute command via subprocess.
+
+    Returns:
+        Tuple of (exit_code, stdout, stderr, timed_out) or None if execution failed
+    """
+    log = logging.getLogger("autorepro")
+
+    log.info(f"Executing: {command_str}")
+
+    try:
+        result = subprocess.run(
+            cmd_parts,
+            cwd=repo,
+            env=env,
+            timeout=timeout,
+            capture_output=True,
+            text=True,
+        )
+
+        exit_code = result.returncode
+        stdout_full = result.stdout
+        stderr_full = result.stderr
+        timed_out = False
+
+    except subprocess.TimeoutExpired:
+        log.error(f"Command timed out after {timeout} seconds")
+        exit_code = 124
+        stdout_full = ""
+        stderr_full = f"Command timed out after {timeout} seconds"
+        timed_out = True
+
+    except FileNotFoundError:
+        log.error(f"Command not found: {cmd_parts[0]}")
+        return None
+    except OSError as e:
+        log.error(f"Failed to execute command: {e}")
+        return None
+
+    return exit_code, stdout_full, stderr_full, timed_out
+
+
+def _write_exec_output_logs(
+    log_path: Path,
+    jsonl_path: Path,
+    command_str: str,
+    index: int,
+    repo: Path,
+    start_iso: str,
+    duration_ms: int,
+    exit_code: int,
+    stdout_full: str,
+    stderr_full: str,
+    timed_out: bool,
+) -> None:
+    """Write execution results to log and JSONL files."""
+    # Write log file
+    log_content = (
+        f"=== {start_iso} - {command_str} ===\n"
+        "STDOUT:\n"
+        f"{stdout_full}"
+        "\nSTDERR:\n"
+        f"{stderr_full}"
+        f"\nExit code: {exit_code}\n"
+        "=" * 50 + "\n\n"
+    )
+    FileOperations.atomic_write(log_path, log_content)
+
+    # Write JSONL file
+    stdout_preview = stdout_full[:2000] if stdout_full else ""
+    stderr_preview = stderr_full[:2000] if stderr_full else ""
+
+    jsonl_record = {
+        "schema_version": 1,
+        "tool": "autorepro",
+        "tool_version": __version__,
+        "cmd": command_str,
+        "index": index,
+        "cwd": str(repo),
+        "start": start_iso,
+        "duration_ms": duration_ms,
+        "exit_code": exit_code,
+        "timed_out": timed_out,
+        "stdout_preview": stdout_preview,
+        "stderr_preview": stderr_preview,
+    }
+
+    jsonl_content = json.dumps(jsonl_record) + "\n"
+    FileOperations.atomic_write(jsonl_path, jsonl_content)
+
+
+def maybe_exec(repo: Path, opts: dict[str, Any]) -> tuple[int, Path | None, Path | None]:
+    """Optionally execute the best command and return execution results.
 
     Args:
         repo: Repository path
@@ -135,8 +345,6 @@ def maybe_exec(repo: Path, opts: dict[str, Any]) -> tuple[int, Path | None, Path
     Returns:
         Tuple of (exit_code, log_path, jsonl_path)
     """
-    log = logging.getLogger("autorepro")
-
     if not opts.get("exec", False):
         return 0, None, None
 
@@ -148,168 +356,63 @@ def maybe_exec(repo: Path, opts: dict[str, Any]) -> tuple[int, Path | None, Path
         os.chdir(repo)
 
         # Process text to get suggestions
-        if desc_or_file and Path(desc_or_file).exists():
-            with open(desc_or_file, encoding="utf-8") as f:
-                text = f.read()
-        else:
-            text = desc_or_file or ""
+        text = _read_exec_input_for_maybe_exec(desc_or_file)
+        suggestions = _generate_exec_suggestions_for_maybe_exec(text, opts)
 
-        normalized_text = normalize(text)
-        keywords = extract_keywords(normalized_text)
+        # Validate suggestions and select command
+        validation_result = _validate_and_select_command(suggestions, opts)
+        if validation_result is not None:
+            return validation_result, None, None
 
-        detected_languages = detect_languages(".")
-        lang_names = [lang for lang, _ in detected_languages]
-
-        min_score = opts.get("min_score", config.limits.min_score_threshold)
-        suggestions = suggest_commands(keywords, lang_names, min_score)
-
-        # Check strict mode
-        if opts.get("strict", False) and not suggestions:
-            log.error(f"no candidate commands above min-score={min_score}")
-            return 1, None, None
-
-        if not suggestions:
-            log.error("No commands to execute")
-            return 1, None, None
-
-        # Select command by index
         index = opts.get("index", 0)
-        if index >= len(suggestions):
-            log.error(f"Index {index} out of range (0-{len(suggestions) - 1})")
-            return 2, None, None
-
         selected_command = suggestions[index]
         command_str, score, rationale = selected_command
 
         # Prepare environment
-        env = os.environ.copy()
-
-        # Load env file
-        env_file = opts.get("env_file")
-        if env_file:
-            try:
-                env_file_path = Path(env_file)
-                if not env_file_path.is_absolute():
-                    env_file_path = repo / env_file
-                with open(env_file_path, encoding="utf-8") as f:
-                    for line in f:
-                        line = line.strip()
-                        if line and not line.startswith("#") and "=" in line:
-                            key, value = line.split("=", 1)
-                            env[key] = value
-            except OSError as e:
-                log.error(f"Failed to read env file: {e}")
-                return 1, None, None
-
-        # Apply env vars
-        env_vars = opts.get("env", [])
-        if env_vars:
-            for env_str in env_vars:
-                if "=" not in env_str:
-                    log.error(f"Invalid environment variable format: {env_str}")
-                    return 2, None, None
-                key, value = env_str.split("=", 1)
-                env[key] = value
+        env = _prepare_exec_environment_for_maybe_exec(repo, opts)
+        if env is None:
+            return 1, None, None
 
         # Parse command
         try:
             cmd_parts = shlex.split(command_str)
         except ValueError as e:
+            log = logging.getLogger("autorepro")
             log.error(f"Failed to parse command: {e}")
             return 2, None, None
 
-        # Setup log files in temp directory
-        temp_dir = Path(tempfile.mkdtemp())
-        log_path = temp_dir / "run.log"
-        jsonl_path = temp_dir / "runs.jsonl"
-
-        # Override with user-specified paths if provided
-        if opts.get("tee"):
-            user_tee = Path(opts["tee"])
-            if not user_tee.is_absolute():
-                user_tee = repo / user_tee
-            log_path = user_tee
-
-        if opts.get("jsonl"):
-            user_jsonl = Path(opts["jsonl"])
-            if not user_jsonl.is_absolute():
-                user_jsonl = repo / user_jsonl
-            jsonl_path = user_jsonl
+        # Setup log paths
+        log_path, jsonl_path = _setup_exec_log_paths(repo, opts)
 
         # Execute command
         start_time = datetime.now()
         start_iso = start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
         timeout = opts.get("timeout", config.timeouts.default_seconds)
 
-        log.info(f"Executing: {command_str}")
-        timed_out = False
+        exec_result = _execute_command_subprocess(command_str, cmd_parts, repo, env, timeout)
 
-        try:
-            result = subprocess.run(
-                cmd_parts,
-                cwd=repo,
-                env=env,
-                timeout=timeout,
-                capture_output=True,
-                text=True,
-            )
+        if exec_result is None:
+            return 127, None, None  # Command not found or execution failed
 
-            end_time = datetime.now()
-            duration_ms = int((end_time - start_time).total_seconds() * 1000)
+        exit_code, stdout_full, stderr_full, timed_out = exec_result
 
-            exit_code = result.returncode
-            stdout_full = result.stdout
-            stderr_full = result.stderr
+        end_time = datetime.now()
+        duration_ms = int((end_time - start_time).total_seconds() * 1000)
 
-        except subprocess.TimeoutExpired:
-            end_time = datetime.now()
-            duration_ms = int((end_time - start_time).total_seconds() * 1000)
-            log.error(f"Command timed out after {timeout} seconds")
-            exit_code = 124
-            stdout_full = ""
-            stderr_full = f"Command timed out after {timeout} seconds"
-            timed_out = True
-
-        except FileNotFoundError:
-            log.error(f"Command not found: {cmd_parts[0]}")
-            return 127, None, None
-        except OSError as e:
-            log.error(f"Failed to execute command: {e}")
-            return 1, None, None
-
-        # Write log file
-        log_content = (
-            f"=== {start_iso} - {command_str} ===\n"
-            "STDOUT:\n"
-            f"{stdout_full}"
-            "\nSTDERR:\n"
-            f"{stderr_full}"
-            f"\nExit code: {exit_code}\n"
-            "=" * 50 + "\n\n"
+        # Write output logs
+        _write_exec_output_logs(
+            log_path,
+            jsonl_path,
+            command_str,
+            index,
+            repo,
+            start_iso,
+            duration_ms,
+            exit_code,
+            stdout_full,
+            stderr_full,
+            timed_out,
         )
-        FileOperations.atomic_write(log_path, log_content)
-
-        # Write JSONL file
-        stdout_preview = stdout_full[:2000] if stdout_full else ""
-        stderr_preview = stderr_full[:2000] if stderr_full else ""
-
-        jsonl_record = {
-            "schema_version": 1,
-            "tool": "autorepro",
-            "tool_version": __version__,
-            "cmd": command_str,
-            "index": index,
-            "cwd": str(repo),
-            "start": start_iso,
-            "duration_ms": duration_ms,
-            "exit_code": exit_code,
-            "timed_out": timed_out,
-            "stdout_preview": stdout_preview,
-            "stderr_preview": stderr_preview,
-        }
-
-        jsonl_content = json.dumps(jsonl_record) + "\n"
-        FileOperations.atomic_write(jsonl_path, jsonl_content)
 
         return exit_code, log_path, jsonl_path
 
