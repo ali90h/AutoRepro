@@ -131,7 +131,6 @@ def handle_errors(
 
 def validate_args(
     required: list[str] | None = None,
-    optional: list[str] | None = None,
     custom_validator: Callable | None = None,
 ) -> Callable:
     """
@@ -139,11 +138,10 @@ def validate_args(
 
     Args:
         required: List of required argument names
-        optional: List of optional argument names (for documentation)
         custom_validator: Custom validation function that takes kwargs and returns (bool, str)
 
     Usage:
-        @validate_args(required=['desc'], optional=['file'])
+        @validate_args(required=['desc'])
         def cmd_plan(desc: str = None, file: str = None, ...):
             # desc will be validated as required
             pass
