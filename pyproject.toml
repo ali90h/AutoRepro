@@ -78,8 +78,20 @@ select = [
     "B",  # flake8-bugbear
     "C4", # flake8-comprehensions
     "UP", # pyupgrade
+    "PLR0915", # too-many-statements
+    "PLR0913", # too-many-arguments
+    "C901",    # complex-structure
+    "PLR0912", # too-many-branches
+    "PLR0911", # too-many-return-statements
 ]
-ignore = []
+# Temporarily ignore anti-inflation warnings to start as warnings (will be errors later)
+ignore = [
+    "PLR0915", # too-many-statements (>50)
+    "PLR0913", # too-many-arguments (>5)
+    "C901",    # complex-structure (>10)
+    "PLR0912", # too-many-branches (>12)
+    "PLR0911", # too-many-return-statements (>6)
+]
 
 [tool.ruff.format]
 quote-style = "double"
