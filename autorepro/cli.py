@@ -426,14 +426,19 @@ For more information, visit: https://github.com/ali90h/AutoRepro
 
 
 @time_execution(log_threshold=0.5)
-@handle_errors({OSError: 1, PermissionError: 1}, default_return=1, log_errors=True)
+@handle_errors({}, default_return=1, log_errors=True)
 @log_operation("language detection scan")
 def cmd_scan(json_output: bool = False, show_scores: bool = False) -> int:
     """Handle the scan command."""
     if json_output:
         # Use new weighted evidence collection for JSON output
-        evidence = collect_evidence(Path("."))
-        detected_languages = sorted(evidence.keys())
+        try:
+            evidence = collect_evidence(Path("."))
+            detected_languages = sorted(evidence.keys())
+        except (OSError, PermissionError):
+            # Handle I/O errors gracefully for JSON output - return empty results
+            evidence = {}
+            detected_languages = []
 
         # Build JSON output according to schema
         json_result = {
@@ -468,9 +473,13 @@ def cmd_scan(json_output: bool = False, show_scores: bool = False) -> int:
 
             # Add score if --show-scores is enabled
             if show_scores:
-                evidence = collect_evidence(Path("."))
-                if lang in evidence:
-                    print(f"  Score: {evidence[lang]['score']}")
+                try:
+                    evidence = collect_evidence(Path("."))
+                    if lang in evidence:
+                        print(f"  Score: {evidence[lang]['score']}")
+                except (OSError, PermissionError):
+                    # Skip scores if evidence collection fails
+                    pass
 
         return 0
 
