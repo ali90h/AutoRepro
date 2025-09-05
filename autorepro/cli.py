@@ -12,7 +12,7 @@ import subprocess
 import sys
 from collections.abc import Generator
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
@@ -541,6 +541,24 @@ class PrConfig:
     dry_run: bool
 
 
+@dataclass
+class ExecConfig:
+    """Configuration for exec command operations."""
+
+    desc: str | None = None
+    file: str | None = None
+    repo: str | None = None
+    index: int = 0
+    timeout: int = field(default_factory=lambda: config.timeouts.default_seconds)
+    env_vars: list[str] | None = None
+    env_file: str | None = None
+    tee_path: str | None = None
+    jsonl_path: str | None = None
+    dry_run: bool = False
+    min_score: int = field(default_factory=lambda: config.limits.min_score_threshold)
+    strict: bool = False
+
+
 def _prepare_plan_config(
     desc: str | None,
     file: str | None,
@@ -974,63 +992,75 @@ def load_env_file(env_file: str) -> dict[str, str]:
     return env_vars
 
 
-def cmd_exec(
-    desc: str | None = None,
-    file: str | None = None,
-    repo: str | None = None,
-    index: int = 0,
-    timeout: int = config.timeouts.default_seconds,
-    env_vars: list[str] | None = None,
-    env_file: str | None = None,
-    tee_path: str | None = None,
-    jsonl_path: str | None = None,
-    dry_run: bool = False,
-    min_score: int = config.limits.min_score_threshold,
-    strict: bool = False,
-) -> int:
-    """Handle the exec command."""
+def _validate_exec_repo_path(repo: str | None) -> tuple[Path | None, int | None]:
+    """Validate and resolve repo path for exec command.
+
+    Returns:
+        Tuple of (resolved_path, error_code). If error_code is not None, should return it.
+    """
+    if repo is None:
+        return None, None
+
+    log = logging.getLogger("autorepro")
+    try:
+        repo_path = Path(repo).resolve()
+        if not repo_path.is_dir():
+            log.error(f"--repo path does not exist or is not a directory: {repo}")
+            return None, 2
+        return repo_path, None
+    except (OSError, ValueError):
+        log.error(f"--repo path does not exist or is not a directory: {repo}")
+        return None, 2
+
+
+def _read_exec_input_text(
+    config: ExecConfig, repo_path: Path | None
+) -> tuple[str | None, int | None]:
+    """Read input text for exec command.
+
+    Returns:
+        Tuple of (text, error_code). If error_code is not None, should return it.
+    """
     log = logging.getLogger("autorepro")
 
-    # Validate and resolve --repo path if specified
-    repo_path = None
-    if repo is not None:
-        try:
-            repo_path = Path(repo).resolve()
-            if not repo_path.is_dir():
-                log.error(f"--repo path does not exist or is not a directory: {repo}")
-                return 2
-        except (OSError, ValueError):
-            log.error(f"--repo path does not exist or is not a directory: {repo}")
-            return 2
-
-    # Read input text (same logic as plan)
     try:
-        if desc is not None:
-            text = desc
-        elif file is not None:
-            file_path = Path(file)
+        if config.desc is not None:
+            return config.desc, None
+        elif config.file is not None:
+            file_path = Path(config.file)
             if file_path.is_absolute():
                 with open(file_path, encoding="utf-8") as f:
-                    text = f.read()
+                    return f.read(), None
             else:
                 try:
                     with open(file_path, encoding="utf-8") as f:
-                        text = f.read()
+                        return f.read(), None
                 except OSError:
                     if repo_path:
-                        repo_file_path = repo_path / file
+                        repo_file_path = repo_path / config.file
                         with open(repo_file_path, encoding="utf-8") as f:
-                            text = f.read()
+                            return f.read(), None
                     else:
                         raise
         else:
             log.error("Either --desc or --file must be specified")
-            return 2
+            return None, 2
     except OSError as e:
-        log.error(f"Error reading file {file}: {e}")
-        return 1
+        log.error(f"Error reading file {config.file}: {e}")
+        return None, 1
 
-    # Process the text and generate suggestions (same as plan)
+
+def _generate_exec_suggestions(
+    text: str, repo_path: Path | None, config: ExecConfig
+) -> tuple[list, int | None]:
+    """Generate command suggestions for exec.
+
+    Returns:
+        Tuple of (suggestions, error_code). If error_code is not None, should return it.
+    """
+    log = logging.getLogger("autorepro")
+
+    # Process the text and generate suggestions
     normalized_text = normalize(text)
     keywords = extract_keywords(normalized_text)
 
@@ -1043,12 +1073,12 @@ def cmd_exec(
     lang_names = [lang for lang, _ in detected_languages]
 
     # Generate suggestions
-    suggestions = suggest_commands(keywords, lang_names, min_score)
+    suggestions = suggest_commands(keywords, lang_names, config.min_score)
 
     # Check for strict mode - exit 1 if no commands after filtering
-    if strict and not suggestions:
-        log.error(f"no candidate commands above min-score={min_score}")
-        return 1
+    if config.strict and not suggestions:
+        log.error(f"no candidate commands above min-score={config.min_score}")
+        return suggestions, 1
 
     # Count filtered commands for info logging
     total_commands = len(suggest_commands(keywords, lang_names, min_score=0))
@@ -1056,53 +1086,75 @@ def cmd_exec(
     if filtered_count > 0:
         log.info(f"filtered {filtered_count} low-score suggestions")
 
-    # Select command by index
+    return suggestions, None
+
+
+def _select_exec_command(suggestions: list, config: ExecConfig) -> tuple[tuple | None, int | None]:
+    """Select command by index for execution.
+
+    Returns:
+        Tuple of (selected_command, error_code). If error_code is not None, should return it.
+    """
+    log = logging.getLogger("autorepro")
+
     if not suggestions:
         log.error("No commands to execute")
-        return 1
+        return None, 1
 
-    if index >= len(suggestions):
-        log.error(f"Index {index} out of range (0-{len(suggestions) - 1})")
-        return 2
+    if config.index >= len(suggestions):
+        log.error(f"Index {config.index} out of range (0-{len(suggestions) - 1})")
+        return None, 2
 
-    selected_command = suggestions[index]
-    command_str, score, rationale = selected_command
+    return suggestions[config.index], None
 
-    # Handle dry-run
-    if dry_run:
-        print(command_str)
-        return 0
 
-    # Prepare environment variables
+def _prepare_exec_environment(config: ExecConfig) -> tuple[dict | None, int | None]:
+    """Prepare environment variables for command execution.
+
+    Returns:
+        Tuple of (env_dict, error_code). If error_code is not None, should return it.
+    """
+    log = logging.getLogger("autorepro")
+
     env = os.environ.copy()
 
     # Load from env file first
-    if env_file:
+    if config.env_file:
         try:
-            file_env = load_env_file(env_file)
+            file_env = load_env_file(config.env_file)
             env.update(file_env)
         except OSError as e:
             log.error(str(e))
-            return 1
+            return None, 1
 
     # Apply --env overrides
-    if env_vars:
+    if config.env_vars:
         try:
-            cmd_env = parse_env_vars(env_vars)
+            cmd_env = parse_env_vars(config.env_vars)
             env.update(cmd_env)
         except ValueError as e:
             log.error(str(e))
-            return 2
+            return None, 2
 
-    # Determine execution directory
-    exec_dir = repo_path if repo_path else Path.cwd()
+    return env, None
+
+
+def _execute_command(
+    command_str: str, env: dict, exec_dir: Path, config: ExecConfig
+) -> tuple[dict, int | None]:
+    """Execute the selected command and return results.
+
+    Returns:
+        Tuple of (execution_results_dict, error_code). If error_code is not None, should return it.
+    """
+    log = logging.getLogger("autorepro")
 
     # Parse command for execution
     try:
         cmd_parts = shlex.split(command_str)
     except ValueError as e:
         log.error(f"Failed to parse command: {e}")
-        return 2
+        return {}, 2
 
     # Record start time and prepare for execution
     start_time = datetime.now()
@@ -1116,7 +1168,7 @@ def cmd_exec(
             cmd_parts,
             cwd=exec_dir,
             env=env,
-            timeout=timeout,
+            timeout=config.timeout,
             capture_output=True,
             text=True,
         )
@@ -1132,56 +1184,72 @@ def cmd_exec(
     except subprocess.TimeoutExpired:
         end_time = datetime.now()
         duration_ms = int((end_time - start_time).total_seconds() * 1000)
-        log.error(f"Command timed out after {timeout} seconds")
+        log.error(f"Command timed out after {config.timeout} seconds")
         exit_code = 124  # Standard timeout exit code
         stdout_full = ""
-        stderr_full = f"Command timed out after {timeout} seconds"
+        stderr_full = f"Command timed out after {config.timeout} seconds"
         timed_out = True
 
     except FileNotFoundError:
         log.error(f"Command not found: {cmd_parts[0]}")
-        return 127
+        return {}, 127
     except OSError as e:
         log.error(f"Failed to execute command: {e}")
-        return 1
+        return {}, 1
+
+    return {
+        "start_iso": start_iso,
+        "duration_ms": duration_ms,
+        "exit_code": exit_code,
+        "stdout_full": stdout_full,
+        "stderr_full": stderr_full,
+        "timed_out": timed_out,
+        "command_str": command_str,
+        "exec_dir": exec_dir,
+    }, None
+
+
+def _handle_exec_output_logging(results: dict, config: ExecConfig) -> None:
+    """Handle tee and JSONL output logging."""
+    log = logging.getLogger("autorepro")
 
     # Handle tee output
-    if tee_path:
+    if config.tee_path:
         try:
-            tee_path_obj = Path(tee_path)
+            tee_path_obj = Path(config.tee_path)
             FileOperations.ensure_directory(tee_path_obj.parent)
             with open(tee_path_obj, "a", encoding="utf-8") as f:
-                f.write(f"=== {start_iso} - {command_str} ===\n")
+                f.write(f"=== {results['start_iso']} - {results['command_str']} ===\n")
                 f.write("STDOUT:\n")
-                f.write(stdout_full)
+                f.write(results["stdout_full"])
                 f.write("\nSTDERR:\n")
-                f.write(stderr_full)
-                f.write(f"\nExit code: {exit_code}\n")
+                f.write(results["stderr_full"])
+                f.write(f"\nExit code: {results['exit_code']}\n")
                 f.write("=" * 50 + "\n\n")
         except OSError as e:
             log.error(f"Failed to write tee log: {e}")
 
     # Handle JSONL output
-    if jsonl_path:
+    if config.jsonl_path:
         try:
-            jsonl_path_obj = Path(jsonl_path)
+            jsonl_path_obj = Path(config.jsonl_path)
             FileOperations.ensure_directory(jsonl_path_obj.parent)
 
             # Prepare previews (first 2000 chars)
-            stdout_preview = stdout_full[:2000] if stdout_full else ""
-            stderr_preview = stderr_full[:2000] if stderr_full else ""
+            stdout_preview = results["stdout_full"][:2000] if results["stdout_full"] else ""
+            stderr_preview = results["stderr_full"][:2000] if results["stderr_full"] else ""
 
             jsonl_record = {
                 "schema_version": 1,
                 "tool": "autorepro",
                 "tool_version": __version__,
-                "cmd": command_str,
-                "index": index,
-                "cwd": str(exec_dir),
-                "start": start_iso,
-                "duration_ms": duration_ms,
-                "exit_code": exit_code,
-                "timed_out": timed_out,
+                "cmd": results["command_str"],
+                "index": config.index,
+                "cwd": str(results["exec_dir"]),
+                "start": results["start_iso"],
+                "duration_ms": results["duration_ms"],
+                "exit_code": results["exit_code"],
+                "timed_out": results["timed_out"],
                 "stdout_preview": stdout_preview,
                 "stderr_preview": stderr_preview,
             }
@@ -1192,13 +1260,91 @@ def cmd_exec(
         except OSError as e:
             log.error(f"Failed to write JSONL log: {e}")
 
-    # Print output to console (unless quiet)
-    if stdout_full:
-        print(stdout_full, end="")
-    if stderr_full:
-        print(stderr_full, file=sys.stderr, end="")
 
-    return exit_code
+def cmd_exec(
+    desc: str | None = None,
+    file: str | None = None,
+    repo: str | None = None,
+    index: int = 0,
+    timeout: int = config.timeouts.default_seconds,
+    env_vars: list[str] | None = None,
+    env_file: str | None = None,
+    tee_path: str | None = None,
+    jsonl_path: str | None = None,
+    dry_run: bool = False,
+    min_score: int = config.limits.min_score_threshold,
+    strict: bool = False,
+) -> int:
+    """Handle the exec command."""
+    # Create configuration object
+    exec_config = ExecConfig(
+        desc=desc,
+        file=file,
+        repo=repo,
+        index=index,
+        timeout=timeout,
+        env_vars=env_vars,
+        env_file=env_file,
+        tee_path=tee_path,
+        jsonl_path=jsonl_path,
+        dry_run=dry_run,
+        min_score=min_score,
+        strict=strict,
+    )
+
+    # Validate and resolve repo path
+    repo_path, error = _validate_exec_repo_path(exec_config.repo)
+    if error is not None:
+        return error
+
+    # Read input text
+    text, error = _read_exec_input_text(exec_config, repo_path)
+    if error is not None:
+        return error
+    assert text is not None  # Type assertion - we know text is valid if no error
+
+    # Generate command suggestions
+    suggestions, error = _generate_exec_suggestions(text, repo_path, exec_config)
+    if error is not None:
+        return error
+
+    # Select command by index
+    selected_command, error = _select_exec_command(suggestions, exec_config)
+    if error is not None:
+        return error
+    assert selected_command is not None  # Type assertion - we know command is valid if no error
+
+    command_str, score, rationale = selected_command
+
+    # Handle dry-run
+    if exec_config.dry_run:
+        print(command_str)
+        return 0
+
+    # Prepare environment variables
+    env, error = _prepare_exec_environment(exec_config)
+    if error is not None:
+        return error
+    assert env is not None  # Type assertion - we know env is valid if no error
+
+    # Determine execution directory
+    exec_dir = repo_path if repo_path else Path.cwd()
+
+    # Execute the command
+    results, error = _execute_command(command_str, env, exec_dir, exec_config)
+    if error is not None:
+        return error
+
+    # Handle output logging
+    _handle_exec_output_logging(results, exec_config)
+
+    # Print output to console (unless quiet)
+    if results["stdout_full"]:
+        print(results["stdout_full"], end="")
+    if results["stderr_full"]:
+        print(results["stderr_full"], file=sys.stderr, end="")
+
+    return results["exit_code"]
 
 
 def _prepare_pr_config(
