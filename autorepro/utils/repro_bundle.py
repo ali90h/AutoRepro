@@ -60,6 +60,4 @@ def generate_plan_content(
         )
 
     # Ensure proper newline termination
-    content_str = content_str.rstrip() + "\n"
-
-    return content_str
+    return content_str.rstrip() + "\n"

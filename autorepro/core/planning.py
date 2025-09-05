@@ -54,9 +54,7 @@ def normalize(text: str) -> str:
     text = re.sub(r"[^\w\s.-]", " ", text)
 
     # Normalize whitespace
-    text = re.sub(r"\s+", " ", text).strip()
-
-    return text
+    return re.sub(r"\s+", " ", text).strip()
 
 
 def _extract_regex_keywords(text: str) -> set[str]:
@@ -136,9 +134,7 @@ def safe_truncate_60(text: str) -> str:
         return text
 
     # Truncate to 60 Unicode code points and append ellipsis
-    truncated = text[:60] + "…"
-
-    return truncated
+    return text[:60] + "…"
 
 
 def _determine_ecosystems_to_include(keywords: set[str]) -> set[str]:
