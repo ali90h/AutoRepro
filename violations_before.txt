@@ -1,0 +1,199 @@
+PLR0913 Too many arguments in function definition (10 > 5)
+   --> autorepro/cli.py:895:5
+    |
+895 | def cmd_plan(
+    |     ^^^^^^^^
+896 |     desc: str | None = None,
+897 |     file: str | None = None,
+    |
+
+C901 `cmd_init` is too complex (16 > 10)
+   --> autorepro/cli.py:933:5
+    |
+933 | def cmd_init(
+    |     ^^^^^^^^
+934 |     force: bool = False,
+935 |     out: str | None = None,
+    |
+
+PLR0911 Too many return statements (9 > 6)
+   --> autorepro/cli.py:933:5
+    |
+933 | def cmd_init(
+    |     ^^^^^^^^
+934 |     force: bool = False,
+935 |     out: str | None = None,
+    |
+
+PLR0912 Too many branches (18 > 12)
+   --> autorepro/cli.py:933:5
+    |
+933 | def cmd_init(
+    |     ^^^^^^^^
+934 |     force: bool = False,
+935 |     out: str | None = None,
+    |
+
+PLR0913 Too many arguments in function definition (12 > 5)
+    --> autorepro/cli.py:1326:5
+     |
+1326 | def cmd_exec(
+     |     ^^^^^^^^
+1327 |     desc: str | None = None,
+1328 |     file: str | None = None,
+     |
+
+PLR0911 Too many return statements (8 > 6)
+    --> autorepro/cli.py:1326:5
+     |
+1326 | def cmd_exec(
+     |     ^^^^^^^^
+1327 |     desc: str | None = None,
+1328 |     file: str | None = None,
+     |
+
+PLR0913 Too many arguments in function definition (22 > 5)
+    --> autorepro/cli.py:1572:5
+     |
+1572 | def cmd_pr(
+     |     ^^^^^^
+1573 |     desc: str | None = None,
+1574 |     file: str | None = None,
+     |
+
+C901 `main` is too complex (12 > 10)
+    --> autorepro/cli.py:1638:5
+     |
+1638 | def main(argv: list[str] | None = None) -> int:
+     |     ^^^^
+1639 |     parser = create_parser()
+1640 |     try:
+     |
+
+PLR0911 Too many return statements (8 > 6)
+    --> autorepro/cli.py:1638:5
+     |
+1638 | def main(argv: list[str] | None = None) -> int:
+     |     ^^^^
+1639 |     parser = create_parser()
+1640 |     try:
+     |
+
+PLR0912 Too many branches (13 > 12)
+    --> autorepro/cli.py:1638:5
+     |
+1638 | def main(argv: list[str] | None = None) -> int:
+     |     ^^^^
+1639 |     parser = create_parser()
+1640 |     try:
+     |
+
+C901 `write_devcontainer` is too complex (18 > 10)
+   --> autorepro/env.py:168:5
+    |
+168 | def write_devcontainer(
+    |     ^^^^^^^^^^^^^^^^^^
+169 |     content: dict[str, str | dict[str, dict[str, str]]],
+170 |     force: bool = False,
+    |
+
+PLR0912 Too many branches (18 > 12)
+   --> autorepro/env.py:168:5
+    |
+168 | def write_devcontainer(
+    |     ^^^^^^^^^^^^^^^^^^
+169 |     content: dict[str, str | dict[str, dict[str, str]]],
+170 |     force: bool = False,
+    |
+
+PLR0915 Too many statements (56 > 50)
+   --> autorepro/env.py:168:5
+    |
+168 | def write_devcontainer(
+    |     ^^^^^^^^^^^^^^^^^^
+169 |     content: dict[str, str | dict[str, dict[str, str]]],
+170 |     force: bool = False,
+    |
+
+C901 `build_pr_body` is too complex (17 > 10)
+  --> autorepro/pr.py:51:5
+   |
+51 | def build_pr_body(plan_content: str, format_type: str) -> str:
+   |     ^^^^^^^^^^^^^
+52 |     """
+53 |     Build PR body from plan content.
+   |
+
+PLR0912 Too many branches (20 > 12)
+  --> autorepro/pr.py:51:5
+   |
+51 | def build_pr_body(plan_content: str, format_type: str) -> str:
+   |     ^^^^^^^^^^^^^
+52 |     """
+53 |     Build PR body from plan content.
+   |
+
+PLR0915 Too many statements (61 > 50)
+  --> autorepro/pr.py:51:5
+   |
+51 | def build_pr_body(plan_content: str, format_type: str) -> str:
+   |     ^^^^^^^^^^^^^
+52 |     """
+53 |     Build PR body from plan content.
+   |
+
+PLR0913 Too many arguments in function definition (11 > 5)
+   --> autorepro/report.py:289:5
+    |
+289 | def _write_exec_output_logs(
+    |     ^^^^^^^^^^^^^^^^^^^^^^^
+290 |     log_path: Path,
+291 |     jsonl_path: Path,
+    |
+
+PLR0913 Too many arguments in function definition (7 > 5)
+  --> autorepro/sync.py:38:5
+   |
+38 | def render_sync_comment(
+   |     ^^^^^^^^^^^^^^^^^^^
+39 |     config_or_content: SyncCommentConfig | str,
+40 |     format_type: str | None = None,
+   |
+
+C901 `process_plan_input` is too complex (18 > 10)
+  --> autorepro/utils/plan_processing.py:29:5
+   |
+29 | def process_plan_input(desc_or_file: str | None, repo_path: Path, min_score: int = 0) -> PlanData:
+   |     ^^^^^^^^^^^^^^^^^^
+30 |     """
+31 |     Process plan input and generate common plan components.
+   |
+
+PLR0912 Too many branches (21 > 12)
+  --> autorepro/utils/plan_processing.py:29:5
+   |
+29 | def process_plan_input(desc_or_file: str | None, repo_path: Path, min_score: int = 0) -> PlanData:
+   |     ^^^^^^^^^^^^^^^^^^
+30 |     """
+31 |     Process plan input and generate common plan components.
+   |
+
+PLR0915 Too many statements (63 > 50)
+  --> autorepro/utils/plan_processing.py:29:5
+   |
+29 | def process_plan_input(desc_or_file: str | None, repo_path: Path, min_score: int = 0) -> PlanData:
+   |     ^^^^^^^^^^^^^^^^^^
+30 |     """
+31 |     Process plan input and generate common plan components.
+   |
+
+PLR0913 Too many arguments in function definition (7 > 5)
+   --> autorepro/utils/process.py:176:5
+    |
+176 | def safe_subprocess_run(
+    |     ^^^^^^^^^^^^^^^^^^^
+177 |     cmd: str | list[str],
+178 |     cwd: str | Path | None = None,
+    |
+
+Found 22 errors.

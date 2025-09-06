@@ -35,48 +35,16 @@ class ReportMeta(NamedTuple):
     path: str
 
 
-def render_sync_comment(
-    config_or_content: SyncCommentConfig | str,
-    format_type: str | None = None,
-    context: Literal["issue", "pr"] | None = None,
-    *,
-    attach_report: ReportMeta | None = None,
-    links: list[str] | None = None,
-    summary: str | None = None,
-    use_details: bool = True,
-) -> str:
+def _render_sync_comment_impl(config: SyncCommentConfig) -> str:
     """
     Render sync comment for either issues or PRs with tagged sync block.
 
     Args:
-        config_or_content: Either a SyncCommentConfig object or plan content string
-        format_type: Format type (required if first arg is string)
-        context: Context type (required if first arg is string)
-        attach_report: Report metadata for attachment
-        links: Cross-reference links
-        summary: Summary text
-        use_details: Whether to use details sections for long content
+        config: SyncCommentConfig object containing all rendering options
 
     Returns:
         Formatted comment body with sync block tags
     """
-    # Handle backward compatibility - support both old and new signatures
-    if isinstance(config_or_content, str):
-        if format_type is None or context is None:
-            raise TypeError(
-                "format_type and context are required when passing plan content as string"
-            )
-        config = SyncCommentConfig(
-            plan_content=config_or_content,
-            format_type=format_type,
-            context=context,
-            attach_report=attach_report,
-            links=links,
-            summary=summary,
-            use_details=use_details,
-        )
-    else:
-        config = config_or_content
     # Build header section
     header_lines = []
 
@@ -149,6 +117,44 @@ def render_sync_comment(
     # Combine all parts
     all_lines = header_lines + sync_block_lines + footer_lines
     return "\n".join(all_lines)
+
+
+def render_sync_comment(
+    config_or_content: SyncCommentConfig | str,
+    format_type: str | None = None,
+    context: Literal["issue", "pr"] | None = None,
+    **kwargs,
+) -> str:
+    """
+    Render sync comment for either issues or PRs with tagged sync block.
+
+    Args:
+        config_or_content: Either a SyncCommentConfig object or plan content string
+        format_type: Format type (required if first arg is string)
+        context: Context type (required if first arg is string)
+        **kwargs: Additional arguments (attach_report, links, summary, use_details)
+
+    Returns:
+        Formatted comment body with sync block tags
+    """
+    if isinstance(config_or_content, str):
+        if format_type is None or context is None:
+            raise TypeError(
+                "format_type and context are required when passing plan content as string"
+            )
+        config = SyncCommentConfig(
+            plan_content=config_or_content,
+            format_type=format_type,
+            context=context,
+            attach_report=kwargs.get("attach_report"),
+            links=kwargs.get("links"),
+            summary=kwargs.get("summary"),
+            use_details=kwargs.get("use_details", True),
+        )
+    else:
+        config = config_or_content
+
+    return _render_sync_comment_impl(config)
 
 
 def find_synced_block(text: str) -> tuple[int, int] | None:

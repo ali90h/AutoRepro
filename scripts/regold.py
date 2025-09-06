@@ -43,6 +43,67 @@ def normalize_scan_json(json_str, cwd):
     return json.dumps(obj, sort_keys=True, separators=(",", ":"))
 
 
+def _setup_plan_test_case(tmp_path, case):
+    """Setup test case directory with appropriate markers."""
+    if case == "basic_pytest":
+        (tmp_path / "pyproject.toml").write_text('[build-system]\nrequires = ["setuptools"]')
+    elif case == "jest_watch":
+        (tmp_path / "package.json").write_text('{"name": "test-project", "version": "1.0.0"}')
+        (tmp_path / "pnpm-lock.yaml").write_text("{}")
+    # ambiguous case has no markers
+
+
+def _process_plan_markdown(case, temp_desc, tmp_path, plan_dir, write):
+    """Process markdown generation for plan case."""
+    result = run_cli(["plan", "--file", str(temp_desc), "--out", "-"], tmp_path)
+    if result.returncode != 0:
+        print(f"Error generating MD for {case}: {result.stderr}")
+        return False
+
+    md_content = ensure_trailing_newline(result.stdout)
+    expected_md = plan_dir / f"{case}.expected.md"
+
+    if write:
+        expected_md.write_text(md_content)
+        print(f"  Updated {expected_md}")
+    else:
+        if expected_md.exists():
+            existing = expected_md.read_text()
+            if existing != md_content:
+                print(f"  MD differs for {case}")
+        else:
+            print(f"  MD missing for {case}")
+
+    return True
+
+
+def _process_plan_json(case, temp_desc, tmp_path, plan_dir, write):
+    """Process JSON generation for plan case."""
+    result = run_cli(
+        ["plan", "--file", str(temp_desc), "--format", "json", "--out", "-"],
+        tmp_path,
+    )
+    if result.returncode != 0:
+        print(f"Error generating JSON for {case}: {result.stderr}")
+        return False
+
+    json_content = canon_json_bytes(result.stdout.encode("utf-8")) + "\n"
+    expected_json = plan_dir / f"{case}.expected.json"
+
+    if write:
+        expected_json.write_text(json_content)
+        print(f"  Updated {expected_json}")
+    else:
+        if expected_json.exists():
+            existing = canon_json_bytes(expected_json.read_text().encode("utf-8")) + "\n"
+            if existing != json_content:
+                print(f"  JSON differs for {case}")
+        else:
+            print(f"  JSON missing for {case}")
+
+    return True
+
+
 def regold_plan(golden_dir, write=False):
     """Regenerate plan golden files."""
     plan_dir = golden_dir / "plan"
@@ -61,64 +122,73 @@ def regold_plan(golden_dir, write=False):
             tmp_path = Path(tmpdir)
 
             # Setup case directory with appropriate markers
-            if case == "basic_pytest":
-                (tmp_path / "pyproject.toml").write_text(
-                    '[build-system]\nrequires = ["setuptools"]'
-                )
-            elif case == "jest_watch":
-                (tmp_path / "package.json").write_text(
-                    '{"name": "test-project", "version": "1.0.0"}'
-                )
-                (tmp_path / "pnpm-lock.yaml").write_text("{}")
-            # ambiguous case has no markers
+            _setup_plan_test_case(tmp_path, case)
 
             # Copy desc file to temp directory
             temp_desc = tmp_path / f"{case}.desc.txt"
             temp_desc.write_text(desc_file.read_text())
 
             # Generate markdown
-            result = run_cli(["plan", "--file", str(temp_desc), "--out", "-"], tmp_path)
-            if result.returncode != 0:
-                print(f"Error generating MD for {case}: {result.stderr}")
+            if not _process_plan_markdown(case, temp_desc, tmp_path, plan_dir, write):
                 continue
-
-            md_content = ensure_trailing_newline(result.stdout)
-            expected_md = plan_dir / f"{case}.expected.md"
-
-            if write:
-                expected_md.write_text(md_content)
-                print(f"  Updated {expected_md}")
-            else:
-                if expected_md.exists():
-                    existing = expected_md.read_text()
-                    if existing != md_content:
-                        print(f"  MD differs for {case}")
-                        # Could print diff here
-                else:
-                    print(f"  MD missing for {case}")
 
             # Generate JSON
-            result = run_cli(
-                ["plan", "--file", str(temp_desc), "--format", "json", "--out", "-"],
-                tmp_path,
-            )
-            if result.returncode != 0:
-                print(f"Error generating JSON for {case}: {result.stderr}")
-                continue
+            _process_plan_json(case, temp_desc, tmp_path, plan_dir, write)
 
-            json_content = canon_json_bytes(result.stdout.encode("utf-8")) + "\n"
-            expected_json = plan_dir / f"{case}.expected.json"
 
-            if write:
-                expected_json.write_text(json_content)
-                print(f"  Updated {expected_json}")
-            else:
-                if expected_json.exists():
-                    existing = canon_json_bytes(expected_json.read_text().encode("utf-8")) + "\n"
-                    if existing != json_content:
-                        print(f"  JSON differs for {case}")
-                else:
-                    print(f"  JSON missing for {case}")
+def _setup_scan_test_case(tmp_path, files):
+    """Setup scan test case directory with specified files."""
+    for filename, content in files.items():
+        (tmp_path / filename).write_text(content)
+
+
+def _process_scan_text(case, tmp_path, scan_dir, write):
+    """Process text output generation for scan case."""
+    result = run_cli(["scan"], tmp_path)
+    if result.returncode != 0:
+        print(f"Error generating text for {case}: {result.stderr}")
+        return False
+
+    text_content = ensure_trailing_newline(result.stdout)
+    expected_txt = scan_dir / f"{case}.expected.txt"
+
+    if write:
+        expected_txt.write_text(text_content)
+        print(f"  Updated {expected_txt}")
+    else:
+        if expected_txt.exists():
+            existing = expected_txt.read_text()
+            if existing != text_content:
+                print(f"  Text differs for {case}")
+        else:
+            print(f"  Text missing for {case}")
+
+    return True
+
+
+def _process_scan_json(case, tmp_path, scan_dir, write):
+    """Process JSON output generation for scan case."""
+    result = run_cli(["scan", "--json"], tmp_path)
+    if result.returncode != 0:
+        print(f"Error generating JSON for {case}: {result.stderr}")
+        return False
+
+    # Normalize the JSON (remove absolute paths)
+    json_content = normalize_scan_json(result.stdout, tmp_path) + "\n"
+    expected_json = scan_dir / f"{case}.expected.json"
+
+    if write:
+        expected_json.write_text(json_content)
+        print(f"  Updated {expected_json}")
+    else:
+        if expected_json.exists():
+            existing = normalize_scan_json(expected_json.read_text(), tmp_path) + "\n"
+            if existing != json_content:
+                print(f"  JSON differs for {case}")
+        else:
+            print(f"  JSON missing for {case}")
+
+    return True
 
 
 def regold_scan(golden_dir, write=False):
@@ -142,50 +212,15 @@ def regold_scan(golden_dir, write=False):
             tmp_path = Path(tmpdir)
 
             # Create files for this case
-            for filename, content in files.items():
-                (tmp_path / filename).write_text(content)
+            _setup_scan_test_case(tmp_path, files)
 
             # Generate text output (if not glob_only)
             if case != "glob_only":
-                result = run_cli(["scan"], tmp_path)
-                if result.returncode != 0:
-                    print(f"Error generating text for {case}: {result.stderr}")
+                if not _process_scan_text(case, tmp_path, scan_dir, write):
                     continue
 
-                text_content = ensure_trailing_newline(result.stdout)
-                expected_txt = scan_dir / f"{case}.expected.txt"
-
-                if write:
-                    expected_txt.write_text(text_content)
-                    print(f"  Updated {expected_txt}")
-                else:
-                    if expected_txt.exists():
-                        existing = expected_txt.read_text()
-                        if existing != text_content:
-                            print(f"  Text differs for {case}")
-                    else:
-                        print(f"  Text missing for {case}")
-
             # Generate JSON output
-            result = run_cli(["scan", "--json"], tmp_path)
-            if result.returncode != 0:
-                print(f"Error generating JSON for {case}: {result.stderr}")
-                continue
-
-            # Normalize the JSON (remove absolute paths)
-            json_content = normalize_scan_json(result.stdout, tmp_path) + "\n"
-            expected_json = scan_dir / f"{case}.expected.json"
-
-            if write:
-                expected_json.write_text(json_content)
-                print(f"  Updated {expected_json}")
-            else:
-                if expected_json.exists():
-                    existing = normalize_scan_json(expected_json.read_text(), tmp_path) + "\n"
-                    if existing != json_content:
-                        print(f"  JSON differs for {case}")
-                else:
-                    print(f"  JSON missing for {case}")
+            _process_scan_json(case, tmp_path, scan_dir, write)
 
 
 def main():

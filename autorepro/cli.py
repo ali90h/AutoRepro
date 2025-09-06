@@ -18,6 +18,7 @@ from pathlib import Path
 
 from autorepro import __version__
 from autorepro.config import config
+from autorepro.config.models import get_config
 from autorepro.detect import collect_evidence, detect_languages
 from autorepro.env import (
     DevcontainerExistsError,
@@ -587,6 +588,18 @@ class ExecConfig:
     strict: bool = False
 
 
+@dataclass
+class InitConfig:
+    """Configuration for init command operations."""
+
+    force: bool = False
+    out: str | None = None
+    dry_run: bool = False
+    repo: str | None = None
+    repo_path: Path | None = None
+    print_to_stdout: bool = False
+
+
 def _prepare_plan_config(config: PlanConfig) -> PlanConfig:
     """Extract and validate plan configuration from config object."""
     if config.desc and config.file:
@@ -892,35 +905,28 @@ def _output_plan_result(plan_data: PlanData, config: PlanConfig) -> int:
             return 1
 
 
-def cmd_plan(
-    desc: str | None = None,
-    file: str | None = None,
-    out: str = config.paths.default_plan_file,
-    force: bool = False,
-    max_commands: int = config.limits.max_plan_suggestions,
-    format_type: str = "md",
-    dry_run: bool = False,
-    repo: str | None = None,
-    strict: bool = False,
-    min_score: int = config.limits.min_score_threshold,
-) -> int:
+def cmd_plan(config: PlanConfig | None = None, **kwargs) -> int:
     """Handle the plan command."""
-    try:
-        plan_config = PlanConfig(
-            desc=desc,
-            file=file,
-            out=out,
-            force=force,
-            max_commands=max_commands,
-            format_type=format_type,
-            dry_run=dry_run,
-            repo=repo,
-            strict=strict,
-            min_score=min_score,
+    if config is None:
+        # Create from kwargs for backward compatibility
+        global_config = get_config()
+        config = PlanConfig(
+            desc=kwargs.get("desc"),
+            file=kwargs.get("file"),
+            out=kwargs.get("out", global_config.paths.default_plan_file),
+            force=kwargs.get("force", False),
+            max_commands=kwargs.get("max_commands", global_config.limits.max_plan_suggestions),
+            format_type=kwargs.get("format_type", "md"),
+            dry_run=kwargs.get("dry_run", False),
+            repo=kwargs.get("repo"),
+            strict=kwargs.get("strict", False),
+            min_score=kwargs.get("min_score", global_config.limits.min_score_threshold),
         )
-        config = _prepare_plan_config(plan_config)
-        plan_data = _generate_plan_content(config)
-        return _output_plan_result(plan_data, config)
+
+    try:
+        validated_config = _prepare_plan_config(config)
+        plan_data = _generate_plan_content(validated_config)
+        return _output_plan_result(plan_data, validated_config)
     except ValueError as e:
         if "min-score" in str(e):
             return 1  # Strict mode failure
@@ -930,74 +936,75 @@ def cmd_plan(
         return 1  # File I/O error
 
 
-def cmd_init(
-    force: bool = False,
-    out: str | None = None,
-    dry_run: bool = False,
-    repo: str | None = None,
-) -> int:
-    """Handle the init command."""
+def _validate_init_repo_path(config: InitConfig) -> int | None:
+    """Validate repo path for init command. Returns error code if invalid."""
+    if config.repo is None:
+        return None
 
-    # Validate and resolve --repo path if specified
-    repo_path = None
-    if repo is not None:
-        try:
-            repo_path = Path(repo).resolve()
-            if not repo_path.is_dir():
-                print(
-                    f"Error: --repo path does not exist or is not a directory: {repo}",
-                    file=sys.stderr,
-                )
-                return 2
-        except (OSError, ValueError):
+    try:
+        config.repo_path = Path(config.repo).resolve()
+        if not config.repo_path.is_dir():
             print(
-                f"Error: --repo path does not exist or is not a directory: {repo}",
+                f"Error: --repo path does not exist or is not a directory: {config.repo}",
                 file=sys.stderr,
             )
             return 2
-
-    # Update default output path to be under the repo
-    if out is None:
-        if repo_path:
-            out = str(repo_path / ".devcontainer" / "devcontainer.json")
-        else:
-            out = ".devcontainer/devcontainer.json"
-
-    # Handle --out - to print to stdout
-    print_to_stdout = out == "-"
-
-    # Handle dry-run mode
-    if dry_run:
-        print_to_stdout = True
-
-    # Get default devcontainer configuration
-    config = default_devcontainer()
-
-    if print_to_stdout:
-        # For stdout output, just generate and print the JSON content
-        import json
-
-        json_content = json.dumps(config, indent=2, sort_keys=True)
-        json_content = ensure_trailing_newline(json_content)
-        print(json_content, end="")
-        return 0
-
-    # Check if output path points to a directory (misuse error)
-    if out and os.path.isdir(out):
-        print(f"Error: Output path is a directory: {out}")
+        return None
+    except (OSError, ValueError):
+        print(
+            f"Error: --repo path does not exist or is not a directory: {config.repo}",
+            file=sys.stderr,
+        )
         return 2
 
-    # Check if file exists and handle idempotent behavior (unless --force)
-    if out and os.path.exists(out) and not force:
-        print(f"devcontainer.json already exists at {out}.")
+
+def _prepare_init_output_path(config: InitConfig) -> None:
+    """Prepare output path for init command."""
+    if config.out is None:
+        if config.repo_path:
+            config.out = str(config.repo_path / ".devcontainer" / "devcontainer.json")
+        else:
+            config.out = ".devcontainer/devcontainer.json"
+
+    config.print_to_stdout = config.out == "-"
+    if config.dry_run:
+        config.print_to_stdout = True
+
+
+def _handle_init_stdout_output(devcontainer_config: dict) -> int:
+    """Handle stdout output for init command."""
+    import json
+
+    json_content = json.dumps(devcontainer_config, indent=2, sort_keys=True)
+    json_content = ensure_trailing_newline(json_content)
+    print(json_content, end="")
+    return 0
+
+
+def _validate_init_output_path(config: InitConfig) -> int | None:
+    """Validate output path for init command. Returns error code if invalid."""
+    if config.out and os.path.isdir(config.out):
+        print(f"Error: Output path is a directory: {config.out}")
+        return 2
+
+    if config.out and os.path.exists(config.out) and not config.force:
+        print(f"devcontainer.json already exists at {config.out}.")
         print("Use --force to overwrite or --out <path> to write elsewhere.")
         return 0
 
-    try:
-        # Write devcontainer with specified options
-        result_path, diff_lines = write_devcontainer(config, force=force, out=out)
+    return None
 
-        if force and diff_lines is not None:
+
+def _execute_init_write(config: InitConfig, devcontainer_config: dict) -> int:
+    """Execute devcontainer write operation."""
+    log = logging.getLogger("autorepro")
+
+    try:
+        result_path, diff_lines = write_devcontainer(
+            devcontainer_config, force=config.force, out=config.out
+        )
+
+        if config.force and diff_lines is not None:
             print(f"Overwrote devcontainer at {result_path}")
             if diff_lines:
                 print("Changes:")
@@ -1010,22 +1017,48 @@ def cmd_init(
         return 0
 
     except DevcontainerExistsError as e:
-        # Idempotent success (exit 0) with exact wording
         print(f"devcontainer.json already exists at {e.path}.")
         print("Use --force to overwrite or --out <path> to write elsewhere.")
         return 0
-
     except DevcontainerMisuseError as e:
-        # Misuse errors (e.g., --out points to directory) - exit 2
-        log = logging.getLogger("autorepro")
         log.error(f"Error: {e.message}")
         return 2
-
     except (OSError, PermissionError) as e:
-        # I/O and permission errors - exit 1
-        log = logging.getLogger("autorepro")
         log.error(f"Error: {e}")
         return 1
+
+
+def cmd_init(
+    force: bool = False,
+    out: str | None = None,
+    dry_run: bool = False,
+    repo: str | None = None,
+) -> int:
+    """Handle the init command."""
+    config = InitConfig(force=force, out=out, dry_run=dry_run, repo=repo)
+
+    # Validate repo path
+    error = _validate_init_repo_path(config)
+    if error is not None:
+        return error
+
+    # Prepare output path
+    _prepare_init_output_path(config)
+
+    # Get devcontainer configuration
+    devcontainer_config = default_devcontainer()
+
+    # Handle stdout output
+    if config.print_to_stdout:
+        return _handle_init_stdout_output(devcontainer_config)
+
+    # Validate output path
+    error = _validate_init_output_path(config)
+    if error is not None:
+        return error
+
+    # Execute write operation
+    return _execute_init_write(config, devcontainer_config)
 
 
 def parse_env_vars(env_list: list[str]) -> dict[str, str]:
@@ -1323,55 +1356,26 @@ def _handle_exec_output_logging(results: dict, config: ExecConfig) -> None:
             log.error(f"Failed to write JSONL log: {e}")
 
 
-def cmd_exec(
-    desc: str | None = None,
-    file: str | None = None,
-    repo: str | None = None,
-    index: int = 0,
-    timeout: int = config.timeouts.default_seconds,
-    env_vars: list[str] | None = None,
-    env_file: str | None = None,
-    tee_path: str | None = None,
-    jsonl_path: str | None = None,
-    dry_run: bool = False,
-    min_score: int = config.limits.min_score_threshold,
-    strict: bool = False,
-) -> int:
-    """Handle the exec command."""
-    # Create configuration object
-    exec_config = ExecConfig(
-        desc=desc,
-        file=file,
-        repo=repo,
-        index=index,
-        timeout=timeout,
-        env_vars=env_vars,
-        env_file=env_file,
-        tee_path=tee_path,
-        jsonl_path=jsonl_path,
-        dry_run=dry_run,
-        min_score=min_score,
-        strict=strict,
-    )
-
+def _execute_exec_pipeline(config: ExecConfig) -> int:
+    """Execute the complete exec command pipeline."""
     # Validate and resolve repo path
-    repo_path, error = _validate_exec_repo_path(exec_config.repo)
+    repo_path, error = _validate_exec_repo_path(config.repo)
     if error is not None:
         return error
 
     # Read input text
-    text, error = _read_exec_input_text(exec_config, repo_path)
+    text, error = _read_exec_input_text(config, repo_path)
     if error is not None:
         return error
     assert text is not None  # Type assertion - we know text is valid if no error
 
     # Generate command suggestions
-    suggestions, error = _generate_exec_suggestions(text, repo_path, exec_config)
+    suggestions, error = _generate_exec_suggestions(text, repo_path, config)
     if error is not None:
         return error
 
     # Select command by index
-    selected_command, error = _select_exec_command(suggestions, exec_config)
+    selected_command, error = _select_exec_command(suggestions, config)
     if error is not None:
         return error
     assert selected_command is not None  # Type assertion - we know command is valid if no error
@@ -1379,12 +1383,17 @@ def cmd_exec(
     command_str, score, rationale = selected_command
 
     # Handle dry-run
-    if exec_config.dry_run:
+    if config.dry_run:
         print(command_str)
         return 0
 
+    return _execute_exec_command_real(command_str, repo_path, config)
+
+
+def _execute_exec_command_real(command_str: str, repo_path: Path | None, config: ExecConfig) -> int:
+    """Execute the actual command and handle output."""
     # Prepare environment variables
-    env, error = _prepare_exec_environment(exec_config)
+    env, error = _prepare_exec_environment(config)
     if error is not None:
         return error
     assert env is not None  # Type assertion - we know env is valid if no error
@@ -1393,12 +1402,12 @@ def cmd_exec(
     exec_dir = repo_path if repo_path else Path.cwd()
 
     # Execute the command
-    results, error = _execute_command(command_str, env, exec_dir, exec_config)
+    results, error = _execute_command(command_str, env, exec_dir, config)
     if error is not None:
         return error
 
     # Handle output logging
-    _handle_exec_output_logging(results, exec_config)
+    _handle_exec_output_logging(results, config)
 
     # Print output to console (unless quiet)
     if results["stdout_full"]:
@@ -1407,6 +1416,32 @@ def cmd_exec(
         print(results["stderr_full"], file=sys.stderr, end="")
 
     return results["exit_code"]
+
+
+def cmd_exec(config: ExecConfig | None = None, **kwargs) -> int:
+    """Handle the exec command."""
+    # Support backward compatibility with individual parameters
+    if config is None:
+        global_config = get_config()
+        config = ExecConfig(
+            desc=kwargs.get("desc"),
+            file=kwargs.get("file"),
+            repo=kwargs.get("repo"),
+            index=kwargs.get("index", 0),
+            timeout=kwargs.get("timeout", global_config.timeouts.default_seconds),
+            env_vars=kwargs.get("env_vars"),
+            env_file=kwargs.get("env_file"),
+            tee_path=kwargs.get("tee_path"),
+            jsonl_path=kwargs.get("jsonl_path"),
+            dry_run=kwargs.get("dry_run", False),
+            min_score=kwargs.get("min_score", global_config.limits.min_score_threshold),
+            strict=kwargs.get("strict", False),
+        )
+
+    try:
+        return _execute_exec_pipeline(config)
+    except Exception:
+        return 1  # Generic error for unexpected failures
 
 
 def _prepare_pr_config(config: PrConfig) -> PrConfig:
@@ -1569,57 +1604,43 @@ def _execute_pr_operations(config: PrConfig, pr_number: int | None) -> int:
         return 1
 
 
-def cmd_pr(
-    desc: str | None = None,
-    file: str | None = None,
-    title: str | None = None,
-    body: str | None = None,
-    repo_slug: str | None = None,
-    update_if_exists: bool = False,
-    skip_push: bool = False,
-    ready: bool = False,
-    label: list[str] | None = None,
-    assignee: list[str] | None = None,
-    reviewer: list[str] | None = None,
-    min_score: int = config.limits.min_score_threshold,
-    strict: bool = False,
-    comment: bool = False,
-    update_pr_body: bool = False,
-    link_issue: str | None = None,
-    add_labels: str | None = None,
-    attach_report: bool = False,
-    summary: str | None = None,
-    no_details: bool = False,
-    format_type: str = "md",
-    dry_run: bool = False,
-) -> int:
+def cmd_pr(config: PrConfig | None = None, **kwargs) -> int:
     """Handle the pr command."""
     try:
+        # Support backward compatibility with individual parameters
+        if config is None:
+            global_config = get_config()
+            config = PrConfig(
+                desc=kwargs.get("desc"),
+                file=kwargs.get("file"),
+                title=kwargs.get("title"),
+                body=kwargs.get("body"),
+                repo_slug=kwargs.get("repo_slug"),
+                update_if_exists=kwargs.get("update_if_exists", False),
+                skip_push=kwargs.get("skip_push", False),
+                ready=kwargs.get("ready", False),
+                label=kwargs.get("label"),
+                assignee=kwargs.get("assignee"),
+                reviewer=kwargs.get("reviewer"),
+                min_score=kwargs.get("min_score", global_config.limits.min_score_threshold),
+                strict=kwargs.get("strict", False),
+                comment=kwargs.get("comment", False),
+                update_pr_body=kwargs.get("update_pr_body", False),
+                link_issue=(
+                    int(link_issue_val)
+                    if (link_issue_val := kwargs.get("link_issue")) is not None
+                    else None
+                ),
+                add_labels=kwargs.get("add_labels"),
+                attach_report=kwargs.get("attach_report", False),
+                summary=kwargs.get("summary"),
+                no_details=kwargs.get("no_details", False),
+                format_type=kwargs.get("format_type", "md"),
+                dry_run=kwargs.get("dry_run", False),
+            )
+
         # Create config object directly with all parameters
-        pr_config = PrConfig(
-            desc=desc,
-            file=file,
-            title=title,
-            body=body,
-            repo_slug=repo_slug,
-            update_if_exists=update_if_exists,
-            skip_push=skip_push,
-            ready=ready,
-            label=label,
-            assignee=assignee,
-            reviewer=reviewer,
-            min_score=min_score,
-            strict=strict,
-            comment=comment,
-            update_pr_body=update_pr_body,
-            link_issue=int(link_issue) if link_issue else None,
-            add_labels=add_labels,
-            attach_report=attach_report,
-            summary=summary,
-            no_details=no_details,
-            format_type=format_type,
-            dry_run=dry_run,
-        )
+        pr_config = config
 
         config = _prepare_pr_config(pr_config)
         pr_number = _find_existing_pr(config)
@@ -1635,15 +1656,94 @@ def cmd_pr(
         return 1  # Runtime error
 
 
-def main(argv: list[str] | None = None) -> int:
-    parser = create_parser()
-    try:
-        args = parser.parse_args(argv)
-    except SystemExit as e:
-        code = e.code
-        return code if isinstance(code, int) else (0 if code is None else 2)
+def _dispatch_scan_command(args) -> int:
+    """Dispatch scan command with parsed arguments."""
+    return cmd_scan(
+        json_output=getattr(args, "json", False),
+        show_scores=getattr(args, "show_scores", False),
+    )
 
-    # Configure logging based on verbosity flags
+
+def _dispatch_init_command(args) -> int:
+    """Dispatch init command with parsed arguments."""
+    return cmd_init(
+        force=args.force,
+        out=args.out,
+        dry_run=args.dry_run,
+        repo=args.repo,
+    )
+
+
+def _dispatch_plan_command(args) -> int:
+    """Dispatch plan command with parsed arguments."""
+    return cmd_plan(
+        desc=args.desc,
+        file=args.file,
+        out=args.out,
+        force=args.force,
+        max_commands=args.max,
+        format_type=args.format,
+        dry_run=args.dry_run,
+        repo=args.repo,
+        strict=args.strict,
+        min_score=args.min_score,
+    )
+
+
+def _dispatch_exec_command(args) -> int:
+    """Dispatch exec command with parsed arguments."""
+    return cmd_exec(
+        desc=args.desc,
+        file=args.file,
+        repo=args.repo,
+        index=args.index,
+        timeout=args.timeout,
+        env_vars=args.env,
+        env_file=args.env_file,
+        tee_path=args.tee,
+        jsonl_path=args.jsonl,
+        dry_run=args.dry_run,
+        min_score=args.min_score,
+        strict=args.strict,
+    )
+
+
+def _dispatch_pr_command(args) -> int:
+    """Dispatch pr command with parsed arguments."""
+    return cmd_pr(
+        desc=args.desc,
+        file=args.file,
+        title=args.title,
+        body=args.body,
+        repo_slug=args.repo_slug,
+        update_if_exists=args.update_if_exists,
+        skip_push=args.skip_push,
+        ready=args.ready,
+        label=args.label,
+        assignee=args.assignee,
+        reviewer=args.reviewer,
+        min_score=args.min_score,
+        strict=args.strict,
+        comment=getattr(args, "comment", False),
+        update_pr_body=getattr(args, "update_pr_body", False),
+        link_issue=getattr(args, "link_issue", None),
+        add_labels=getattr(args, "add_labels", None),
+        attach_report=getattr(args, "attach_report", False),
+        summary=getattr(args, "summary", None),
+        no_details=getattr(args, "no_details", False),
+        format_type=getattr(args, "format", "md"),
+        dry_run=args.dry_run,
+    )
+
+
+def _dispatch_help_command(parser) -> int:
+    """Dispatch help command."""
+    parser.print_help()
+    return 0
+
+
+def _setup_logging(args) -> None:
+    """Setup logging configuration based on args."""
     if hasattr(args, "quiet") and args.quiet:
         level = logging.ERROR
     elif hasattr(args, "verbose"):
@@ -1657,81 +1757,38 @@ def main(argv: list[str] | None = None) -> int:
         level = logging.WARNING
 
     logging.basicConfig(level=level, format="%(message)s", stream=sys.stderr)
+
+
+def _dispatch_command(args, parser) -> int:
+    """Dispatch command based on parsed arguments."""
+    if args.command == "scan":
+        return _dispatch_scan_command(args)
+    elif args.command == "init":
+        return _dispatch_init_command(args)
+    elif args.command == "plan":
+        return _dispatch_plan_command(args)
+    elif args.command == "exec":
+        return _dispatch_exec_command(args)
+    elif args.command == "pr":
+        return _dispatch_pr_command(args)
+
+    return _dispatch_help_command(parser)
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = create_parser()
+    try:
+        args = parser.parse_args(argv)
+    except SystemExit as e:
+        code = e.code
+        return code if isinstance(code, int) else (0 if code is None else 2)
+
+    _setup_logging(args)
     log = logging.getLogger("autorepro")
 
     try:
-        if args.command == "scan":
-            return cmd_scan(
-                json_output=getattr(args, "json", False),
-                show_scores=getattr(args, "show_scores", False),
-            )
-        elif args.command == "init":
-            return cmd_init(
-                force=args.force,
-                out=args.out,
-                dry_run=args.dry_run,
-                repo=args.repo,
-            )
-        elif args.command == "plan":
-            return cmd_plan(
-                desc=args.desc,
-                file=args.file,
-                out=args.out,
-                force=args.force,
-                max_commands=args.max,
-                format_type=args.format,
-                dry_run=args.dry_run,
-                repo=args.repo,
-                strict=args.strict,
-                min_score=args.min_score,
-            )
-        elif args.command == "exec":
-            return cmd_exec(
-                desc=args.desc,
-                file=args.file,
-                repo=args.repo,
-                index=args.index,
-                timeout=args.timeout,
-                env_vars=args.env,
-                env_file=args.env_file,
-                tee_path=args.tee,
-                jsonl_path=args.jsonl,
-                dry_run=args.dry_run,
-                min_score=args.min_score,
-                strict=args.strict,
-            )
-        elif args.command == "pr":
-            return cmd_pr(
-                desc=args.desc,
-                file=args.file,
-                title=args.title,
-                body=args.body,
-                repo_slug=args.repo_slug,
-                update_if_exists=args.update_if_exists,
-                skip_push=args.skip_push,
-                ready=args.ready,
-                label=args.label,
-                assignee=args.assignee,
-                reviewer=args.reviewer,
-                min_score=args.min_score,
-                strict=args.strict,
-                comment=getattr(args, "comment", False),
-                update_pr_body=getattr(args, "update_pr_body", False),
-                link_issue=getattr(args, "link_issue", None),
-                add_labels=getattr(args, "add_labels", None),
-                attach_report=getattr(args, "attach_report", False),
-                summary=getattr(args, "summary", None),
-                no_details=getattr(args, "no_details", False),
-                format_type=getattr(args, "format", "md"),
-                dry_run=args.dry_run,
-            )
-
-        parser.print_help()
-        return 0
-
+        return _dispatch_command(args, parser)
     except (OSError, PermissionError) as e:
-        # I/O and permission errors - exit 1
-        log = logging.getLogger("autorepro")
         log.error(f"Error: {e}")
         return 1
 

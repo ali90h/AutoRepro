@@ -16,6 +16,7 @@ import subprocess
 import sys
 import tempfile
 import zipfile
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -31,6 +32,23 @@ from .planner import (
     suggest_commands,
 )
 from .utils.repro_bundle import generate_plan_content
+
+
+@dataclass
+class ExecOutputConfig:
+    """Configuration for exec output logging."""
+
+    log_path: Path
+    jsonl_path: Path
+    command_str: str
+    index: int
+    cwd: Path
+    start_iso: str
+    duration_ms: int
+    exit_code: int
+    timed_out: bool
+    stdout_full: str
+    stderr_full: str
 
 
 def collect_env_info(repo: Path) -> str:
@@ -286,53 +304,41 @@ def _execute_command_subprocess(
     return exit_code, stdout_full, stderr_full, timed_out
 
 
-def _write_exec_output_logs(
-    log_path: Path,
-    jsonl_path: Path,
-    command_str: str,
-    index: int,
-    repo: Path,
-    start_iso: str,
-    duration_ms: int,
-    exit_code: int,
-    stdout_full: str,
-    stderr_full: str,
-    timed_out: bool,
-) -> None:
+def _write_exec_output_logs(config: ExecOutputConfig) -> None:
     """Write execution results to log and JSONL files."""
     # Write log file
     log_content = (
-        f"=== {start_iso} - {command_str} ===\n"
+        f"=== {config.start_iso} - {config.command_str} ===\n"
         "STDOUT:\n"
-        f"{stdout_full}"
+        f"{config.stdout_full}"
         "\nSTDERR:\n"
-        f"{stderr_full}"
-        f"\nExit code: {exit_code}\n"
+        f"{config.stderr_full}"
+        f"\nExit code: {config.exit_code}\n"
         "=" * 50 + "\n\n"
     )
-    FileOperations.atomic_write(log_path, log_content)
+    FileOperations.atomic_write(config.log_path, log_content)
 
     # Write JSONL file
-    stdout_preview = stdout_full[:2000] if stdout_full else ""
-    stderr_preview = stderr_full[:2000] if stderr_full else ""
+    stdout_preview = config.stdout_full[:2000] if config.stdout_full else ""
+    stderr_preview = config.stderr_full[:2000] if config.stderr_full else ""
 
     jsonl_record = {
         "schema_version": 1,
         "tool": "autorepro",
         "tool_version": __version__,
-        "cmd": command_str,
-        "index": index,
-        "cwd": str(repo),
-        "start": start_iso,
-        "duration_ms": duration_ms,
-        "exit_code": exit_code,
-        "timed_out": timed_out,
+        "cmd": config.command_str,
+        "index": config.index,
+        "cwd": str(config.cwd),
+        "start": config.start_iso,
+        "duration_ms": config.duration_ms,
+        "exit_code": config.exit_code,
+        "timed_out": config.timed_out,
         "stdout_preview": stdout_preview,
         "stderr_preview": stderr_preview,
     }
 
     jsonl_content = json.dumps(jsonl_record) + "\n"
-    FileOperations.atomic_write(jsonl_path, jsonl_content)
+    FileOperations.atomic_write(config.jsonl_path, jsonl_content)
 
 
 def maybe_exec(repo: Path, opts: dict[str, Any]) -> tuple[int, Path | None, Path | None]:
@@ -400,19 +406,20 @@ def maybe_exec(repo: Path, opts: dict[str, Any]) -> tuple[int, Path | None, Path
         duration_ms = int((end_time - start_time).total_seconds() * 1000)
 
         # Write output logs
-        _write_exec_output_logs(
-            log_path,
-            jsonl_path,
-            command_str,
-            index,
-            repo,
-            start_iso,
-            duration_ms,
-            exit_code,
-            stdout_full,
-            stderr_full,
-            timed_out,
+        exec_config = ExecOutputConfig(
+            log_path=log_path,
+            jsonl_path=jsonl_path,
+            command_str=command_str,
+            index=index,
+            cwd=repo,
+            start_iso=start_iso,
+            duration_ms=duration_ms,
+            exit_code=exit_code,
+            timed_out=timed_out,
+            stdout_full=stdout_full,
+            stderr_full=stderr_full,
         )
+        _write_exec_output_logs(exec_config)
 
         return exit_code, log_path, jsonl_path
 
