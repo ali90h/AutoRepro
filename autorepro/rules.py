@@ -56,41 +56,83 @@ BUILTIN_RULES = {
 }
 
 
+def _get_plugin_list() -> list[str]:
+    """Get list of plugins from environment variable.
+
+    Returns:
+        List of plugin names/paths, empty if none specified
+    """
+    plugins_env = os.environ.get("AUTOREPRO_PLUGINS")
+    if not plugins_env:
+        return []
+    return [p.strip() for p in plugins_env.split(",") if p.strip()]
+
+
+def _load_plugin_module(plugin_name: str) -> object:
+    """Load a single plugin module.
+
+    Args:
+        plugin_name: Name or file path of plugin to load
+
+    Returns:
+        Loaded plugin module
+
+    Raises:
+        ImportError: If plugin cannot be loaded
+    """
+    if plugin_name.endswith(".py"):
+        # Support direct file paths ending with .py
+        spec = importlib.util.spec_from_file_location("plugin", plugin_name)
+        if spec and spec.loader:
+            plugin_module = importlib.util.module_from_spec(spec)
+            sys.modules["plugin"] = plugin_module
+            spec.loader.exec_module(plugin_module)
+            return plugin_module
+        else:
+            raise ImportError(f"Could not load spec from {plugin_name}")
+    else:
+        return importlib.import_module(plugin_name)
+
+
+def _extract_rules_from_module(plugin_module: object, plugin_rules: dict[str, list[Rule]]) -> None:
+    """Extract rules from a loaded plugin module.
+
+    Args:
+        plugin_module: Loaded plugin module
+        plugin_rules: Dictionary to add rules to (modified in-place)
+    """
+    if hasattr(plugin_module, "provide_rules"):
+        rules_dict = plugin_module.provide_rules()
+        if isinstance(rules_dict, dict):
+            for ecosystem, rules in rules_dict.items():
+                if ecosystem not in plugin_rules:
+                    plugin_rules[ecosystem] = []
+                plugin_rules[ecosystem].extend(rules)
+
+
+def _handle_plugin_loading_error(plugin_name: str, error: Exception) -> None:
+    """Handle plugin loading errors with optional debug output.
+
+    Args:
+        plugin_name: Name of plugin that failed to load
+        error: Exception that occurred
+    """
+    debug = os.environ.get("AUTOREPRO_PLUGINS_DEBUG") == "1"
+    if debug:
+        print(f"Plugin loading failed for {plugin_name}: {error}", file=sys.stderr)
+
+
 def _load_plugin_rules() -> dict[str, list[Rule]]:
     """Load rules from plugins specified in AUTOREPRO_PLUGINS environment variable."""
     plugin_rules: dict[str, list[Rule]] = {}
-    debug = os.environ.get("AUTOREPRO_PLUGINS_DEBUG") == "1"
-
-    plugins_env = os.environ.get("AUTOREPRO_PLUGINS")
-    if not plugins_env:
-        return plugin_rules
-
-    plugins = [p.strip() for p in plugins_env.split(",") if p.strip()]
+    plugins = _get_plugin_list()
 
     for plugin_name in plugins:
         try:
-            # Support direct file paths ending with .py
-            if plugin_name.endswith(".py"):
-                spec = importlib.util.spec_from_file_location("plugin", plugin_name)
-                if spec and spec.loader:
-                    plugin_module = importlib.util.module_from_spec(spec)
-                    sys.modules["plugin"] = plugin_module
-                    spec.loader.exec_module(plugin_module)
-                else:
-                    raise ImportError(f"Could not load spec from {plugin_name}")
-            else:
-                plugin_module = importlib.import_module(plugin_name)
-
-            if hasattr(plugin_module, "provide_rules"):
-                rules_dict = plugin_module.provide_rules()
-                if isinstance(rules_dict, dict):
-                    for ecosystem, rules in rules_dict.items():
-                        if ecosystem not in plugin_rules:
-                            plugin_rules[ecosystem] = []
-                        plugin_rules[ecosystem].extend(rules)
+            plugin_module = _load_plugin_module(plugin_name)
+            _extract_rules_from_module(plugin_module, plugin_rules)
         except Exception as e:
-            if debug:
-                print(f"Plugin loading failed for {plugin_name}: {e}", file=sys.stderr)
+            _handle_plugin_loading_error(plugin_name, e)
             continue
 
     return plugin_rules

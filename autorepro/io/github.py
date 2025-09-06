@@ -334,6 +334,132 @@ def add_pr_labels(
     return 0
 
 
+def _get_current_branch_if_needed(config: GitHubPRConfig) -> tuple[int, bool] | None:
+    """Get current branch if head_branch not specified.
+
+    Returns:
+        None if successful, or (exit_code, created_new) tuple if error occurred
+    """
+    if config.head_branch is None:
+        log = logging.getLogger("autorepro")
+        try:
+            result = subprocess.run(
+                ["git", "branch", "--show-current"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            config.head_branch = result.stdout.strip()
+        except subprocess.CalledProcessError as e:
+            log.error(f"Failed to get current branch: {e}")
+            return 1, False
+    return None
+
+
+def _create_temp_body_file(body: str) -> str:
+    """Create temporary file with PR body content.
+
+    Returns:
+        Path to the temporary file
+    """
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
+        f.write(body)
+        return f.name
+
+
+def _update_existing_pr(
+    config: GitHubPRConfig, existing_pr: int, body_file: str
+) -> tuple[int, bool]:
+    """Update an existing PR.
+
+    Returns:
+        Tuple of (exit_code, created_new)
+    """
+    log = logging.getLogger("autorepro")
+    cmd = [
+        config.gh_path,
+        "pr",
+        "edit",
+        str(existing_pr),
+        "--title",
+        config.title,
+        "--body-file",
+        body_file,
+    ]
+
+    if config.dry_run:
+        print(f"Would run: {' '.join(cmd)}")
+        return 0, False
+
+    log.info(f"Updating existing draft PR #{existing_pr}")
+    subprocess.run(cmd, check=True)
+    log.info(f"Updated PR #{existing_pr}")
+    return 0, False
+
+
+def _build_create_pr_command(config: GitHubPRConfig, body_file: str) -> list[str]:
+    """Build command for creating new PR.
+
+    Returns:
+        List of command arguments
+    """
+    cmd = [
+        config.gh_path,
+        "pr",
+        "create",
+        "--title",
+        config.title,
+        "--body-file",
+        body_file,
+        "--base",
+        config.base_branch or "main",
+        "--head",
+        config.head_branch or "HEAD",
+    ]
+
+    if config.draft:
+        cmd.append("--draft")
+
+    if config.labels:
+        labels_filtered = [label for label in config.labels if label is not None]
+        if labels_filtered:
+            cmd.extend(["--label", ",".join(labels_filtered)])
+
+    if config.assignees:
+        assignees_filtered = [assignee for assignee in config.assignees if assignee is not None]
+        if assignees_filtered:
+            cmd.extend(["--assignee", ",".join(assignees_filtered)])
+
+    if config.reviewers:
+        reviewers_filtered = [reviewer for reviewer in config.reviewers if reviewer is not None]
+        if reviewers_filtered:
+            cmd.extend(["--reviewer", ",".join(reviewers_filtered)])
+
+    return cmd
+
+
+def _create_new_pr(config: GitHubPRConfig, body_file: str) -> tuple[int, bool]:
+    """Create a new PR.
+
+    Returns:
+        Tuple of (exit_code, created_new)
+    """
+    log = logging.getLogger("autorepro")
+    cmd = _build_create_pr_command(config, body_file)
+
+    if config.dry_run:
+        print(f"Would run: {' '.join(cmd)}")
+        return 0, True
+
+    log.info("Creating new draft PR")
+    result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+
+    # Extract PR URL from output
+    pr_url = result.stdout.strip()
+    log.info(f"Created PR: {pr_url}")
+    return 0, True
+
+
 def create_or_update_pr(config: GitHubPRConfig) -> tuple[int, bool]:  # (exit_code, created_new)
     """
     Create or update a GitHub PR.
@@ -347,91 +473,23 @@ def create_or_update_pr(config: GitHubPRConfig) -> tuple[int, bool]:  # (exit_co
     log = logging.getLogger("autorepro")
 
     # Get current branch if head not specified
-    if config.head_branch is None:
-        try:
-            result = subprocess.run(
-                ["git", "branch", "--show-current"],
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-            config.head_branch = result.stdout.strip()
-        except subprocess.CalledProcessError as e:
-            log.error(f"Failed to get current branch: {e}")
-            return 1, False
+    branch_error = _get_current_branch_if_needed(config)
+    if branch_error is not None:
+        return branch_error
 
     # Write body to temporary file
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
-        f.write(config.body)
-        body_file = f.name
+    body_file = _create_temp_body_file(config.body)
 
     try:
         # Check for existing draft PR if update requested
         existing_pr = None
-        if config.update_if_exists:
+        if config.update_if_exists and config.head_branch:
             existing_pr = find_existing_draft(config.head_branch, config.gh_path)
 
         if existing_pr:
-            # Update existing PR
-            cmd = [
-                config.gh_path,
-                "pr",
-                "edit",
-                str(existing_pr),
-                "--title",
-                config.title,
-                "--body-file",
-                body_file,
-            ]
-
-            if config.dry_run:
-                print(f"Would run: {' '.join(cmd)}")
-                return 0, False
-
-            log.info(f"Updating existing draft PR #{existing_pr}")
-            subprocess.run(cmd, check=True)
-            log.info(f"Updated PR #{existing_pr}")
-            return 0, False
-
+            return _update_existing_pr(config, existing_pr, body_file)
         else:
-            # Create new PR
-            cmd = [
-                config.gh_path,
-                "pr",
-                "create",
-                "--title",
-                config.title,
-                "--body-file",
-                body_file,
-                "--base",
-                config.base_branch,
-                "--head",
-                config.head_branch,
-            ]
-
-            if config.draft:
-                cmd.append("--draft")
-
-            if config.labels:
-                cmd.extend(["--label", ",".join(config.labels)])
-
-            if config.assignees:
-                cmd.extend(["--assignee", ",".join(config.assignees)])
-
-            if config.reviewers:
-                cmd.extend(["--reviewer", ",".join(config.reviewers)])
-
-            if config.dry_run:
-                print(f"Would run: {' '.join(cmd)}")
-                return 0, True
-
-            log.info("Creating new draft PR")
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-
-            # Extract PR URL from output
-            pr_url = result.stdout.strip()
-            log.info(f"Created PR: {pr_url}")
-            return 0, True
+            return _create_new_pr(config, body_file)
 
     except subprocess.CalledProcessError as e:
         log.error(f"GitHub CLI error: {e}")

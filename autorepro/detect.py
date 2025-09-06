@@ -159,6 +159,115 @@ SOURCE_PATTERNS = {
 }
 
 
+def _ensure_evidence_entry(evidence: dict[str, dict[str, object]], language: str) -> None:
+    """Ensure evidence entry exists for the given language."""
+    if language not in evidence:
+        evidence[language] = {"score": 0, "reasons": []}
+
+
+def _add_evidence_reason(
+    evidence: dict[str, dict[str, object]],
+    language: str,
+    pattern: str,
+    path: str,
+    kind: str,
+    weight: int,
+) -> None:
+    """Add a reason to the evidence for the given language."""
+    _ensure_evidence_entry(evidence, language)
+    evidence[language]["score"] = evidence[language]["score"] + weight  # type: ignore
+    evidence[language]["reasons"].append(  # type: ignore
+        {
+            "pattern": pattern,
+            "path": path,
+            "kind": kind,
+            "weight": weight,
+        }
+    )
+
+
+def _check_pattern_already_added(
+    evidence: dict[str, dict[str, object]], language: str, pattern: str
+) -> bool:
+    """Check if pattern was already added for the given language."""
+    if language not in evidence:
+        return False
+    return any(
+        reason["pattern"] == pattern
+        for reason in evidence[language]["reasons"]  # type: ignore
+    )
+
+
+def _process_weighted_patterns(evidence: dict[str, dict[str, object]], root_path: Path) -> None:
+    """Process exact filename matches from WEIGHTED_PATTERNS."""
+    for filename, info in WEIGHTED_PATTERNS.items():
+        file_path = root_path / filename
+        if file_path.is_file():
+            lang = str(info["language"])
+            _add_evidence_reason(
+                evidence,
+                lang,
+                filename,
+                f"./{filename}",
+                str(info["kind"]),
+                int(info["weight"]) if isinstance(info["weight"], int | str) else 0,
+            )
+
+
+def _process_source_patterns(evidence: dict[str, dict[str, object]], root_path: Path) -> None:
+    """Process SOURCE_PATTERNS for both glob patterns and exact filenames."""
+    for pattern, info in SOURCE_PATTERNS.items():
+        lang = str(info["language"])
+        if "*" in pattern:
+            _process_glob_pattern(evidence, root_path, pattern, info, lang)
+        else:
+            _process_exact_filename(evidence, root_path, pattern, info, lang)
+
+
+def _process_glob_pattern(
+    evidence: dict[str, dict[str, object]],
+    root_path: Path,
+    pattern: str,
+    info: dict[str, object],
+    lang: str,
+) -> None:
+    """Process a single glob pattern."""
+    search_pattern = str(root_path / pattern)
+    for match in glob.glob(search_pattern):
+        if os.path.isfile(match):
+            basename = os.path.basename(match)
+            # Only add weight once per pattern type, even if multiple files match
+            if not _check_pattern_already_added(evidence, lang, pattern):
+                _add_evidence_reason(
+                    evidence,
+                    lang,
+                    pattern,
+                    f"./{basename}",
+                    str(info["kind"]),
+                    int(info["weight"]) if isinstance(info["weight"], int | str) else 0,
+                )
+
+
+def _process_exact_filename(
+    evidence: dict[str, dict[str, object]],
+    root_path: Path,
+    pattern: str,
+    info: dict[str, object],
+    lang: str,
+) -> None:
+    """Process an exact filename pattern."""
+    file_path = root_path / pattern
+    if file_path.is_file():
+        _add_evidence_reason(
+            evidence,
+            lang,
+            pattern,
+            f"./{pattern}",
+            str(info["kind"]),
+            int(info["weight"]) if isinstance(info["weight"], int | str) else 0,
+        )
+
+
 def collect_evidence(root: Path) -> dict[str, dict[str, object]]:
     """
     Collect weighted evidence for language detection in the root directory.
@@ -178,71 +287,11 @@ def collect_evidence(root: Path) -> dict[str, dict[str, object]]:
     evidence: dict[str, dict[str, object]] = {}
     root_path = Path(root)
 
-    # Check exact filename matches in WEIGHTED_PATTERNS
-    for filename, info in WEIGHTED_PATTERNS.items():
-        file_path = root_path / filename
-        if file_path.is_file():
-            lang = str(info["language"])
-            if lang not in evidence:
-                evidence[lang] = {"score": 0, "reasons": []}
+    # Process exact filename matches from WEIGHTED_PATTERNS
+    _process_weighted_patterns(evidence, root_path)
 
-            evidence[lang]["score"] = evidence[lang]["score"] + info["weight"]  # type: ignore
-            evidence[lang]["reasons"].append(  # type: ignore
-                {
-                    "pattern": filename,
-                    "path": f"./{filename}",
-                    "kind": info["kind"],
-                    "weight": info["weight"],
-                }
-            )
-
-    # Check glob patterns in SOURCE_PATTERNS
-    for pattern, info in SOURCE_PATTERNS.items():
-        if "*" in pattern:
-            # Glob pattern
-            search_pattern = str(root_path / pattern)
-            for match in glob.glob(search_pattern):
-                if os.path.isfile(match):
-                    lang = str(info["language"])
-                    basename = os.path.basename(match)
-
-                    if lang not in evidence:
-                        evidence[lang] = {"score": 0, "reasons": []}
-
-                    # Only add weight once per pattern type, even if multiple files match
-                    # Check if we already added this pattern
-                    pattern_already_added = any(
-                        reason["pattern"] == pattern
-                        for reason in evidence[lang]["reasons"]  # type: ignore
-                    )
-
-                    if not pattern_already_added:
-                        evidence[lang]["score"] = evidence[lang]["score"] + info["weight"]  # type: ignore
-                        evidence[lang]["reasons"].append(  # type: ignore
-                            {
-                                "pattern": pattern,
-                                "path": f"./{basename}",
-                                "kind": info["kind"],
-                                "weight": info["weight"],
-                            }
-                        )
-        else:
-            # Exact filename
-            file_path = root_path / pattern
-            if file_path.is_file():
-                lang = str(info["language"])
-                if lang not in evidence:
-                    evidence[lang] = {"score": 0, "reasons": []}
-
-                evidence[lang]["score"] = evidence[lang]["score"] + info["weight"]  # type: ignore
-                evidence[lang]["reasons"].append(  # type: ignore
-                    {
-                        "pattern": pattern,
-                        "path": f"./{pattern}",
-                        "kind": info["kind"],
-                        "weight": info["weight"],
-                    }
-                )
+    # Process SOURCE_PATTERNS for both glob patterns and exact filenames
+    _process_source_patterns(evidence, root_path)
 
     return evidence
 

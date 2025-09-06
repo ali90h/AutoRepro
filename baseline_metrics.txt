@@ -148,18 +148,104 @@ TICKET #72 PROGRESS - Addressing 43 Ruff Violations:
 
 **Overall Progress**: 39 → 37 violations (-5% reduction, -2 violations)
 
-## Next Phases Planned:
-- Phase 3: Medium-complexity functions cleanup
-- Phase 4: Simple arguments/statements cleanup
+## Phase 5: Complex Functions Cleanup ✅ COMPLETED
+### Target: 5 Complex Functions (5 violations eliminated)
 
-## Summary - Phases 1 + 2 Complete:
-**Total Violations Eliminated**: 11 across 5 highest-impact functions
-**Net Violation Impact**: 43 → 37 violations (-14% total reduction)
-**Functions Refactored**: 5 functions (3 complex + 2 high-argument)
-**Helper Functions Created**: 20 focused, single-responsibility functions
-**Config Objects Created**: 2 parameter management dataclasses
+**Phase 5A: collect_evidence Function Refactor ✅ COMPLETED**
+**Function**: `collect_evidence` (detect.py:162) - complexity 12, 18 branches
+
+**Violations Eliminated**:
+- ✅ C901: Complex structure (12 → eliminated)
+
+**Refactoring Strategy Applied**:
+1. Extracted 6 focused helper functions:
+   - _ensure_evidence_entry: Evidence dictionary initialization
+   - _add_evidence_reason: Centralized evidence addition
+   - _check_pattern_already_added: Pattern deduplication logic
+   - _process_weighted_patterns: Exact filename matching
+   - _process_source_patterns: Source pattern processing orchestration
+   - _process_glob_pattern: Glob pattern matching logic
+   - _process_exact_filename: Exact filename pattern matching
+2. Simplified main function to clean orchestration pattern
+3. Applied single responsibility principle for each matching type
+
+**Phase 5B: create_or_update_pr Function Refactor ✅ COMPLETED**
+**Function**: `create_or_update_pr` (io/github.py:337) - complexity 13, 15 branches
+
+**Violations Eliminated**:
+- ✅ C901: Complex structure (13 → eliminated)
+
+**Refactoring Strategy Applied**:
+1. Extracted 6 focused helper functions:
+   - _get_current_branch_if_needed: Branch resolution logic
+   - _create_temp_body_file: Temporary file creation
+   - _update_existing_pr: PR update operations
+   - _build_create_pr_command: Command building for PR creation
+   - _create_new_pr: New PR creation logic
+2. Separated error handling and command construction
+3. Applied extract method pattern for complex conditional logic
+
+**Phase 5C: _handle_pr_dry_run Function Refactor ✅ COMPLETED**
+**Function**: `_handle_pr_dry_run` (cli.py:1460) - complexity 15, 10 branches
+
+**Violations Eliminated**:
+- ✅ C901: Complex structure (15 → eliminated)
+
+**Refactoring Strategy Applied**:
+1. Extracted 3 focused helper functions:
+   - _build_pr_base_command: Base command construction
+   - _add_pr_list_options: List-based options handling (labels, assignees, reviewers)
+   - _show_additional_pr_operations: Additional operations display
+2. Separated command building from display logic
+3. Applied single responsibility principle for each display type
+
+**Phase 5D: _execute_pr_operations Function Refactor ✅ COMPLETED**
+**Function**: `_execute_pr_operations` (cli.py:1513) - complexity 11, 8 branches
+
+**Violations Eliminated**:
+- ✅ C901: Complex structure (11 → eliminated)
+
+**Refactoring Strategy Applied**:
+1. Extracted 2 focused helper functions:
+   - _log_pr_update_operations: Log operations for existing PR updates
+   - _log_pr_create_operations: Log operations for new PR creation
+2. Separated update vs. create logging logic
+3. Applied extract method pattern for conditional logging
+
+**Phase 5E: _load_plugin_rules Function Refactor ✅ COMPLETED**
+**Function**: `_load_plugin_rules` (rules.py:59) - complexity 11, 12 branches
+
+**Violations Eliminated**:
+- ✅ C901: Complex structure (11 → eliminated)
+
+**Refactoring Strategy Applied**:
+1. Extracted 4 focused helper functions:
+   - _get_plugin_list: Plugin list extraction from environment
+   - _load_plugin_module: Single plugin module loading
+   - _extract_rules_from_module: Rules extraction from loaded module
+   - _handle_plugin_loading_error: Error handling with debug support
+2. Separated plugin discovery, loading, and error handling
+3. Applied single responsibility principle for each loading step
+
+**Quality Verification**:
+- All 540/540 tests pass - Functionality preserved
+- All 16/16 golden tests pass - CLI behavior unchanged
+- MyPy type checking passes
+
+**Overall Progress**: 14 → 9 violations (-36% reduction, -5 violations eliminated)
+
+## Summary - Phases 1 + 2 + 3 + 4 + 5 Complete:
+**Total Violations Eliminated**: 28 across 16 highest-impact functions
+**Net Violation Impact**: 43 → 9 violations (-79% total reduction)
+**Functions Refactored**: 16 functions (11 complex + 5 high-argument)
+**Helper Functions Created**: 52 focused, single-responsibility functions
+**Config Objects Created**: 5 parameter management dataclasses
 **Test Coverage Maintained**: 100% - All tests continue passing
 
 **Refactoring Patterns Established**:
-- Extract Method pattern for complex functions (Phase 1)
-- Config Object pattern for high-argument functions (Phase 2)
+- Extract Method pattern for complex functions (Phases 1, 3, 5)
+- Config Object pattern for high-argument functions (Phases 2, 4)
+- Command Pattern for dispatch logic (Phase 3)
+- Single Responsibility Principle applied consistently
+
+**Achievement**: Successfully reduced violations by 79% while maintaining functionality.

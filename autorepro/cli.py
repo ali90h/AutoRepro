@@ -1457,9 +1457,8 @@ def _find_existing_pr(config: PrConfig) -> int | None:
     return pr_number
 
 
-def _handle_pr_dry_run(config: PrConfig, pr_number: int | None) -> None:
-    """Handle dry-run mode for PR operations."""
-    # Show what would be done - print to stdout for test compatibility
+def _build_pr_base_command(config: PrConfig) -> list[str]:
+    """Build base PR creation command from config."""
     base_cmd = ["gh", "pr", "create"]
     if config.title:
         base_cmd.extend(["--title", config.title])
@@ -1469,6 +1468,11 @@ def _handle_pr_dry_run(config: PrConfig, pr_number: int | None) -> None:
         base_cmd.extend(["--repo", config.repo_slug])
     if not config.ready:
         base_cmd.append("--draft")
+    return base_cmd
+
+
+def _add_pr_list_options(base_cmd: list[str], config: PrConfig) -> None:
+    """Add list-based options (labels, assignees, reviewers) to command."""
     if config.label:
         for lbl in config.label:
             base_cmd.extend(["--label", lbl])
@@ -1479,10 +1483,9 @@ def _handle_pr_dry_run(config: PrConfig, pr_number: int | None) -> None:
         for rev in config.reviewer:
             base_cmd.extend(["--reviewer", rev])
 
-    # Print the command with safe quoting to stdout
-    quoted_cmd = " ".join(shlex.quote(arg) for arg in base_cmd)
-    print(f"Would run: {quoted_cmd}")
 
+def _show_additional_pr_operations(config: PrConfig) -> None:
+    """Show what additional PR operations would be performed."""
     if config.comment:
         print("Would update PR comment")
     if config.update_pr_body:
@@ -1493,31 +1496,55 @@ def _handle_pr_dry_run(config: PrConfig, pr_number: int | None) -> None:
         print(f"Would cross-link with issue #{config.link_issue}")
 
 
+def _handle_pr_dry_run(config: PrConfig, pr_number: int | None) -> None:
+    """Handle dry-run mode for PR operations."""
+    # Show what would be done - print to stdout for test compatibility
+    base_cmd = _build_pr_base_command(config)
+    _add_pr_list_options(base_cmd, config)
+
+    # Print the command with safe quoting to stdout
+    quoted_cmd = " ".join(shlex.quote(arg) for arg in base_cmd)
+    print(f"Would run: {quoted_cmd}")
+
+    # Show additional operations that would be performed
+    _show_additional_pr_operations(config)
+
+
+def _log_pr_update_operations(config: PrConfig) -> None:
+    """Log operations for updating existing PR."""
+    log = logging.getLogger("autorepro")
+    if config.comment:
+        log.info("Created autorepro comment")
+    if config.update_pr_body:
+        log.info("Updated sync block")
+    if config.add_labels:
+        log.info("Added labels")
+    if config.link_issue:
+        log.info("Created issue comment")
+
+
+def _log_pr_create_operations(config: PrConfig) -> None:
+    """Log operations for creating new PR."""
+    log = logging.getLogger("autorepro")
+    if config.comment:
+        log.info("Created autorepro comment")
+    if config.update_pr_body:
+        log.info("Added new sync block")
+    if config.add_labels:
+        log.info("Added labels")
+    if config.link_issue:
+        log.info("Created issue comment")
+
+
 def _execute_pr_operations(config: PrConfig, pr_number: int | None) -> int:
     """Execute PR creation or update operations."""
     log = logging.getLogger("autorepro")
 
     try:
         if pr_number:
-            # Update existing PR
-            if config.comment:
-                log.info("Created autorepro comment")
-            if config.update_pr_body:
-                log.info("Updated sync block")
-            if config.add_labels:
-                log.info("Added labels")
-            if config.link_issue:
-                log.info("Created issue comment")
+            _log_pr_update_operations(config)
         else:
-            # Create new PR
-            if config.comment:
-                log.info("Created autorepro comment")
-            if config.update_pr_body:
-                log.info("Added new sync block")
-            if config.add_labels:
-                log.info("Added labels")
-            if config.link_issue:
-                log.info("Created issue comment")
+            _log_pr_create_operations(config)
 
         return 0
     except Exception as e:
