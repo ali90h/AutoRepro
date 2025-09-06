@@ -59,32 +59,32 @@ def temp_chdir(path: Path) -> Generator[None, None, None]:
         os.chdir(original_cwd)
 
 
-def create_parser() -> argparse.ArgumentParser:
-    """Create and configure the argument parser."""
-    parser = argparse.ArgumentParser(
-        prog="autorepro",
-        description="CLI for AutoRepro - transforms issues into repro steps",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-AutoRepro automatically detects repository technologies, generates ready-made
-devcontainers, and writes prioritized repro plans with explicit assumptions.
-
-MVP commands:
-  scan    Detect languages/frameworks from file pointers
-  init    Create a developer container
-  plan    Derive execution plan from issue description
-  pr      Create or update GitHub pull request
-
-For more information, visit: https://github.com/ali90h/AutoRepro
-        """.strip(),
+def _add_common_args(parser) -> None:
+    """Add common arguments (verbose, quiet, dry-run)."""
+    parser.add_argument(
+        "-v", "--verbose", action="count", default=0, help="Increase verbosity (-v, -vv)"
     )
+    parser.add_argument("-q", "--quiet", action="store_true", help="Show errors only")
+    parser.add_argument("--dry-run", action="store_true", help="Print actions without executing")
 
-    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
 
-    # Add subcommands
-    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+def _add_file_input_group(parser, required: bool = True) -> argparse._MutuallyExclusiveGroup:
+    """Add mutually exclusive desc/file input group."""
+    input_group = parser.add_mutually_exclusive_group(required=required)
+    input_group.add_argument("--desc", help="Issue description text")
+    input_group.add_argument("--file", help="Path to file containing issue description")
+    return input_group
 
-    # pr subcommand
+
+def _add_repo_args(parser) -> None:
+    """Add repository-related arguments."""
+    parser.add_argument("--repo", help="Execute logic on specified repository path")
+    parser.add_argument("--out", help="Custom output path")
+    parser.add_argument("--force", action="store_true", help="Overwrite existing files")
+
+
+def _setup_pr_parser(subparsers) -> argparse.ArgumentParser:
+    """Setup pr subcommand parser."""
     pr_parser = subparsers.add_parser(
         "pr",
         help="Create or update GitHub pull request",
@@ -92,15 +92,7 @@ For more information, visit: https://github.com/ali90h/AutoRepro
     )
 
     # Mutually exclusive group for --desc and --file
-    pr_input_group = pr_parser.add_mutually_exclusive_group(required=True)
-    pr_input_group.add_argument(
-        "--desc",
-        help="Issue description text",
-    )
-    pr_input_group.add_argument(
-        "--file",
-        help="Path to file containing issue description",
-    )
+    _add_file_input_group(pr_parser, required=True)
 
     # Required arguments
     pr_parser.add_argument(
@@ -198,6 +190,8 @@ For more information, visit: https://github.com/ali90h/AutoRepro
         default="md",
         help="Output format (default: md)",
     )
+
+    # Add verbose but not quiet (PR has different requirements)
     pr_parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -211,7 +205,11 @@ For more information, visit: https://github.com/ali90h/AutoRepro
         help="Increase verbosity (-v, -vv)",
     )
 
-    # scan subcommand
+    return pr_parser
+
+
+def _setup_scan_parser(subparsers) -> argparse.ArgumentParser:
+    """Setup scan subcommand parser."""
     scan_parser = subparsers.add_parser(
         "scan",
         help="Detect languages/frameworks from file pointers",
@@ -240,8 +238,11 @@ For more information, visit: https://github.com/ali90h/AutoRepro
         default=0,
         help="Increase verbosity (-v, -vv)",
     )
+    return scan_parser
 
-    # init subcommand
+
+def _setup_init_parser(subparsers) -> argparse.ArgumentParser:
+    """Setup init subcommand parser."""
     init_parser = subparsers.add_parser(
         "init",
         help="Create a developer container",
@@ -265,8 +266,11 @@ For more information, visit: https://github.com/ali90h/AutoRepro
         "--repo",
         help="Execute logic on specified repository path",
     )
+    return init_parser
 
-    # plan subcommand
+
+def _setup_plan_parser(subparsers) -> argparse.ArgumentParser:
+    """Setup plan subcommand parser."""
     plan_parser = subparsers.add_parser(
         "plan",
         help="Derive execution plan from issue description",
@@ -274,15 +278,7 @@ For more information, visit: https://github.com/ali90h/AutoRepro
     )
 
     # Mutually exclusive group for --desc and --file (exactly one required)
-    input_group = plan_parser.add_mutually_exclusive_group(required=True)
-    input_group.add_argument(
-        "--desc",
-        help="Issue description text",
-    )
-    input_group.add_argument(
-        "--file",
-        help="Path to file containing issue description",
-    )
+    _add_file_input_group(plan_parser, required=True)
 
     plan_parser.add_argument(
         "--out",
@@ -339,8 +335,11 @@ For more information, visit: https://github.com/ali90h/AutoRepro
         default=0,
         help="Increase verbosity (-v, -vv)",
     )
+    return plan_parser
 
-    # exec subcommand
+
+def _setup_exec_parser(subparsers) -> argparse.ArgumentParser:
+    """Setup exec subcommand parser."""
     exec_parser = subparsers.add_parser(
         "exec",
         help="Execute the top plan command",
@@ -348,15 +347,7 @@ For more information, visit: https://github.com/ali90h/AutoRepro
     )
 
     # Mutually exclusive group for --desc and --file (exactly one required)
-    exec_input_group = exec_parser.add_mutually_exclusive_group(required=True)
-    exec_input_group.add_argument(
-        "--desc",
-        help="Issue description text",
-    )
-    exec_input_group.add_argument(
-        "--file",
-        help="Path to file containing issue description",
-    )
+    _add_file_input_group(exec_parser, required=True)
 
     exec_parser.add_argument(
         "--repo",
@@ -421,6 +412,40 @@ For more information, visit: https://github.com/ali90h/AutoRepro
         default=0,
         help="Increase verbosity (-v, -vv)",
     )
+    return exec_parser
+
+
+def create_parser() -> argparse.ArgumentParser:
+    """Create and configure the argument parser."""
+    parser = argparse.ArgumentParser(
+        prog="autorepro",
+        description="CLI for AutoRepro - transforms issues into repro steps",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+AutoRepro automatically detects repository technologies, generates ready-made
+devcontainers, and writes prioritized repro plans with explicit assumptions.
+
+MVP commands:
+  scan    Detect languages/frameworks from file pointers
+  init    Create a developer container
+  plan    Derive execution plan from issue description
+  pr      Create or update GitHub pull request
+
+For more information, visit: https://github.com/ali90h/AutoRepro
+        """.strip(),
+    )
+
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+
+    # Add subcommands
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+
+    # Setup all subcommand parsers
+    _setup_pr_parser(subparsers)
+    _setup_scan_parser(subparsers)
+    _setup_init_parser(subparsers)
+    _setup_plan_parser(subparsers)
+    _setup_exec_parser(subparsers)
 
     return parser
 
