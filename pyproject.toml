@@ -64,6 +64,10 @@ addopts = [
     "-v",
     "--tb=short"
 ]
+markers = [
+    "smoke: CLI smoke tests for basic functionality",
+    "timeout: tests with timeout requirements",
+]
 
 [tool.ruff]
 target-version = "py311"
