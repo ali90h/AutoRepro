@@ -562,31 +562,13 @@ class ExecConfig:
     strict: bool = False
 
 
-def _prepare_plan_config(
-    desc: str | None,
-    file: str | None,
-    out: str,
-    force: bool,
-    max_commands: int,
-    format_type: str,
-    dry_run: bool,
-    repo: str | None,
-    strict: bool,
-    min_score: int,
-) -> PlanConfig:
-    """Extract and validate plan configuration from arguments."""
-    config = PlanConfig(
-        desc=desc,
-        file=file,
-        out=out,
-        force=force,
-        max_commands=max_commands,
-        format_type=format_type,
-        dry_run=dry_run,
-        repo=repo,
-        strict=strict,
-        min_score=min_score,
-    )
+def _prepare_plan_config(config: PlanConfig) -> PlanConfig:
+    """Extract and validate plan configuration from config object."""
+    if config.desc and config.file:
+        raise ValueError("Cannot specify both --desc and --file")
+
+    if not config.desc and not config.file:
+        raise ValueError("Must specify either --desc or --file")
 
     # Validate and resolve --repo path if specified
     if config.repo is not None:
@@ -899,9 +881,19 @@ def cmd_plan(
 ) -> int:
     """Handle the plan command."""
     try:
-        config = _prepare_plan_config(
-            desc, file, out, force, max_commands, format_type, dry_run, repo, strict, min_score
+        plan_config = PlanConfig(
+            desc=desc,
+            file=file,
+            out=out,
+            force=force,
+            max_commands=max_commands,
+            format_type=format_type,
+            dry_run=dry_run,
+            repo=repo,
+            strict=strict,
+            min_score=min_score,
         )
+        config = _prepare_plan_config(plan_config)
         plan_data = _generate_plan_content(config)
         return _output_plan_result(plan_data, config)
     except ValueError as e:
