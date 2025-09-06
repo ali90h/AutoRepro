@@ -35,6 +35,18 @@ class GitHubPRConfig:
     dry_run: bool = False
 
 
+@dataclass
+class IssueConfig:
+    """Configuration for GitHub issue creation operations."""
+
+    title: str
+    body: str = ""
+    labels: list[str] | None = None
+    assignees: list[str] | None = None
+    gh_path: str = "gh"
+    dry_run: bool = False
+
+
 def detect_repo_slug() -> str:
     """
     Detect repository owner/name from git remote origin.
@@ -637,24 +649,12 @@ def create_issue_comment(
             os.unlink(body_file)
 
 
-def create_issue(
-    title: str,
-    body: str = "",
-    labels: list[str] | None = None,
-    assignees: list[str] | None = None,
-    gh_path: str = "gh",
-    dry_run: bool = False,
-) -> int:
+def create_issue(config: IssueConfig) -> int:
     """
     Create a new issue.
 
     Args:
-        title: Issue title
-        body: Issue body text
-        labels: Labels to add to issue
-        assignees: Users to assign to issue
-        gh_path: Path to gh CLI tool
-        dry_run: If True, print command instead of executing
+        config: Issue configuration
 
     Returns:
         Issue number if successful
@@ -664,26 +664,26 @@ def create_issue(
     """
     # Write body to temporary file if not empty
     body_file = None
-    if body:
+    if config.body:
         with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
-            f.write(body)
+            f.write(config.body)
             body_file = f.name
 
     try:
-        cmd = [gh_path, "issue", "create", "--title", title]
+        cmd = [config.gh_path, "issue", "create", "--title", config.title]
 
         if body_file:
             cmd.extend(["--body-file", body_file])
         else:
             cmd.extend(["--body", ""])
 
-        if labels:
-            cmd.extend(["--label", ",".join(labels)])
+        if config.labels:
+            cmd.extend(["--label", ",".join(config.labels)])
 
-        if assignees:
-            cmd.extend(["--assignee", ",".join(assignees)])
+        if config.assignees:
+            cmd.extend(["--assignee", ",".join(config.assignees)])
 
-        if dry_run:
+        if config.dry_run:
             print(f"Would run: {' '.join(cmd)}")
             return 0
 

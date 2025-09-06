@@ -2,9 +2,21 @@
 
 import glob
 import os
+from dataclasses import dataclass
 from pathlib import Path
 
 from .config import config
+
+
+@dataclass
+class EvidenceReason:
+    """Configuration for adding evidence reasons."""
+
+    pattern: str
+    path: str
+    kind: str
+    weight: int
+
 
 # Language detection patterns: language -> list of file patterns
 # MVP limitation: source-file globs may cause false positives in sparse repos
@@ -168,20 +180,17 @@ def _ensure_evidence_entry(evidence: dict[str, dict[str, object]], language: str
 def _add_evidence_reason(
     evidence: dict[str, dict[str, object]],
     language: str,
-    pattern: str,
-    path: str,
-    kind: str,
-    weight: int,
+    reason: EvidenceReason,
 ) -> None:
     """Add a reason to the evidence for the given language."""
     _ensure_evidence_entry(evidence, language)
-    evidence[language]["score"] = evidence[language]["score"] + weight  # type: ignore
+    evidence[language]["score"] = evidence[language]["score"] + reason.weight  # type: ignore
     evidence[language]["reasons"].append(  # type: ignore
         {
-            "pattern": pattern,
-            "path": path,
-            "kind": kind,
-            "weight": weight,
+            "pattern": reason.pattern,
+            "path": reason.path,
+            "kind": reason.kind,
+            "weight": reason.weight,
         }
     )
 
@@ -207,10 +216,12 @@ def _process_weighted_patterns(evidence: dict[str, dict[str, object]], root_path
             _add_evidence_reason(
                 evidence,
                 lang,
-                filename,
-                f"./{filename}",
-                str(info["kind"]),
-                int(info["weight"]) if isinstance(info["weight"], int | str) else 0,
+                EvidenceReason(
+                    pattern=filename,
+                    path=f"./{filename}",
+                    kind=str(info["kind"]),
+                    weight=int(info["weight"]) if isinstance(info["weight"], int | str) else 0,
+                ),
             )
 
 
@@ -241,10 +252,12 @@ def _process_glob_pattern(
                 _add_evidence_reason(
                     evidence,
                     lang,
-                    pattern,
-                    f"./{basename}",
-                    str(info["kind"]),
-                    int(info["weight"]) if isinstance(info["weight"], int | str) else 0,
+                    EvidenceReason(
+                        pattern=pattern,
+                        path=f"./{basename}",
+                        kind=str(info["kind"]),
+                        weight=int(info["weight"]) if isinstance(info["weight"], int | str) else 0,
+                    ),
                 )
 
 
@@ -261,10 +274,12 @@ def _process_exact_filename(
         _add_evidence_reason(
             evidence,
             lang,
-            pattern,
-            f"./{pattern}",
-            str(info["kind"]),
-            int(info["weight"]) if isinstance(info["weight"], int | str) else 0,
+            EvidenceReason(
+                pattern=pattern,
+                path=f"./{pattern}",
+                kind=str(info["kind"]),
+                weight=int(info["weight"]) if isinstance(info["weight"], int | str) else 0,
+            ),
         )
 
 
