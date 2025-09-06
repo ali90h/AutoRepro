@@ -204,14 +204,14 @@ def _process_weighted_patterns(evidence: dict[str, dict[str, object]], root_path
         file_path = root_path / filename
         if file_path.is_file():
             lang = str(info["language"])
-        _add_evidence_reason(
-            evidence,
-            lang,
-            filename,
-            f"./{filename}",
-            str(info["kind"]),
-            int(info["weight"]) if isinstance(info["weight"], int | str) else 0,
-        )
+            _add_evidence_reason(
+                evidence,
+                lang,
+                filename,
+                f"./{filename}",
+                str(info["kind"]),
+                int(info["weight"]) if isinstance(info["weight"], int | str) else 0,
+            )
 
 
 def _process_source_patterns(evidence: dict[str, dict[str, object]], root_path: Path) -> None:
