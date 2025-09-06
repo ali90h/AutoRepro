@@ -165,6 +165,117 @@ def json_diff(old: dict[str, Any], new: dict[str, Any]) -> list[str]:
     return sorted(changes)  # Sort by path for deterministic output
 
 
+def _validate_devcontainer_path(out: str | None) -> Path:
+    """Validate and resolve output path for devcontainer."""
+    if out is None:
+        out_path = Path(config.paths.devcontainer_dir) / config.paths.devcontainer_file
+    else:
+        out_path = Path(out)
+
+    # Validate output path
+    try:
+        # Normalize path and check if it's valid
+        out_path = out_path.resolve()
+    except (OSError, ValueError) as e:
+        raise DevcontainerMisuseError(f"Invalid output path '{out}': {e}") from e
+
+    # Check if output path is a directory (handle permission errors separately)
+    try:
+        if out_path.exists() and out_path.is_dir():
+            raise DevcontainerMisuseError(f"Output path is a directory: {out_path}")
+    except (OSError, PermissionError) as e:
+        if not isinstance(e, DevcontainerMisuseError):
+            raise OSError(f"Permission denied: {out_path.parent}") from e
+        raise
+
+    return out_path
+
+
+def _check_devcontainer_exists(out_path: Path, force: bool) -> tuple[bool, dict | None]:
+    """Check if devcontainer exists and handle force mode."""
+    try:
+        file_exists = out_path.exists()
+    except (OSError, PermissionError) as e:
+        raise OSError(f"Permission denied: {out_path.parent}") from e
+
+    if not file_exists:
+        return False, None
+
+    if not force:
+        raise DevcontainerExistsError(out_path)
+
+    # Check write permissions on existing file
+    if not os.access(out_path, os.W_OK):
+        raise PermissionError(f"Permission denied: {out_path}")
+
+    # Read existing file for diff computation
+    try:
+        with open(out_path, encoding="utf-8") as f:
+            old_content = json.load(f)
+        return True, old_content
+    except (OSError, json.JSONDecodeError):
+        # If we can't read the old file as JSON, treat it as a complete replacement
+        return True, None
+
+
+def _create_devcontainer_directories(out_path: Path) -> None:
+    """Ensure parent directories exist for devcontainer."""
+    try:
+        FileOperations.ensure_directory(out_path.parent)
+    except OSError as e:
+        raise OSError(f"Cannot create parent directory: {out_path.parent}") from e
+
+
+def _write_devcontainer_content(out_path: Path, content: dict) -> str:
+    """Write devcontainer content to file atomically."""
+    # Check write permissions on parent directory for new file
+    if not out_path.exists() and not os.access(out_path.parent, os.W_OK):
+        raise PermissionError(f"Permission denied: {out_path.parent}")
+
+    # Create content with proper formatting
+    json_content = json.dumps(content, indent=2, sort_keys=True) + "\n"
+
+    # Write file atomically
+    try:
+        # Write to temporary file first, then move (atomic operation)
+        temp_path = out_path.with_suffix(out_path.suffix + config.paths.temp_file_suffix)
+
+        try:
+            with open(temp_path, "w", encoding="utf-8") as f:
+                f.write(json_content)
+
+            # Atomic move
+            temp_path.rename(out_path)
+            return json_content
+
+        except Exception:
+            # Clean up temp file if it exists
+            if temp_path.exists():
+                temp_path.unlink()
+            raise
+
+    except (OSError, PermissionError) as e:
+        raise OSError(f"Failed to write file: {e}") from e
+
+
+def _compute_content_diff(old_content: dict | None, new_content: dict) -> list[str]:
+    """Compute diff between existing and new content."""
+    if old_content is None:
+        return []
+    return json_diff(old_content, new_content)
+
+
+def _check_content_unchanged(out_path: Path, json_content: str) -> bool:
+    """Check if content is actually different before writing."""
+    try:
+        with open(out_path, encoding="utf-8") as f:
+            existing_content = f.read()
+        return existing_content == json_content
+    except (OSError, UnicodeDecodeError):
+        # If we can't read the existing file, proceed with write
+        return False
+
+
 def write_devcontainer(
     content: dict[str, str | dict[str, dict[str, str]]],
     force: bool = False,
@@ -189,98 +300,30 @@ def write_devcontainer(
         DevcontainerMisuseError: Invalid arguments (e.g., out points to directory)
         OSError: I/O or permission errors
     """
-    # Determine output path
-    output_path = (
-        Path(config.paths.devcontainer_dir) / config.paths.devcontainer_file
-        if out is None
-        else Path(out)
-    )
+    # Validate and resolve output path
+    output_path = _validate_devcontainer_path(out)
 
-    # Validate output path
-    try:
-        # Normalize path and check if it's valid
-        output_path = output_path.resolve()
-    except (OSError, ValueError) as e:
-        raise DevcontainerMisuseError(f"Invalid output path '{out}': {e}") from e
+    # Check if file exists and handle force mode
+    file_exists, old_content = _check_devcontainer_exists(output_path, force)
 
-    # Check if output path is a directory (handle permission errors separately)
-    try:
-        if output_path.exists() and output_path.is_dir():
-            raise DevcontainerMisuseError(f"Output path is a directory: {output_path}")
-    except (OSError, PermissionError) as e:
-        if not isinstance(e, DevcontainerMisuseError):
-            raise OSError(f"Permission denied: {output_path.parent}") from e
-        raise
+    # Create parent directories
+    _create_devcontainer_directories(output_path)
 
-    # Check if parent directory can be created
-    try:
-        FileOperations.ensure_directory(output_path.parent)
-    except OSError as e:
-        raise OSError(f"Cannot create parent directory: {output_path.parent}") from e
-
-    # Check if file exists and handle idempotent behavior
-    try:
-        file_exists = output_path.exists()
-    except (OSError, PermissionError) as e:
-        raise OSError(f"Permission denied: {output_path.parent}") from e
-
-    diff_lines = None
-
-    if file_exists:
-        if not force:
-            raise DevcontainerExistsError(output_path)
-
-        # Check write permissions on existing file
-        if not os.access(output_path, os.W_OK):
-            raise PermissionError(f"Permission denied: {output_path}")
-
-        # Read existing file and compute diff
-        try:
-            with open(output_path, encoding="utf-8") as f:
-                old_content = json.load(f)
-            diff_lines = json_diff(old_content, content)
-        except (OSError, json.JSONDecodeError):
-            # If we can't read the old file as JSON, treat it as a complete replacement
-            diff_lines = []
-    else:
-        # Check write permissions on parent directory for new file
-        if not os.access(output_path.parent, os.W_OK):
-            raise PermissionError(f"Permission denied: {output_path.parent}")
-
-    # Create content with proper formatting
+    # Create formatted content
     json_content = json.dumps(content, indent=2, sort_keys=True) + "\n"
 
     # Check if content is actually different before writing
-    if file_exists:
-        try:
-            with open(output_path, encoding="utf-8") as f:
-                existing_content = f.read()
-            if existing_content == json_content:
-                # No actual changes, return without writing to preserve mtime
-                return output_path, diff_lines
-        except (OSError, UnicodeDecodeError):
-            # If we can't read the existing file, proceed with write
-            pass
+    if file_exists and _check_content_unchanged(output_path, json_content):
+        # No actual changes, return without writing to preserve mtime
+        diff_lines_unchanged = _compute_content_diff(old_content, content)
+        return output_path, diff_lines_unchanged
 
-    # Write file atomically
-    try:
-        # Write to temporary file first, then move (atomic operation)
-        temp_path = output_path.with_suffix(output_path.suffix + config.paths.temp_file_suffix)
+    # Write content atomically
+    _write_devcontainer_content(output_path, content)
 
-        try:
-            with open(temp_path, "w", encoding="utf-8") as f:
-                f.write(json_content)
+    # Compute diff if file existed
+    diff_lines: list[str] | None = (
+        _compute_content_diff(old_content, content) if file_exists else None
+    )
 
-            # Atomic move
-            temp_path.rename(output_path)
-
-            return output_path, diff_lines
-
-        except Exception:
-            # Clean up temp file if it exists
-            if temp_path.exists():
-                temp_path.unlink()
-            raise
-
-    except (OSError, PermissionError) as e:
-        raise OSError(f"Failed to write file: {e}") from e
+    return output_path, diff_lines

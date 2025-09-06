@@ -9,7 +9,12 @@ import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from autorepro.utils.process import ProcessResult, ProcessRunner, safe_subprocess_run
+from autorepro.utils.process import (
+    ProcessResult,
+    ProcessRunner,
+    SubprocessConfig,
+    safe_subprocess_run,
+)
 
 
 class TestProcessResult:
@@ -223,8 +228,8 @@ class TestSafeSubprocessRun:
         env_vars = {"TEST": "value"}
         cwd_path = Path("/test")
 
-        safe_subprocess_run(
-            ["test-cmd", "arg"],
+        config = SubprocessConfig(
+            cmd=["test-cmd", "arg"],
             cwd=cwd_path,
             env=env_vars,
             timeout=60,
@@ -232,6 +237,7 @@ class TestSafeSubprocessRun:
             text=False,
             check=True,
         )
+        safe_subprocess_run(config)
 
         mock_run.assert_called_once_with(
             ["test-cmd", "arg"],
@@ -248,14 +254,16 @@ class TestSafeSubprocessRun:
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock()
 
-            safe_subprocess_run("echo hello world")
+            config = SubprocessConfig(cmd="echo hello world")
+            safe_subprocess_run(config)
 
             args, kwargs = mock_run.call_args
             assert args[0] == ["echo", "hello", "world"]
 
     def test_safe_subprocess_run_integration_real_command(self):
         """Integration test with real command execution."""
-        result = safe_subprocess_run(["echo", "safe test"], capture_output=True, text=True)
+        config = SubprocessConfig(cmd=["echo", "safe test"], capture_output=True, text=True)
+        result = safe_subprocess_run(config)
 
         assert result.returncode == 0
         assert "safe test" in result.stdout

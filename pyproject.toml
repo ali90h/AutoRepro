@@ -84,14 +84,7 @@ select = [
     "PLR0912", # too-many-branches
     "PLR0911", # too-many-return-statements
 ]
-# Temporarily ignore anti-inflation warnings to start as warnings (will be errors later)
-ignore = [
-    "PLR0915", # too-many-statements (>50)
-    "PLR0913", # too-many-arguments (>5)
-    "C901",    # complex-structure (>10)
-    "PLR0912", # too-many-branches (>12)
-    "PLR0911", # too-many-return-statements (>6)
-]
+# All quality rules are now enforced as errors - no violations allowed
 
 [tool.ruff.format]
 quote-style = "double"

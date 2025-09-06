@@ -6,7 +6,21 @@ replacing duplicate patterns found across the AutoRepro codebase.
 """
 
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
+
+
+@dataclass
+class SubprocessConfig:
+    """Configuration for subprocess execution."""
+
+    cmd: str | list[str]
+    cwd: str | Path | None = None
+    env: dict[str, str] | None = None
+    timeout: int | None = None
+    capture_output: bool = True
+    text: bool = True
+    check: bool = False
 
 
 class ProcessResult:
@@ -173,28 +187,14 @@ class ProcessRunner:
         return ProcessRunner.run_with_capture(cmd, cwd=cwd, env=env, timeout=timeout)
 
 
-def safe_subprocess_run(
-    cmd: str | list[str],
-    cwd: str | Path | None = None,
-    env: dict[str, str] | None = None,
-    timeout: int | None = None,
-    capture_output: bool = True,
-    text: bool = True,
-    check: bool = False,
-) -> subprocess.CompletedProcess:
+def safe_subprocess_run(config: SubprocessConfig) -> subprocess.CompletedProcess:
     """Safe subprocess.run wrapper that handles common error cases.
 
     This is a drop-in replacement for subprocess.run with better error handling.
     Use ProcessRunner.run_with_capture for more structured results.
 
     Args:
-        cmd: Command to run
-        cwd: Working directory
-        env: Environment variables
-        timeout: Timeout in seconds
-        capture_output: Whether to capture stdout/stderr
-        text: Whether to return text output
-        check: Whether to raise on non-zero exit
+        config: SubprocessConfig object containing all execution options
 
     Returns:
         subprocess.CompletedProcess result
@@ -206,19 +206,21 @@ def safe_subprocess_run(
         OSError: If command cannot be executed
     """
     # Convert string command to list if needed
+    cmd = config.cmd
     if isinstance(cmd, str):
         cmd = cmd.split()
 
     # Convert path to string if needed
+    cwd = config.cwd
     if cwd is not None:
         cwd = str(cwd)
 
     return subprocess.run(
         cmd,
         cwd=cwd,
-        env=env,
-        timeout=timeout,
-        capture_output=capture_output,
-        text=text,
-        check=check,
+        env=config.env,
+        timeout=config.timeout,
+        capture_output=config.capture_output,
+        text=config.text,
+        check=config.check,
     )

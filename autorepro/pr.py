@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -48,135 +49,74 @@ def build_pr_title(plan_data: dict[str, Any], is_draft: bool = True) -> str:
     return f"chore(repro): {clean_title}{suffix}"
 
 
-def build_pr_body(plan_content: str, format_type: str) -> str:
-    """
-    Build PR body from plan content.
-
-    Args:
-        plan_content: Plan content (markdown or JSON)
-        format_type: Format type ('md' or 'json')
-
-    Returns:
-        Formatted PR body in markdown
-    """
+def _extract_pr_title_from_content(plan_content: str, format_type: str) -> str:
+    """Extract title from plan content for PR."""
     if format_type == "json":
         try:
             plan_data = json.loads(plan_content)
-            title = plan_data.get("title", "Issue Reproduction Plan")
-            assumptions = plan_data.get("assumptions", [])
-            commands = plan_data.get("commands", [])[:3]  # Top 3 commands
-
-            body_parts = [
-                f"# {title}",
-                "",
-                "## Assumptions",
-                "",
-            ]
-
-            for assumption in assumptions:
-                body_parts.append(f"- {assumption}")
-
-            body_parts.extend(
-                [
-                    "",
-                    "## Candidate Commands (Top 3)",
-                    "",
-                ]
-            )
-
-            if commands:
-                for i, cmd in enumerate(commands, 1):
-                    cmd_str = cmd.get("cmd", "")
-                    score = cmd.get("score", 0)
-                    rationale = cmd.get("rationale", "")
-                    body_parts.append(f"{i}. **`{cmd_str}`** (score: {score})")
-                    body_parts.append(f"   - {rationale}")
-                    body_parts.append("")
-            else:
-                body_parts.append("No candidate commands found.")
-                body_parts.append("")
-
+            return plan_data.get("title", "Reproduction Plan")
         except json.JSONDecodeError:
-            body_parts = [
-                "# Issue Reproduction Plan",
-                "",
-                "Error parsing plan data. See CI artifacts for details.",
-                "",
-            ]
+            return "Reproduction Plan"
     else:
-        # For markdown format, extract key sections
         lines = plan_content.split("\n")
-        title = "Issue Reproduction Plan"
-        assumptions_section = []
-        commands_section = []
+        title_line = next((line for line in lines if line.startswith("# ")), "# Reproduction Plan")
+        return title_line[2:].strip()
 
-        in_assumptions = False
-        in_commands = False
 
-        for line in lines:
-            if line.startswith("# "):
-                title = line[2:].strip()
-            elif line.startswith("## Assumptions"):
-                in_assumptions = True
-                in_commands = False
-                continue
-            elif line.startswith("## Candidate Commands"):
-                in_assumptions = False
-                in_commands = True
-                continue
-            elif line.startswith("## "):
-                in_assumptions = False
-                in_commands = False
-                continue
+def _build_pr_header_section(title: str) -> list[str]:
+    """Build PR header section."""
+    return [
+        f"## 🔄 {title}",
+        "",
+        "**Summary**: AutoRepro reproduction plan for this PR",
+        "",
+    ]
 
-            if in_assumptions and line.strip() and line.startswith("- "):
-                assumptions_section.append(line)
-            elif in_commands and line.strip() and line.startswith("- "):
-                commands_section.append(line)
-                if len(commands_section) >= 3:  # Limit to top 3
-                    break
 
-        body_parts = [
-            f"# {title}",
+def _build_pr_content_section(plan_content: str, format_type: str) -> list[str]:
+    """Build PR content section with appropriate formatting."""
+    content_lines = plan_content.strip().split("\n")
+    should_use_details = len(content_lines) > 15
+
+    if should_use_details:
+        return [
+            "<!-- autorepro:begin plan schema=1 -->",
+            "<details>",
+            "<summary>📋 Reproduction Plan (click to expand)</summary>",
             "",
-            "## Assumptions",
+            plan_content.rstrip(),
             "",
+            "</details>",
+            "<!-- autorepro:end plan -->",
+        ]
+    else:
+        return [
+            "<!-- autorepro:begin plan schema=1 -->",
+            plan_content.rstrip(),
+            "<!-- autorepro:end plan -->",
         ]
 
-        if assumptions_section:
-            body_parts.extend(assumptions_section)
-        else:
-            body_parts.append("- Standard development environment")
 
-        body_parts.extend(
-            [
-                "",
-                "## Candidate Commands (Top 3)",
-                "",
-            ]
-        )
+def _build_pr_footer_section() -> list[str]:
+    """Build PR footer section."""
+    timestamp = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+    return [
+        "",
+        f"Generated by [AutoRepro](https://github.com/autorepro/autorepro) on {timestamp}",
+        f"<!-- generated: {timestamp} -->",
+    ]
 
-        if commands_section:
-            for i, cmd_line in enumerate(commands_section[:3], 1):
-                # Convert to numbered list
-                body_parts.append(f"{i}.{cmd_line[1:]}")  # Remove "- " and add number
-        else:
-            body_parts.append("1. No candidate commands found")
 
-        body_parts.append("")
+def build_pr_body(plan_content: str, format_type: str) -> str:
+    """Build PR body from plan content."""
+    title = _extract_pr_title_from_content(plan_content, format_type)
 
-    # Add artifact note
-    body_parts.extend(
-        [
-            "---",
-            "",
-            "**Note**: Comprehensive reproduction bundle (with execution logs and "
-            "environment metadata) is available as CI artifact.",
-            "",
-        ]
-    )
+    header_lines = _build_pr_header_section(title)
+    content_lines = _build_pr_content_section(plan_content, format_type)
+    footer_lines = _build_pr_footer_section()
 
-    return "\n".join(body_parts)
+    all_lines = header_lines + content_lines + footer_lines
+    return "\n".join(all_lines)
 
 
 def generate_plan_data(
