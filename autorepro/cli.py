@@ -520,28 +520,25 @@ class PlanData:
 class PrConfig:
     """Configuration for PR operations."""
 
-    desc: str | None = None
-    file: str | None = None
-    repo_slug: str | None = None
-    title: str | None = None
-    body: str | None = None
-    ready: bool = False
-    label: list[str] | None = None
-    assignee: list[str] | None = None
-    reviewer: list[str] | None = None
-    update_if_exists: bool = False
-    comment: bool = False
-    update_pr_body: bool = False
-    add_labels: str | None = None
-    link_issue: int | None = None
-    attach_report: bool = False
-    summary: str | None = None
-    no_details: bool = False
-    format_type: str = "md"
-    dry_run: bool = False
-    skip_push: bool = False
-    min_score: int = field(default_factory=lambda: config.limits.min_score_threshold)
-    strict: bool = False
+    desc: str | None
+    file: str | None
+    repo_slug: str | None
+    title: str | None
+    body: str | None
+    ready: bool
+    label: list[str] | None
+    assignee: list[str] | None
+    reviewer: list[str] | None
+    update_if_exists: bool
+    comment: bool
+    update_pr_body: bool
+    add_labels: str | None
+    link_issue: int | None
+    attach_report: bool
+    summary: str | None
+    no_details: bool
+    format_type: str
+    dry_run: bool
 
 
 @dataclass
@@ -1392,34 +1389,77 @@ def cmd_exec(
     return results["exit_code"]
 
 
-def _prepare_pr_config(config: PrConfig) -> PrConfig:
-    """Validate and process PR configuration."""
+def _prepare_pr_config(
+    desc: str | None,
+    file: str | None,
+    title: str | None,
+    body: str | None,
+    repo_slug: str | None,
+    update_if_exists: bool,
+    skip_push: bool,
+    ready: bool,
+    label: list[str] | None,
+    assignee: list[str] | None,
+    reviewer: list[str] | None,
+    min_score: int,
+    strict: bool,
+    comment: bool,
+    update_pr_body: bool,
+    link_issue: str | None,
+    add_labels: str | None,
+    attach_report: bool,
+    summary: str | None,
+    no_details: bool,
+    format_type: str,
+    dry_run: bool,
+) -> PrConfig:
+    """Extract and validate PR configuration from arguments."""
     log = logging.getLogger("autorepro")
 
     # Check required arguments
-    if not config.desc and not config.file:
+    if not desc and not file:
         log.error("Either --desc or --file must be specified")
         raise ValueError("Either --desc or --file must be specified")
 
-    if not config.repo_slug:
+    if not repo_slug:
         log.error("--repo-slug must be specified")
         raise ValueError("--repo-slug must be specified")
 
     # Read input text
     try:
-        text = config.desc if config.desc is not None else ""
-        if config.file is not None:
+        text = desc if desc is not None else ""
+        if file is not None:
             try:
-                with open(config.file, encoding="utf-8") as f:
+                with open(file, encoding="utf-8") as f:
                     text = f.read()  # noqa: F841
             except OSError as e:
-                log.error(f"Error reading file {config.file}: {e}")
-                raise OSError(f"Error reading file {config.file}: {e}") from e
+                log.error(f"Error reading file {file}: {e}")
+                raise OSError(f"Error reading file {file}: {e}") from e
     except Exception as e:
         log.error(f"Error processing input: {e}")
         raise ValueError(f"Error processing input: {e}") from e
 
-    return config
+    return PrConfig(
+        desc=desc,
+        file=file,
+        repo_slug=repo_slug,
+        title=title,
+        body=body,
+        ready=ready,
+        label=label,
+        assignee=assignee,
+        reviewer=reviewer,
+        update_if_exists=update_if_exists,
+        comment=comment,
+        update_pr_body=update_pr_body,
+        add_labels=add_labels,
+        link_issue=int(link_issue) if link_issue else None,
+        attach_report=attach_report,
+        summary=summary,
+        no_details=no_details,
+        format_type=format_type,
+        dry_run=dry_run,
+    )
 
 
 def _find_existing_pr(config: PrConfig) -> int | None:
@@ -1551,33 +1591,30 @@ def cmd_pr(
 ) -> int:
     """Handle the pr command."""
     try:
-        # Create config object directly with all parameters
-        pr_config = PrConfig(
-            desc=desc,
-            file=file,
-            title=title,
-            body=body,
-            repo_slug=repo_slug,
-            update_if_exists=update_if_exists,
-            skip_push=skip_push,
-            ready=ready,
-            label=label,
-            assignee=assignee,
-            reviewer=reviewer,
-            min_score=min_score,
-            strict=strict,
-            comment=comment,
-            update_pr_body=update_pr_body,
-            link_issue=int(link_issue) if link_issue else None,
-            add_labels=add_labels,
-            attach_report=attach_report,
-            summary=summary,
-            no_details=no_details,
-            format_type=format_type,
-            dry_run=dry_run,
+        config = _prepare_pr_config(
+            desc,
+            file,
+            title,
+            body,
+            repo_slug,
+            update_if_exists,
+            skip_push,
+            ready,
+            label,
+            assignee,
+            reviewer,
+            min_score,
+            strict,
+            comment,
+            update_pr_body,
+            link_issue,
+            add_labels,
+            attach_report,
+            summary,
+            no_details,
+            format_type,
+            dry_run,
         )
-
-        config = _prepare_pr_config(pr_config)
         pr_number = _find_existing_pr(config)
 
         if config.dry_run:
