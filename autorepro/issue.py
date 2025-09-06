@@ -23,7 +23,7 @@ from .io.github import (
     get_issue_comments,
 )
 from .report import collect_env_info, pack_zip, write_plan
-from .sync import find_autorepro_content, render_sync_comment
+from .sync import SyncCommentConfig, find_autorepro_content, render_sync_comment
 from .utils.github_api import update_comment
 from .utils.repro_bundle import generate_plan_content
 
@@ -67,12 +67,14 @@ def render_issue_comment_md(
         )
 
     return render_sync_comment(
-        plan_content,
-        format_type,
-        context="issue",
-        attach_report=sync_report_meta,
-        links=links,
-        use_details=True,  # Default to using details for issues
+        SyncCommentConfig(
+            plan_content=plan_content,
+            format_type=format_type,
+            context="issue",
+            attach_report=sync_report_meta,
+            links=links,
+            use_details=True,
+        )
     )
 
 

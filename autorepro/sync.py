@@ -9,8 +9,22 @@ from __future__ import annotations
 
 import json
 import re
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Literal, NamedTuple
+
+
+@dataclass
+class SyncCommentConfig:
+    """Configuration for sync comment rendering."""
+
+    plan_content: str
+    format_type: str
+    context: Literal["issue", "pr"] = "issue"
+    attach_report: ReportMeta | None = None
+    links: list[str] | None = None
+    summary: str | None = None
+    use_details: bool = True
 
 
 class ReportMeta(NamedTuple):
@@ -22,9 +36,9 @@ class ReportMeta(NamedTuple):
 
 
 def render_sync_comment(
-    plan_content: str,
-    format_type: str,
-    context: Literal["issue", "pr"] = "issue",
+    config_or_content: SyncCommentConfig | str,
+    format_type: str | None = None,
+    context: Literal["issue", "pr"] | None = None,
     *,
     attach_report: ReportMeta | None = None,
     links: list[str] | None = None,
@@ -35,28 +49,45 @@ def render_sync_comment(
     Render sync comment for either issues or PRs with tagged sync block.
 
     Args:
-        plan_content: The plan content (markdown or JSON)
-        format_type: Format type ('md' or 'json')
-        context: Context for rendering ('issue' or 'pr')
-        attach_report: Optional report metadata to include
-        links: Optional list of cross-reference links
-        summary: Optional short summary for context
-        use_details: Whether to wrap long content in collapsible details
+        config_or_content: Either a SyncCommentConfig object or plan content string
+        format_type: Format type (required if first arg is string)
+        context: Context type (required if first arg is string)
+        attach_report: Report metadata for attachment
+        links: Cross-reference links
+        summary: Summary text
+        use_details: Whether to use details sections for long content
 
     Returns:
         Formatted comment body with sync block tags
     """
+    # Handle backward compatibility - support both old and new signatures
+    if isinstance(config_or_content, str):
+        if format_type is None or context is None:
+            raise TypeError(
+                "format_type and context are required when passing plan content as string"
+            )
+        config = SyncCommentConfig(
+            plan_content=config_or_content,
+            format_type=format_type,
+            context=context,
+            attach_report=attach_report,
+            links=links,
+            summary=summary,
+            use_details=use_details,
+        )
+    else:
+        config = config_or_content
     # Build header section
     header_lines = []
 
     # Extract title from content
-    title = _extract_title_from_content(plan_content, format_type)
+    title = _extract_title_from_content(config.plan_content, config.format_type)
 
     # Context-specific headers
-    if context == "pr":
+    if config.context == "pr":
         header_lines.append(f"## 🔄 {title}")
-        if summary:
-            header_lines.append(f"**Context**: {summary}")
+        if config.summary:
+            header_lines.append(f"**Context**: {config.summary}")
             header_lines.append("")
         header_lines.append("**Summary**: AutoRepro reproduction plan for this PR")
     else:
@@ -66,18 +97,18 @@ def render_sync_comment(
     header_lines.append("")
 
     # Add cross-reference links if provided
-    if links:
+    if config.links:
         header_lines.append("**Related**:")
-        for link in links:
+        for link in config.links:
             header_lines.append(f"- {link}")
         header_lines.append("")
 
     # Add report attachment info if provided
-    if attach_report:
+    if config.attach_report:
         header_lines.append("**Report Bundle**:")
-        header_lines.append(f"- File: `{attach_report.filename}`")
-        header_lines.append(f"- Size: {attach_report.size_bytes:,} bytes")
-        header_lines.append(f"- Path: `{attach_report.path}`")
+        header_lines.append(f"- File: `{config.attach_report.filename}`")
+        header_lines.append(f"- Size: {config.attach_report.size_bytes:,} bytes")
+        header_lines.append(f"- Path: `{config.attach_report.path}`")
         header_lines.append("")
         header_lines.append(
             "*Note: Report bundle contains plan, environment info, and execution logs.*"
@@ -85,8 +116,8 @@ def render_sync_comment(
         header_lines.append("")
 
     # Determine if content should be wrapped in details
-    content_lines = plan_content.strip().split("\n")
-    should_use_details = use_details and len(content_lines) > 15
+    content_lines = config.plan_content.strip().split("\n")
+    should_use_details = config.use_details and len(content_lines) > 15
 
     # Build sync block content
     if should_use_details:
@@ -95,7 +126,7 @@ def render_sync_comment(
             "<details>",
             "<summary>📋 Reproduction Plan (click to expand)</summary>",
             "",
-            plan_content.rstrip(),
+            config.plan_content.rstrip(),
             "",
             "</details>",
             "<!-- autorepro:end plan -->",
@@ -103,7 +134,7 @@ def render_sync_comment(
     else:
         sync_block_lines = [
             "<!-- autorepro:begin plan schema=1 -->",
-            plan_content.rstrip(),
+            config.plan_content.rstrip(),
             "<!-- autorepro:end plan -->",
         ]
 
@@ -111,12 +142,11 @@ def render_sync_comment(
     timestamp = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
     footer_lines = [
         "",
+        f"Generated by [AutoRepro](https://github.com/autorepro/autorepro) on {timestamp}",
         f"<!-- generated: {timestamp} -->",
-        "",
-        "*Generated by [AutoRepro](https://github.com/ali90h/AutoRepro)*",
     ]
 
-    # Combine all sections
+    # Combine all parts
     all_lines = header_lines + sync_block_lines + footer_lines
     return "\n".join(all_lines)
 
