@@ -12,9 +12,27 @@ import os
 import re
 import subprocess
 import tempfile
+from dataclasses import dataclass
 from typing import Any
 
 # Import shared GitHub utilities
+
+
+@dataclass
+class GitHubPRConfig:
+    """Configuration for GitHub PR creation/update operations."""
+
+    title: str
+    body: str
+    base_branch: str = "main"
+    head_branch: str | None = None
+    draft: bool = True
+    labels: list[str] | None = None
+    assignees: list[str] | None = None
+    reviewers: list[str] | None = None
+    update_if_exists: bool = False
+    gh_path: str = "gh"
+    dry_run: bool = False
 
 
 def detect_repo_slug() -> str:
@@ -316,34 +334,12 @@ def add_pr_labels(
     return 0
 
 
-def create_or_update_pr(
-    title: str,
-    body: str,
-    base_branch: str = "main",
-    head_branch: str | None = None,
-    draft: bool = True,
-    labels: list[str] | None = None,
-    assignees: list[str] | None = None,
-    reviewers: list[str] | None = None,
-    update_if_exists: bool = False,
-    gh_path: str = "gh",
-    dry_run: bool = False,
-) -> tuple[int, bool]:  # (exit_code, created_new)
+def create_or_update_pr(config: GitHubPRConfig) -> tuple[int, bool]:  # (exit_code, created_new)
     """
     Create or update a GitHub PR.
 
     Args:
-        title: PR title
-        body: PR body
-        base_branch: Target branch
-        head_branch: Source branch (current if None)
-        draft: Whether to create as draft
-        labels: Labels to add
-        assignees: Users to assign
-        reviewers: Users to request review from
-        update_if_exists: Whether to update existing draft PR
-        gh_path: Path to gh CLI
-        dry_run: Print commands without executing
+        config: GitHub PR configuration object
 
     Returns:
         Tuple of (exit_code, created_new)
@@ -351,7 +347,7 @@ def create_or_update_pr(
     log = logging.getLogger("autorepro")
 
     # Get current branch if head not specified
-    if head_branch is None:
+    if config.head_branch is None:
         try:
             result = subprocess.run(
                 ["git", "branch", "--show-current"],
@@ -359,36 +355,36 @@ def create_or_update_pr(
                 text=True,
                 check=True,
             )
-            head_branch = result.stdout.strip()
+            config.head_branch = result.stdout.strip()
         except subprocess.CalledProcessError as e:
             log.error(f"Failed to get current branch: {e}")
             return 1, False
 
     # Write body to temporary file
     with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
-        f.write(body)
+        f.write(config.body)
         body_file = f.name
 
     try:
         # Check for existing draft PR if update requested
         existing_pr = None
-        if update_if_exists:
-            existing_pr = find_existing_draft(head_branch, gh_path)
+        if config.update_if_exists:
+            existing_pr = find_existing_draft(config.head_branch, config.gh_path)
 
         if existing_pr:
             # Update existing PR
             cmd = [
-                gh_path,
+                config.gh_path,
                 "pr",
                 "edit",
                 str(existing_pr),
                 "--title",
-                title,
+                config.title,
                 "--body-file",
                 body_file,
             ]
 
-            if dry_run:
+            if config.dry_run:
                 print(f"Would run: {' '.join(cmd)}")
                 return 0, False
 
@@ -400,32 +396,32 @@ def create_or_update_pr(
         else:
             # Create new PR
             cmd = [
-                gh_path,
+                config.gh_path,
                 "pr",
                 "create",
                 "--title",
-                title,
+                config.title,
                 "--body-file",
                 body_file,
                 "--base",
-                base_branch,
+                config.base_branch,
                 "--head",
-                head_branch,
+                config.head_branch,
             ]
 
-            if draft:
+            if config.draft:
                 cmd.append("--draft")
 
-            if labels:
-                cmd.extend(["--label", ",".join(labels)])
+            if config.labels:
+                cmd.extend(["--label", ",".join(config.labels)])
 
-            if assignees:
-                cmd.extend(["--assignee", ",".join(assignees)])
+            if config.assignees:
+                cmd.extend(["--assignee", ",".join(config.assignees)])
 
-            if reviewers:
-                cmd.extend(["--reviewer", ",".join(reviewers)])
+            if config.reviewers:
+                cmd.extend(["--reviewer", ",".join(config.reviewers)])
 
-            if dry_run:
+            if config.dry_run:
                 print(f"Would run: {' '.join(cmd)}")
                 return 0, True
 
