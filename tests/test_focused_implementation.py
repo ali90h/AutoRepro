@@ -52,71 +52,79 @@ class TestStdoutIgnoresForce:
 class TestPlanMaxLimitsCommands:
     """Test that plan --max N limits Candidate Commands to N with fixed order."""
 
-    def test_plan_max_limits_commands(self, tmp_path):
-        """Test that --max N limits commands to N and preserves order."""
-        # Create Python project to get predictable results
+    def _extract_commands(self, output_text):
+        """Extract commands from plan output."""
+        lines = output_text.split("\n")
+        commands = []
+        in_commands_section = False
+
+        for line in lines:
+            if "## Candidate Commands" in line:
+                in_commands_section = True
+                continue
+            if in_commands_section:
+                if line.startswith("##"):  # Next section
+                    break
+                if self._is_command_line(line):
+                    command = self._extract_command_from_line(line)
+                    if command:
+                        commands.append(command)
+        return commands
+
+    def _is_command_line(self, line):
+        """Check if line contains a command."""
+        return (
+            any(keyword in line for keyword in [" — ", "matched", "detected", "bonuses"])
+            and line.strip()
+        )
+
+    def _extract_command_from_line(self, line):
+        """Extract command part from a line."""
+        for sep in [" — ", " — "]:  # Try both em-dash and regular dash
+            if sep in line:
+                command = line.split(sep)[0].strip()
+                # Remove leading bullet point and backticks if present
+                if command.startswith("- "):
+                    command = command[2:]
+                command = command.strip("`")
+                return command
+        return None
+
+    def _setup_python_project(self, tmp_path):
+        """Setup a Python project for testing."""
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text('[build-system]\nrequires = ["setuptools"]')
 
-        def extract_commands(output_text):
-            """Extract commands from plan output."""
-            lines = output_text.split("\n")
-            commands = []
-            in_commands_section = False
-            for line in lines:
-                if "## Candidate Commands" in line:
-                    in_commands_section = True
-                    continue
-                if in_commands_section:
-                    if line.startswith("##"):  # Next section
-                        break
-                    if (
-                        any(
-                            keyword in line for keyword in [" — ", "matched", "detected", "bonuses"]
-                        )
-                        and line.strip()
-                    ):
-                        # Extract command part (before first space-dash or em-dash)
-                        for sep in [" — ", " — "]:  # Try both em-dash and regular dash
-                            if sep in line:
-                                command = line.split(sep)[0].strip()
-                                # Remove leading bullet point and backticks if present
-                                if command.startswith("- "):
-                                    command = command[2:]
-                                command = command.strip("`")
-                                commands.append(command)
-                                break
-            return commands
+    def _get_plan_commands(self, tmp_path, max_count=None):
+        """Get plan commands with optional max limit."""
+        cmd = ["plan", "--desc", "pytest failing", "--dry-run"]
+        if max_count:
+            cmd.extend(["--max", str(max_count)])
 
-        # Get full list first
-        result_full = run_cli_subprocess(
-            ["plan", "--desc", "pytest failing", "--dry-run"], cwd=tmp_path
-        )
-        assert result_full.returncode == 0, f"Full command failed: {result_full.stderr}"
-        full_commands = extract_commands(result_full.stdout)
+        result = run_cli_subprocess(cmd, cwd=tmp_path)
+        assert result.returncode == 0, f"Plan command failed: {result.stderr}"
+        return self._extract_commands(result.stdout)
 
-        # Test with --max 3
-        result_limited = run_cli_subprocess(
-            ["plan", "--desc", "pytest failing", "--max", "3", "--dry-run"],
-            cwd=tmp_path,
-        )
-        assert result_limited.returncode == 0, f"Limited command failed: {result_limited.stderr}"
-        limited_commands = extract_commands(result_limited.stdout)
+    def test_plan_max_limits_commands(self, tmp_path):
+        """Test that --max N limits commands to N and preserves order."""
+        # Create Python project to get predictable results
+        self._setup_python_project(tmp_path)
 
-        # Debug output
+        # Get full list and limited list
+        full_commands = self._get_plan_commands(tmp_path)
+        limited_commands = self._get_plan_commands(tmp_path, max_count=3)
+
+        # Debug output if test fails
         if len(limited_commands) != 3:
-            print(f"Full output:\n{result_limited.stdout}")
             print(f"Extracted commands: {limited_commands}")
 
-        # Should limit to exactly 3 commands
+        # Assertions
         assert len(limited_commands) == 3, (
             f"Expected 3 commands, got {len(limited_commands)}: {limited_commands}"
         )
         assert len(full_commands) >= 3, (
             f"Need at least 3 full commands, got {len(full_commands)}: {full_commands}"
         )
-
-        # Should be the first 3 from the full list (preserving order)
         assert limited_commands == full_commands[:3], (
             f"Order not preserved: {limited_commands} vs {full_commands[:3]}"
         )
