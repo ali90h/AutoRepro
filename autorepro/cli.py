@@ -565,10 +565,7 @@ class PlanConfig:
                 field="format_type",
             )
 
-        # File path validation
-        if self.file and not Path(self.file).exists():
-            raise FieldValidationError(f"file does not exist: {self.file}", field="file")
-
+        # Repo path validation (file existence is checked later for proper I/O error handling)
         if self.repo_path and not self.repo_path.exists():
             raise FieldValidationError(
                 f"repo_path does not exist: {self.repo_path}", field="repo_path"
@@ -694,11 +691,7 @@ class ExecConfig:
                 f"index must be non-negative, got: {self.index}", field="index"
             )
 
-        # File path validation
-        if self.env_file and not Path(self.env_file).exists():
-            raise FieldValidationError(
-                f"env_file does not exist: {self.env_file}", field="env_file"
-            )
+        # File path validation is done later for proper I/O error handling
 
 
 @dataclass

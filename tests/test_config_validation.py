@@ -172,14 +172,7 @@ class TestExecConfigValidation:
         assert "index must be non-negative" in str(exc_info.value)
         assert exc_info.value.field == "index"
 
-    def test_nonexistent_env_file(self):
-        """Test that env_file must exist if specified."""
-        config = ExecConfig(desc="test description", env_file="/nonexistent/file.env")
-
-        with pytest.raises(FieldValidationError) as exc_info:
-            config.validate()
-        assert "env_file does not exist" in str(exc_info.value)
-        assert exc_info.value.field == "env_file"
+    # Note: env_file existence validation is handled during execution for proper I/O error handling
 
 
 class TestInitConfigValidation:
@@ -331,25 +324,7 @@ class TestPlanConfigValidation:
         assert "format_type must be one of" in str(exc_info.value)
         assert exc_info.value.field == "format_type"
 
-    def test_nonexistent_file(self):
-        """Test that file must exist if specified."""
-        config = PlanConfig(
-            desc=None,
-            file="/nonexistent/file.txt",
-            out="output.md",
-            force=False,
-            max_commands=5,
-            format_type="md",
-            dry_run=False,
-            repo=None,
-            strict=False,
-            min_score=0,
-        )
-
-        with pytest.raises(FieldValidationError) as exc_info:
-            config.validate()
-        assert "file does not exist" in str(exc_info.value)
-        assert exc_info.value.field == "file"
+    # Note: file existence validation is handled during execution for proper I/O error handling
 
 
 class TestGitHubPRConfigValidation:
