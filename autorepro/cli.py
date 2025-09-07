@@ -7,6 +7,7 @@ import argparse
 import json
 import logging
 import os
+import re
 import shlex
 import subprocess
 import sys
@@ -18,6 +19,10 @@ from pathlib import Path
 
 from autorepro import __version__
 from autorepro.config import config
+from autorepro.config.exceptions import (
+    CrossFieldValidationError,
+    FieldValidationError,
+)
 from autorepro.config.models import get_config
 from autorepro.detect import collect_evidence, detect_languages
 from autorepro.env import (
@@ -511,6 +516,7 @@ def cmd_scan(json_output: bool = False, show_scores: bool = False) -> int:
 
 
 @dataclass
+@dataclass
 class PlanConfig:
     """Configuration for plan generation."""
 
@@ -526,6 +532,52 @@ class PlanConfig:
     min_score: int
     repo_path: Path | None = None
     print_to_stdout: bool = False
+
+    def validate(self) -> None:
+        """Validate plan configuration and raise descriptive errors."""
+        # Mutual exclusivity validation
+        if self.desc and self.file:
+            raise CrossFieldValidationError(
+                "Cannot specify both --desc and --file", field="desc,file"
+            )
+
+        if not self.desc and not self.file:
+            raise CrossFieldValidationError(
+                "Must specify either --desc or --file", field="desc,file"
+            )
+
+        # Field validation
+        if self.max_commands <= 0:
+            raise FieldValidationError(
+                f"max_commands must be positive, got: {self.max_commands}", field="max_commands"
+            )
+
+        if self.min_score < 0:
+            raise FieldValidationError(
+                f"min_score must be non-negative, got: {self.min_score}", field="min_score"
+            )
+
+        # Format validation
+        valid_formats = ["md", "json"]
+        if self.format_type not in valid_formats:
+            raise FieldValidationError(
+                f"format_type must be one of {valid_formats}, got: {self.format_type}",
+                field="format_type",
+            )
+
+        # File path validation
+        if self.file and not Path(self.file).exists():
+            raise FieldValidationError(f"file does not exist: {self.file}", field="file")
+
+        if self.repo_path and not self.repo_path.exists():
+            raise FieldValidationError(
+                f"repo_path does not exist: {self.repo_path}", field="repo_path"
+            )
+
+        if self.repo_path and not self.repo_path.is_dir():
+            raise FieldValidationError(
+                f"repo_path must be a directory: {self.repo_path}", field="repo_path"
+            )
 
 
 @dataclass
@@ -569,6 +621,37 @@ class PrConfig:
     min_score: int = field(default_factory=lambda: config.limits.min_score_threshold)
     strict: bool = False
 
+    def validate(self) -> None:
+        """Validate PR configuration and raise descriptive errors."""
+        # Mutual exclusivity validation
+        if self.desc and self.file:
+            raise CrossFieldValidationError(
+                "Cannot specify both --desc and --file", field="desc,file"
+            )
+
+        if not self.desc and not self.file:
+            raise CrossFieldValidationError(
+                "Must specify either --desc or --file", field="desc,file"
+            )
+
+        # Field validation
+        if self.min_score < 0:
+            raise FieldValidationError(
+                f"min_score must be non-negative, got: {self.min_score}", field="min_score"
+            )
+
+        if self.format_type not in ("md", "json"):
+            raise FieldValidationError(
+                f"format_type must be 'md' or 'json', got: {self.format_type}", field="format_type"
+            )
+
+        # Repo slug format validation
+        if self.repo_slug and not re.match(r"^[^/]+/[^/]+$", self.repo_slug):
+            raise FieldValidationError(
+                f"repo_slug must be in format 'owner/repo', got: {self.repo_slug}",
+                field="repo_slug",
+            )
+
 
 @dataclass
 class ExecConfig:
@@ -587,7 +670,38 @@ class ExecConfig:
     min_score: int = field(default_factory=lambda: config.limits.min_score_threshold)
     strict: bool = False
 
+    def validate(self) -> None:
+        """Validate exec configuration and raise descriptive errors."""
+        # Mutual exclusivity validation
+        if self.desc and self.file:
+            raise CrossFieldValidationError(
+                "Cannot specify both --desc and --file", field="desc,file"
+            )
 
+        if not self.desc and not self.file:
+            raise CrossFieldValidationError(
+                "Must specify either --desc or --file", field="desc,file"
+            )
+
+        # Field validation
+        if self.timeout <= 0:
+            raise FieldValidationError(
+                f"timeout must be positive, got: {self.timeout}", field="timeout"
+            )
+
+        if self.index < 0:
+            raise FieldValidationError(
+                f"index must be non-negative, got: {self.index}", field="index"
+            )
+
+        # File path validation
+        if self.env_file and not Path(self.env_file).exists():
+            raise FieldValidationError(
+                f"env_file does not exist: {self.env_file}", field="env_file"
+            )
+
+
+@dataclass
 @dataclass
 class InitConfig:
     """Configuration for init command operations."""
@@ -599,9 +713,25 @@ class InitConfig:
     repo_path: Path | None = None
     print_to_stdout: bool = False
 
+    def validate(self) -> None:
+        """Validate init configuration and raise descriptive errors."""
+        # File path validation
+        if self.repo_path and not self.repo_path.exists():
+            raise FieldValidationError(
+                f"repo_path does not exist: {self.repo_path}", field="repo_path"
+            )
+
+        if self.repo_path and not self.repo_path.is_dir():
+            raise FieldValidationError(
+                f"repo_path must be a directory: {self.repo_path}", field="repo_path"
+            )
+
 
 def _prepare_plan_config(config: PlanConfig) -> PlanConfig:
     """Extract and validate plan configuration from config object."""
+    # Validate configuration
+    config.validate()
+
     if config.desc and config.file:
         raise ValueError("Cannot specify both --desc and --file")
 
@@ -1037,6 +1167,9 @@ def cmd_init(
     """Handle the init command."""
     config = InitConfig(force=force, out=out, dry_run=dry_run, repo=repo)
 
+    # Validate configuration
+    config.validate()
+
     # Validate repo path
     error = _validate_init_repo_path(config)
     if error is not None:
@@ -1358,6 +1491,9 @@ def _handle_exec_output_logging(results: dict, config: ExecConfig) -> None:
 
 def _execute_exec_pipeline(config: ExecConfig) -> int:
     """Execute the complete exec command pipeline."""
+    # Validate configuration
+    config.validate()
+
     # Validate and resolve repo path
     repo_path, error = _validate_exec_repo_path(config.repo)
     if error is not None:
@@ -1447,6 +1583,9 @@ def cmd_exec(config: ExecConfig | None = None, **kwargs) -> int:
 def _prepare_pr_config(config: PrConfig) -> PrConfig:
     """Validate and process PR configuration."""
     log = logging.getLogger("autorepro")
+
+    # Validate configuration
+    config.validate()
 
     # Check required arguments
     if not config.desc and not config.file:
