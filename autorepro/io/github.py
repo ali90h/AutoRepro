@@ -15,6 +15,8 @@ import tempfile
 from dataclasses import dataclass
 from typing import Any
 
+from autorepro.config.exceptions import FieldValidationError
+
 # Import shared GitHub utilities
 
 
@@ -34,6 +36,39 @@ class GitHubPRConfig:
     gh_path: str = "gh"
     dry_run: bool = False
 
+    def validate(self) -> None:
+        """Validate GitHub PR configuration and raise descriptive errors."""
+        # Field validation
+        if not self.title.strip():
+            raise FieldValidationError("title cannot be empty or whitespace-only", field="title")
+
+        if not self.base_branch.strip():
+            raise FieldValidationError(
+                "base_branch cannot be empty or whitespace-only", field="base_branch"
+            )
+
+        # Branch name validation (basic git ref validation)
+        invalid_chars = [" ", "~", "^", ":", "?", "*", "[", "\\"]
+        for char in invalid_chars:
+            if char in self.base_branch:
+                raise FieldValidationError(
+                    f"base_branch contains invalid character '{char}': {self.base_branch}",
+                    field="base_branch",
+                )
+
+        if self.head_branch is not None:
+            if not self.head_branch.strip():
+                raise FieldValidationError(
+                    "head_branch cannot be empty or whitespace-only", field="head_branch"
+                )
+
+            for char in invalid_chars:
+                if char in self.head_branch:
+                    raise FieldValidationError(
+                        f"head_branch contains invalid character '{char}': {self.head_branch}",
+                        field="head_branch",
+                    )
+
 
 @dataclass
 class IssueConfig:
@@ -45,6 +80,12 @@ class IssueConfig:
     assignees: list[str] | None = None
     gh_path: str = "gh"
     dry_run: bool = False
+
+    def validate(self) -> None:
+        """Validate GitHub issue configuration and raise descriptive errors."""
+        # Field validation
+        if not self.title.strip():
+            raise FieldValidationError("title cannot be empty or whitespace-only", field="title")
 
 
 def detect_repo_slug() -> str:
@@ -484,6 +525,9 @@ def create_or_update_pr(config: GitHubPRConfig) -> tuple[int, bool]:  # (exit_co
     """
     log = logging.getLogger("autorepro")
 
+    # Validate configuration
+    config.validate()
+
     # Get current branch if head not specified
     branch_error = _get_current_branch_if_needed(config)
     if branch_error is not None:
@@ -662,6 +706,9 @@ def create_issue(config: IssueConfig) -> int:
     Raises:
         RuntimeError: If issue creation fails
     """
+    # Validate configuration
+    config.validate()
+
     # Write body to temporary file if not empty
     body_file = None
     if config.body:
