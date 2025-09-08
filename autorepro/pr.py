@@ -13,6 +13,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from .config.github_ops import CommentOperationRequest, GitHubOperationConfig
 from .io.github import (
     create_pr_comment,
     get_pr_details,
@@ -170,20 +171,23 @@ def update_pr_comment(
     return update_comment(comment_id, body, gh_path, dry_run, "PR")
 
 
-def upsert_pr_comment(
-    pr_number: int,
-    body: str,
+def upsert_pr_comment(  # noqa: PLR0913 # Backward compatibility requires extra parameters
+    pr_number_or_request: int | CommentOperationRequest | None = None,
+    body: str | None = None,
     *,
+    # Configuration parameters
     replace_block: bool = True,
     gh_path: str = "gh",
     dry_run: bool = False,
+    # Backward compatibility keyword arguments
+    pr_number: int | None = None,
 ) -> tuple[int, bool]:
     """
     Create or update PR comment with autorepro sync block.
 
     Args:
-        pr_number: PR number to comment on
-        body: Comment body with sync block
+        pr_number_or_request: PR number (int) or CommentOperationRequest object
+        body: Comment body with sync block (required if first arg is int)
         replace_block: Whether to replace existing sync block or create new comment
         gh_path: Path to gh CLI tool
         dry_run: If True, print commands instead of executing
@@ -191,25 +195,64 @@ def upsert_pr_comment(
     Returns:
         Tuple of (exit_code, updated_existing)
     """
+    # Handle different call patterns
+    if isinstance(pr_number_or_request, CommentOperationRequest):
+        request = pr_number_or_request
+    elif isinstance(pr_number_or_request, int):
+        if body is None:
+            raise ValueError("body is required when pr_number_or_request is an int")
+
+        config = GitHubOperationConfig(
+            gh_path=gh_path,
+            dry_run=dry_run,
+            replace_block=replace_block,
+        )
+        request = CommentOperationRequest(
+            target_id=pr_number_or_request,
+            body=body,
+            config=config,
+        )
+    elif pr_number is not None:
+        # Handle keyword argument case
+        if body is None:
+            raise ValueError("body is required when pr_number is specified")
+
+        config = GitHubOperationConfig(
+            gh_path=gh_path,
+            dry_run=dry_run,
+            replace_block=replace_block,
+        )
+        request = CommentOperationRequest(
+            target_id=pr_number,
+            body=body,
+            config=config,
+        )
+    else:
+        raise ValueError("Either pr_number_or_request or pr_number must be provided")
+
     log = logging.getLogger("autorepro")
 
     try:
         # Get existing PR details
-        pr_data = get_pr_details(pr_number, gh_path)
+        pr_data = get_pr_details(request.target_id, request.config.gh_path)
         comments = pr_data.get("comments", [])
         existing_comment = find_autorepro_content(comments)
 
-        if existing_comment and replace_block:
+        if existing_comment and request.config.replace_block:
             # Update existing comment
             comment_id = existing_comment["id"]
             log.info(f"Updating existing autorepro comment #{comment_id}")
 
-            exit_code = update_pr_comment(comment_id, body, gh_path, dry_run)
+            exit_code = update_pr_comment(
+                comment_id, request.body, request.config.gh_path, request.config.dry_run
+            )
             return exit_code, True
         else:
             # Create new comment
-            log.info(f"Creating new autorepro comment on PR #{pr_number}")
-            exit_code = create_pr_comment(pr_number, body, gh_path, dry_run)
+            log.info(f"Creating new autorepro comment on PR #{request.target_id}")
+            exit_code = create_pr_comment(
+                request.target_id, request.body, request.config.gh_path, request.config.dry_run
+            )
             return exit_code, False
 
     except Exception as e:
