@@ -1029,7 +1029,7 @@ def _output_plan_result(plan_data: PlanData, config: PlanConfig) -> int:
 
 
 def cmd_plan(config: PlanConfig | None = None, **kwargs) -> int:
-    """Handle the plan command."""
+    """Handle the plan command using the refactored service architecture."""
     if config is None:
         # Create from kwargs for backward compatibility
         global_config = get_config()
@@ -1046,17 +1046,11 @@ def cmd_plan(config: PlanConfig | None = None, **kwargs) -> int:
             min_score=kwargs.get("min_score", global_config.limits.min_score_threshold),
         )
 
-    try:
-        validated_config = _prepare_plan_config(config)
-        plan_data = _generate_plan_content(validated_config)
-        return _output_plan_result(plan_data, validated_config)
-    except ValueError as e:
-        if "min-score" in str(e):
-            return 1  # Strict mode failure
-        else:
-            return 2  # Configuration error
-    except OSError:
-        return 1  # File I/O error
+    # Use the refactored service for improved organization and maintainability
+    from autorepro.core.plan_service import PlanService
+
+    plan_service = PlanService(config)
+    return plan_service.generate_plan()
 
 
 def _validate_init_repo_path(config: InitConfig) -> int | None:
