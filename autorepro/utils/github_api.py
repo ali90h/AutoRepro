@@ -56,12 +56,7 @@ def update_comment(
             print(f"Would run: {' '.join(cmd)}")
             return 0
 
-        safe_subprocess_run(
-            cmd,
-            capture_output=True,
-            check=True,
-            operation="update GitHub comment"
-        )
+        safe_subprocess_run(cmd, capture_output=True, check=True, operation="update GitHub comment")
         return 0
 
     except SubprocessError as e:

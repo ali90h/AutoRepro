@@ -20,6 +20,7 @@ from .process import SubprocessConfig
 @dataclass
 class ErrorContext:
     """Context information for error reporting."""
+
     operation: str | None = None
     path: Path | str | None = None
     log_operations: bool = False
@@ -28,6 +29,7 @@ class ErrorContext:
 @dataclass
 class SubprocessDetails:
     """Container for subprocess execution details."""
+
     cmd: str | list[str]
     exit_code: int | None = None
     stdout: str | None = None
@@ -218,8 +220,8 @@ def _safe_subprocess_run_impl(
         details = SubprocessDetails(
             cmd=cmd,
             exit_code=e.returncode,
-            stdout=e.stdout,
-            stderr=e.stderr,
+            stdout=e.stdout.decode("utf-8", errors="replace") if e.stdout else None,
+            stderr=e.stderr.decode("utf-8", errors="replace") if e.stderr else None,
         )
         raise SubprocessError(
             message=error_msg,
@@ -233,8 +235,8 @@ def _safe_subprocess_run_impl(
         details = SubprocessDetails(
             cmd=cmd,
             exit_code=124,  # Standard timeout exit code
-            stdout=e.stdout,
-            stderr=e.stderr,
+            stdout=e.stdout.decode("utf-8", errors="replace") if e.stdout else None,
+            stderr=e.stderr.decode("utf-8", errors="replace") if e.stderr else None,
         )
         raise SubprocessError(
             message=error_msg,
@@ -300,15 +302,11 @@ def safe_file_operation(
     except (OSError, PermissionError, FileNotFoundError, UnicodeDecodeError) as e:
         error_msg = f"{operation} failed for {path_str}: {e}"
         logger.error(error_msg)
-        raise FileOperationError(
-            message=error_msg, path=path, operation=operation, cause=e
-        ) from e
+        raise FileOperationError(message=error_msg, path=path, operation=operation, cause=e) from e
     except Exception as e:
         error_msg = f"{operation} failed unexpectedly for {path_str}: {e}"
         logger.error(error_msg)
-        raise FileOperationError(
-            message=error_msg, path=path, operation=operation, cause=e
-        ) from e
+        raise FileOperationError(message=error_msg, path=path, operation=operation, cause=e) from e
 
 
 def safe_subprocess_capture(
@@ -364,8 +362,11 @@ def safe_subprocess_capture(
         return result.returncode, result.stdout or "", result.stderr or ""
     except SubprocessError as e:
         # Re-raise execution errors, but not exit code errors
-        if (e.exit_code in (124, 127) or
-            e.cause and not isinstance(e.cause, subprocess.CalledProcessError)):
+        if (
+            e.exit_code in (124, 127)
+            or e.cause
+            and not isinstance(e.cause, subprocess.CalledProcessError)
+        ):
             raise
         # If it's a CalledProcessError, return the captured output
         return e.exit_code or 1, e.stdout or "", e.stderr or ""

@@ -44,12 +44,7 @@ class TestStandardizedExceptions:
     def test_subprocess_error_attributes(self):
         """Test SubprocessError attributes and initialization."""
         cmd = ["echo", "test"]
-        details = SubprocessDetails(
-            cmd=cmd,
-            exit_code=1,
-            stdout="output",
-            stderr="error"
-        )
+        details = SubprocessDetails(cmd=cmd, exit_code=1, stdout="output", stderr="error")
         error = SubprocessError(
             message="test failed",
             details=details,
@@ -71,9 +66,7 @@ class TestStandardizedExceptions:
     def test_file_operation_error_attributes(self):
         """Test FileOperationError attributes and initialization."""
         path = Path("/test/path")
-        error = FileOperationError(
-            message="file failed", path=path, operation="read"
-        )
+        error = FileOperationError(message="file failed", path=path, operation="read")
         assert str(error) == "file failed"
         assert error.path == path
         assert error.operation == "read"
@@ -141,10 +134,7 @@ class TestSafeSubprocessRun:
         """Test operation logging when enabled."""
         with caplog.at_level(logging.DEBUG):
             safe_subprocess_run(
-                ["echo", "test"],
-                operation="test_op",
-                log_command=True,
-                check=False
+                ["echo", "test"], operation="test_op", log_command=True, check=False
             )
 
         assert "Running test_op: echo test" in caplog.text
@@ -152,11 +142,7 @@ class TestSafeSubprocessRun:
     def test_working_directory_parameter(self):
         """Test working directory parameter is handled correctly."""
         with tempfile.TemporaryDirectory() as temp_dir:
-            result = safe_subprocess_run(
-                ["pwd"],
-                cwd=temp_dir,
-                check=False
-            )
+            result = safe_subprocess_run(["pwd"], cwd=temp_dir, check=False)
             assert result.returncode == 0
             assert temp_dir in result.stdout.strip()
 
