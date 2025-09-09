@@ -25,6 +25,20 @@ class ErrorContext:
     log_operations: bool = False
 
 
+@dataclass
+class SubprocessDetails:
+    """Container for subprocess execution details."""
+    cmd: str | list[str]
+    exit_code: int | None = None
+    stdout: str | None = None
+    stderr: str | None = None
+
+    @property
+    def cmd_str(self) -> str:
+        """Command as a string for display."""
+        return self.cmd if isinstance(self.cmd, str) else " ".join(self.cmd)
+
+
 class AutoReproError(Exception):
     """Base exception class for AutoRepro operations."""
 
@@ -41,19 +55,18 @@ class SubprocessError(AutoReproError):
     def __init__(
         self,
         message: str,
-        cmd: str | list[str],
+        details: SubprocessDetails,
         *,
-        exit_code: int | None = None,
-        stdout: str | None = None,
-        stderr: str | None = None,
         operation: str | None = None,
         cause: Exception | None = None,
     ):
         super().__init__(message, operation, cause)
-        self.cmd = cmd if isinstance(cmd, str) else " ".join(cmd)
-        self.exit_code = exit_code
-        self.stdout = stdout
-        self.stderr = stderr
+        self.details = details
+        # Maintain backward compatibility by exposing details as direct attributes
+        self.cmd = details.cmd_str
+        self.exit_code = details.exit_code
+        self.stdout = details.stdout
+        self.stderr = details.stderr
 
 
 class FileOperationError(AutoReproError):
@@ -100,27 +113,19 @@ def safe_subprocess_run(
 def safe_subprocess_run_simple(
     cmd: str | list[str],
     *,
-    cwd: str | Path | None = None,
-    env: dict[str, str] | None = None,
-    timeout: int | None = None,
-    capture_output: bool = True,
-    text: bool = True,
-    check: bool = False,
+    run_config: SubprocessConfig | None = None,
     operation: str | None = None,
     log_command: bool = False,
+    **subprocess_kwargs,
 ) -> subprocess.CompletedProcess:
     """Backward-compatible interface for safe_subprocess_run with individual parameters.
 
     Args:
         cmd: Command to run (string or list of strings)
-        cwd: Working directory for command execution
-        env: Environment variables (merged with current env if provided)
-        timeout: Timeout in seconds (None for no timeout)
-        capture_output: Whether to capture stdout/stderr
-        text: Whether to decode output as text
-        check: If True, raise exception on non-zero exit code
+        run_config: Optional SubprocessConfig object. If not provided, uses subprocess_kwargs
         operation: Operation name for logging and error messages
         log_command: Whether to log the command being executed
+        **subprocess_kwargs: Individual subprocess parameters (cwd, env, timeout, etc.)
 
     Returns:
         subprocess.CompletedProcess result
@@ -128,16 +133,20 @@ def safe_subprocess_run_simple(
     Raises:
         SubprocessError: If command fails and check=True, or on execution errors
     """
-    config = SubprocessConfig(
-        cmd=cmd,
-        cwd=cwd,
-        env=env,
-        timeout=timeout,
-        capture_output=capture_output,
-        text=text,
-        check=check,
-    )
-    return _safe_subprocess_run_impl(cmd, config, operation, log_command)
+    if run_config is None:
+        # Create config from individual kwargs for backward compatibility
+        run_config = SubprocessConfig(
+            cmd=cmd,
+            cwd=subprocess_kwargs.get("cwd"),
+            env=subprocess_kwargs.get("env"),
+            timeout=subprocess_kwargs.get("timeout"),
+            capture_output=subprocess_kwargs.get("capture_output", True),
+            text=subprocess_kwargs.get("text", True),
+            check=subprocess_kwargs.get("check", False),
+        )
+    else:
+        run_config.cmd = cmd
+    return _safe_subprocess_run_impl(cmd, run_config, operation, log_command)
 
 
 def _safe_subprocess_run_impl(
@@ -206,44 +215,56 @@ def _safe_subprocess_run_impl(
     except subprocess.CalledProcessError as e:
         error_msg = f"{operation_name} failed with exit code {e.returncode}: {cmd_str}"
         logger.error(error_msg)
-        raise SubprocessError(
-            message=error_msg,
+        details = SubprocessDetails(
             cmd=cmd,
             exit_code=e.returncode,
             stdout=e.stdout,
             stderr=e.stderr,
+        )
+        raise SubprocessError(
+            message=error_msg,
+            details=details,
             operation=operation_name,
             cause=e,
         ) from e
     except subprocess.TimeoutExpired as e:
         error_msg = f"{operation_name} timed out after {config.timeout}s: {cmd_str}"
         logger.error(error_msg)
-        raise SubprocessError(
-            message=error_msg,
+        details = SubprocessDetails(
             cmd=cmd,
             exit_code=124,  # Standard timeout exit code
             stdout=e.stdout,
             stderr=e.stderr,
+        )
+        raise SubprocessError(
+            message=error_msg,
+            details=details,
             operation=operation_name,
             cause=e,
         ) from e
     except FileNotFoundError as e:
         error_msg = f"{operation_name} command not found: {cmd_str}"
         logger.error(error_msg)
-        raise SubprocessError(
-            message=error_msg,
+        details = SubprocessDetails(
             cmd=cmd,
             exit_code=127,  # Standard "command not found" exit code
+        )
+        raise SubprocessError(
+            message=error_msg,
+            details=details,
             operation=operation_name,
             cause=e,
         ) from e
     except OSError as e:
         error_msg = f"{operation_name} execution failed: {e}"
         logger.error(error_msg)
-        raise SubprocessError(
-            message=error_msg,
+        details = SubprocessDetails(
             cmd=cmd,
             exit_code=1,
+        )
+        raise SubprocessError(
+            message=error_msg,
+            details=details,
             operation=operation_name,
             cause=e,
         ) from e

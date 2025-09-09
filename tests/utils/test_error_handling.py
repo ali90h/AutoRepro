@@ -16,13 +16,16 @@ import pytest
 from autorepro.utils.error_handling import (
     AutoReproError,
     FileOperationError,
+    SubprocessDetails,
     SubprocessError,
     safe_ensure_directory,
     safe_file_operation,
     safe_read_file,
     safe_subprocess_capture,
-    safe_subprocess_run_simple as safe_subprocess_run,
     safe_write_file,
+)
+from autorepro.utils.error_handling import (
+    safe_subprocess_run_simple as safe_subprocess_run,
 )
 from autorepro.utils.process import SubprocessConfig
 
@@ -41,12 +44,15 @@ class TestStandardizedExceptions:
     def test_subprocess_error_attributes(self):
         """Test SubprocessError attributes and initialization."""
         cmd = ["echo", "test"]
-        error = SubprocessError(
-            message="test failed",
+        details = SubprocessDetails(
             cmd=cmd,
             exit_code=1,
             stdout="output",
-            stderr="error",
+            stderr="error"
+        )
+        error = SubprocessError(
+            message="test failed",
+            details=details,
             operation="test",
         )
         assert str(error) == "test failed"
@@ -58,7 +64,8 @@ class TestStandardizedExceptions:
 
     def test_subprocess_error_string_command(self):
         """Test SubprocessError with string command."""
-        error = SubprocessError(message="test failed", cmd="echo test")
+        details = SubprocessDetails(cmd="echo test")
+        error = SubprocessError(message="test failed", details=details)
         assert error.cmd == "echo test"
 
     def test_file_operation_error_attributes(self):
@@ -178,7 +185,8 @@ class TestSafeSubprocessCapture:
     def test_timeout_raises(self):
         """Test timeout still raises exception."""
         with pytest.raises(SubprocessError):
-            safe_subprocess_capture(["sleep", "10"], config=SubprocessConfig(cmd=["sleep", "10"], timeout=0.1))
+            config = SubprocessConfig(cmd=["sleep", "10"], timeout=0.1)
+            safe_subprocess_capture(["sleep", "10"], config=config)
 
 
 class TestSafeFileOperation:
