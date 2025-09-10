@@ -27,7 +27,7 @@ autorepro/
 │   │   ├── plan/      # Plan command expected outputs
 │   │   └── scan/      # Scan command expected outputs
 │   └── test_*.py      # Unit and integration tests
-├── scripts/           
+├── scripts/
 │   └── regold.py      # Golden test regeneration tool
 └── pyproject.toml     # Project configuration
 ```
@@ -50,7 +50,7 @@ autorepro/
 ### 3. `plan` - Reproduction Planning
 - **Purpose**: Generate structured reproduction plans from issue descriptions
 - **Key Files**: `autorepro/planner.py`, `autorepro/rules.py`
-- **Algorithm**: 
+- **Algorithm**:
   - Keyword extraction (filters stopwords, preserves dev terms)
   - Command scoring (language priors + keyword matches)
   - Plugin system for custom rules
