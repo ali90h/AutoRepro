@@ -39,6 +39,8 @@ from autorepro.planner import (
     safe_truncate_60,
     suggest_commands,
 )
+from autorepro.project_config import load_config as load_project_config
+from autorepro.project_config import resolve_profile as resolve_project_profile
 from autorepro.utils.decorators import handle_errors, log_operation, time_execution
 from autorepro.utils.file_ops import FileOperations
 from autorepro.utils.validation_helpers import (
@@ -204,6 +206,10 @@ def _setup_pr_parser(subparsers) -> argparse.ArgumentParser:
         help="Print actions without executing",
     )
     pr_parser.add_argument(
+        "--profile",
+        help="Named profile from .autorepro.toml to apply",
+    )
+    pr_parser.add_argument(
         "-v",
         "--verbose",
         action="count",
@@ -243,6 +249,10 @@ def _setup_scan_parser(subparsers) -> argparse.ArgumentParser:
         action="count",
         default=0,
         help="Increase verbosity (-v, -vv)",
+    )
+    scan_parser.add_argument(
+        "--profile",
+        help="Named profile from .autorepro.toml to apply",
     )
     return scan_parser
 
@@ -325,7 +335,7 @@ def _setup_plan_parser(subparsers) -> argparse.ArgumentParser:
     plan_parser.add_argument(
         "--min-score",
         type=int,
-        default=2,
+        default=None,
         help="Drop commands with score < N (default: 2)",
     )
     plan_parser.add_argument(
@@ -340,6 +350,10 @@ def _setup_plan_parser(subparsers) -> argparse.ArgumentParser:
         action="count",
         default=0,
         help="Increase verbosity (-v, -vv)",
+    )
+    plan_parser.add_argument(
+        "--profile",
+        help="Named profile from .autorepro.toml to apply",
     )
     return plan_parser
 
@@ -397,13 +411,17 @@ def _setup_exec_parser(subparsers) -> argparse.ArgumentParser:
     exec_parser.add_argument(
         "--min-score",
         type=int,
-        default=2,
+        default=None,
         help="Drop commands with score < N (default: 2)",
     )
     exec_parser.add_argument(
         "--strict",
         action="store_true",
         help="Exit with code 1 if no commands make the cut after filtering",
+    )
+    exec_parser.add_argument(
+        "--profile",
+        help="Named profile from .autorepro.toml to apply",
     )
     exec_parser.add_argument(
         "-q",
@@ -1782,8 +1800,55 @@ def cmd_pr(config: PrConfig | None = None, **kwargs) -> int:
         return 1  # Runtime error
 
 
+def _get_project_settings(args) -> dict:
+    """Compute project settings from file and profile."""
+    repo = getattr(args, "repo", None)
+    repo_path = Path(repo).resolve() if repo else Path.cwd()
+    cfg = load_project_config(repo_path)
+    prof_name = getattr(args, "profile", None)
+    settings = resolve_project_profile(cfg, prof_name)
+    result = {
+        "min_score": settings.min_score,
+        "strict": settings.strict,
+        "plugins": settings.plugins,
+        "verbosity": settings.verbosity,
+    }
+    return result
+
+
+def _apply_plugins_env(settings: dict) -> None:
+    """Apply plugins from settings to environment if not already set."""
+    if settings.get("plugins") and not os.environ.get("AUTOREPRO_PLUGINS"):
+        os.environ["AUTOREPRO_PLUGINS"] = ",".join(settings["plugins"])
+
+
+def _merge_min_score(cli_value: int | None, settings: dict) -> int:
+    if cli_value is not None:
+        return cli_value
+    env_val = os.environ.get("AUTOREPRO_MIN_SCORE")
+    if env_val and env_val.isdigit():
+        return int(env_val)
+    if isinstance(settings.get("min_score"), int):
+        return int(settings["min_score"])
+    return config.limits.min_score_threshold
+
+
+def _merge_strict(cli_flag: bool, settings: dict) -> bool:
+    if cli_flag:
+        return True
+    env_val = os.environ.get("AUTOREPRO_STRICT")
+    if isinstance(env_val, str) and env_val.strip().lower() in {"1", "true", "yes", "on"}:
+        return True
+    if isinstance(settings.get("strict"), bool):
+        return bool(settings["strict"])
+    return False
+
+
 def _dispatch_scan_command(args) -> int:
     """Dispatch scan command with parsed arguments."""
+    # Load settings and apply plugins before any rule usage
+    settings = _get_project_settings(args)
+    _apply_plugins_env(settings)
     return cmd_scan(
         json_output=getattr(args, "json", False),
         show_scores=getattr(args, "show_scores", False),
@@ -1802,6 +1867,10 @@ def _dispatch_init_command(args) -> int:
 
 def _dispatch_plan_command(args) -> int:
     """Dispatch plan command with parsed arguments."""
+    settings = _get_project_settings(args)
+    _apply_plugins_env(settings)
+    effective_min = _merge_min_score(args.min_score, settings)
+    effective_strict = _merge_strict(args.strict, settings)
     return cmd_plan(
         desc=args.desc,
         file=args.file,
@@ -1811,13 +1880,17 @@ def _dispatch_plan_command(args) -> int:
         format_type=args.format,
         dry_run=args.dry_run,
         repo=args.repo,
-        strict=args.strict,
-        min_score=args.min_score,
+        strict=effective_strict,
+        min_score=effective_min,
     )
 
 
 def _dispatch_exec_command(args) -> int:
     """Dispatch exec command with parsed arguments."""
+    settings = _get_project_settings(args)
+    _apply_plugins_env(settings)
+    effective_min = _merge_min_score(args.min_score, settings)
+    effective_strict = _merge_strict(args.strict, settings)
     return cmd_exec(
         desc=args.desc,
         file=args.file,
@@ -1829,13 +1902,17 @@ def _dispatch_exec_command(args) -> int:
         tee_path=args.tee,
         jsonl_path=args.jsonl,
         dry_run=args.dry_run,
-        min_score=args.min_score,
-        strict=args.strict,
+        min_score=effective_min,
+        strict=effective_strict,
     )
 
 
 def _dispatch_pr_command(args) -> int:
     """Dispatch pr command with parsed arguments."""
+    settings = _get_project_settings(args)
+    _apply_plugins_env(settings)
+    effective_min = _merge_min_score(args.min_score, settings)
+    effective_strict = _merge_strict(args.strict, settings)
     return cmd_pr(
         desc=args.desc,
         file=args.file,
@@ -1848,8 +1925,8 @@ def _dispatch_pr_command(args) -> int:
         label=args.label,
         assignee=args.assignee,
         reviewer=args.reviewer,
-        min_score=args.min_score,
-        strict=args.strict,
+        min_score=effective_min,
+        strict=effective_strict,
         comment=getattr(args, "comment", False),
         update_pr_body=getattr(args, "update_pr_body", False),
         link_issue=getattr(args, "link_issue", None),
@@ -1868,7 +1945,7 @@ def _dispatch_help_command(parser) -> int:
     return 0
 
 
-def _setup_logging(args) -> None:
+def _setup_logging(args, project_verbosity: str | None = None) -> None:
     """Setup logging configuration based on args."""
     if hasattr(args, "quiet") and args.quiet:
         level = logging.ERROR
@@ -1878,9 +1955,20 @@ def _setup_logging(args) -> None:
         elif args.verbose == 1:
             level = logging.INFO
         else:
-            level = logging.WARNING
+            # Use project-level verbosity if provided
+            if project_verbosity == "quiet":
+                level = logging.ERROR
+            elif project_verbosity == "verbose":
+                level = logging.INFO
+            else:
+                level = logging.WARNING
     else:
-        level = logging.WARNING
+        if project_verbosity == "quiet":
+            level = logging.ERROR
+        elif project_verbosity == "verbose":
+            level = logging.INFO
+        else:
+            level = logging.WARNING
 
     logging.basicConfig(level=level, format="%(message)s", stream=sys.stderr)
 
@@ -1908,8 +1996,13 @@ def main(argv: list[str] | None = None) -> int:
     except SystemExit as e:
         code = e.code
         return code if isinstance(code, int) else (0 if code is None else 2)
-
-    _setup_logging(args)
+    # Preload project settings for verbosity/plugins
+    try:
+        settings_for_logging = _get_project_settings(args)
+    except Exception:
+        settings_for_logging = {"verbosity": None}
+    _apply_plugins_env(settings_for_logging)
+    _setup_logging(args, settings_for_logging.get("verbosity"))
     log = logging.getLogger("autorepro")
 
     try:
