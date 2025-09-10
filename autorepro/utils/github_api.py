@@ -7,8 +7,10 @@ from __future__ import annotations
 
 import contextlib
 import os
-import subprocess
 import tempfile
+
+from .error_handling import SubprocessError
+from .error_handling import safe_subprocess_run_simple as safe_subprocess_run
 
 
 def update_comment(
@@ -54,11 +56,11 @@ def update_comment(
             print(f"Would run: {' '.join(cmd)}")
             return 0
 
-        subprocess.run(cmd, check=True, capture_output=True)
+        safe_subprocess_run(cmd, capture_output=True, check=True, operation="update GitHub comment")
         return 0
 
-    except subprocess.CalledProcessError as e:
-        raise RuntimeError(f"Failed to update {context} comment: {e}") from e
+    except SubprocessError as e:
+        raise RuntimeError(f"Failed to update {context} comment: {e.message}") from e
     finally:
         # Clean up temp file
         with contextlib.suppress(OSError):
