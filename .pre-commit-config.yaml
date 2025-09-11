@@ -40,10 +40,22 @@ repos:
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.11.2
     hooks:
+      # Source-only mypy (excludes tests, scripts, examples)
       - id: mypy
+        name: mypy (src)
+        files: ^autorepro/.*\.py$
         args: ["--show-error-codes", "--config-file=mypy.ini"]
         additional_dependencies:
           - types-requests
           - types-PyYAML
           - types-setuptools
-        exclude: ^(tests/|scripts/|examples/|test_.*\.py)$
+
+      # Tests mypy (gradual). Start with top-level test_*.py and skip heavy baselines.
+      - id: mypy
+        name: mypy (tests)
+        files: ^tests/(test_.*\.py)$
+        args: ["--show-error-codes", "--config-file=mypy.ini"]
+        additional_dependencies:
+          - types-requests
+          - types-PyYAML
+          - types-setuptools
