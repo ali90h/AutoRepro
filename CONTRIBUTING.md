@@ -21,8 +21,15 @@ Thanks for contributing! This project enforces automated formatting, linting, do
 - Linter: Ruff (autofix; import sorting)
 - Docstrings: docformatter (wrap to 88)
 - Types: mypy (moderately strict)
+- Logging: centralized utility with JSON or key=value formats
 
 Configuration lives in `pyproject.toml` (Black, Ruff, docformatter) and `mypy.ini`.
+
+### Logging
+
+- Use `logging.getLogger("autorepro")` or `from autorepro.utils.logging import get_logger`.
+- Configure once via CLI; locally you can force structured logs with `AUTOREPRO_LOG_FORMAT=json`.
+- Context: prefer passing `extra={"operation": "..."}` or `get_logger(name, operation="...")` so logs carry structured context.
 
 ### Mypy strictness ratchet
 
