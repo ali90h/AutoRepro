@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 Performance benchmarking script for AutoRepro CLI commands.
+
 Ensures refactoring improvements don't negatively impact performance.
 """
 

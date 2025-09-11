@@ -13,7 +13,8 @@ class ArgumentValidator:
 
     @staticmethod
     def validate_desc_file_exclusive(desc: str | None, file: str | None) -> str | None:
-        """Validate mutually exclusive --desc/--file arguments.
+        """
+        Validate mutually exclusive --desc/--file arguments.
 
         Args:
             desc: Description argument value
@@ -30,7 +31,8 @@ class ArgumentValidator:
 
     @staticmethod
     def validate_output_path(out: str | Path | None) -> str | None:
-        """Validate output path is not a directory.
+        """
+        Validate output path is not a directory.
 
         Args:
             out: Output path argument
@@ -52,7 +54,8 @@ class ArgumentValidator:
 
     @staticmethod
     def validate_repo_path(repo: str | Path | None) -> str | None:
-        """Validate repository path exists and is a directory.
+        """
+        Validate repository path exists and is a directory.
 
         Args:
             repo: Repository path argument
@@ -76,7 +79,8 @@ class ArgumentValidator:
 
     @staticmethod
     def validate_required_arg(value: str | None, arg_name: str) -> str | None:
-        """Validate required argument is provided.
+        """
+        Validate required argument is provided.
 
         Args:
             value: Argument value
@@ -90,8 +94,11 @@ class ArgumentValidator:
         return None
 
     @staticmethod
-    def validate_file_exists(file_path: str | Path | None, arg_name: str = "File") -> str | None:
-        """Validate file exists and is readable.
+    def validate_file_exists(
+        file_path: str | Path | None, arg_name: str = "File"
+    ) -> str | None:
+        """
+        Validate file exists and is readable.
 
         Args:
             file_path: File path to validate
@@ -131,7 +138,8 @@ class ValidationError(Exception):
 
 
 def validate_and_exit(validator_result: str | None, exit_code: int = 2) -> None:
-    """Check validator result and raise ValidationError if failed.
+    """
+    Check validator result and raise ValidationError if failed.
 
     Args:
         validator_result: Result from ArgumentValidator method
@@ -145,7 +153,8 @@ def validate_and_exit(validator_result: str | None, exit_code: int = 2) -> None:
 
 
 def validate_multiple(*validator_results: str | None, exit_code: int = 2) -> None:
-    """Check multiple validator results and raise ValidationError if any failed.
+    """
+    Check multiple validator results and raise ValidationError if any failed.
 
     Args:
         validator_results: Results from multiple ArgumentValidator methods
@@ -163,8 +172,11 @@ class CommonConfigValidator:
     """Common configuration validation patterns for CLI dataclasses."""
 
     @staticmethod
-    def validate_desc_file_mutual_exclusivity(desc: str | None, file: str | None) -> str | None:
-        """Validate mutually exclusive desc/file arguments used across multiple configs.
+    def validate_desc_file_mutual_exclusivity(
+        desc: str | None, file: str | None
+    ) -> str | None:
+        """
+        Validate mutually exclusive desc/file arguments used across multiple configs.
 
         Args:
             desc: Description argument value
@@ -181,7 +193,8 @@ class CommonConfigValidator:
 
     @staticmethod
     def validate_positive_integer(value: int, field_name: str) -> str | None:
-        """Validate that an integer field is positive.
+        """
+        Validate that an integer field is positive.
 
         Args:
             value: Integer value to validate
@@ -196,7 +209,8 @@ class CommonConfigValidator:
 
     @staticmethod
     def validate_non_negative_integer(value: int, field_name: str) -> str | None:
-        """Validate that an integer field is non-negative.
+        """
+        Validate that an integer field is non-negative.
 
         Args:
             value: Integer value to validate
@@ -210,8 +224,11 @@ class CommonConfigValidator:
         return None
 
     @staticmethod
-    def validate_format_choice(format_type: str, valid_formats: tuple[str, ...]) -> str | None:
-        """Validate format type against allowed choices.
+    def validate_format_choice(
+        format_type: str, valid_formats: tuple[str, ...]
+    ) -> str | None:
+        """
+        Validate format type against allowed choices.
 
         Args:
             format_type: Format type to validate
@@ -226,7 +243,8 @@ class CommonConfigValidator:
 
     @staticmethod
     def validate_repo_slug_format(repo_slug: str | None) -> str | None:
-        """Validate GitHub repository slug format (owner/repo).
+        """
+        Validate GitHub repository slug format (owner/repo).
 
         Args:
             repo_slug: Repository slug to validate
@@ -245,10 +263,12 @@ class CommonConfigValidator:
 
 
 class ConfigValidationMixin:
-    """Mixin class providing common validation helper methods for configuration dataclasses."""
+    """Mixin class providing common validation helper methods for configuration
+    dataclasses."""
 
     def _validate_common_fields(self, **field_validations) -> list[str]:
-        """Helper method to validate multiple fields and collect error messages.
+        """
+        Helper method to validate multiple fields and collect error messages.
 
         Args:
             **field_validations: Dict of field_name -> (validator_func, value, *args)

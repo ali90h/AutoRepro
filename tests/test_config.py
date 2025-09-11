@@ -183,7 +183,9 @@ class TestAutoReproConfig:
         config = AutoReproConfig()
         config.limits.min_score_threshold = -1
 
-        with pytest.raises(ValueError, match="Min score threshold must be non-negative"):
+        with pytest.raises(
+            ValueError, match="Min score threshold must be non-negative"
+        ):
             config.validate()
 
     def test_validation_fails_with_invalid_format(self):
@@ -191,7 +193,9 @@ class TestAutoReproConfig:
         config = AutoReproConfig()
         config.files.default_format = "xml"
 
-        with pytest.raises(ValueError, match="Default format 'xml' not in supported formats"):
+        with pytest.raises(
+            ValueError, match="Default format 'xml' not in supported formats"
+        ):
             config.validate()
 
 

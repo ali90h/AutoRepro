@@ -1,4 +1,5 @@
-"""Focused implementation tests for message consistency, output guarantees, and repo handling."""
+"""Focused implementation tests for message consistency, output guarantees, and repo
+handling."""
 
 import os
 import time
@@ -74,7 +75,9 @@ class TestPlanMaxLimitsCommands:
     def _is_command_line(self, line):
         """Check if line contains a command."""
         return (
-            any(keyword in line for keyword in [" — ", "matched", "detected", "bonuses"])
+            any(
+                keyword in line for keyword in [" — ", "matched", "detected", "bonuses"]
+            )
             and line.strip()
         )
 
@@ -119,15 +122,15 @@ class TestPlanMaxLimitsCommands:
             print(f"Extracted commands: {limited_commands}")
 
         # Assertions
-        assert len(limited_commands) == 3, (
-            f"Expected 3 commands, got {len(limited_commands)}: {limited_commands}"
-        )
-        assert len(full_commands) >= 3, (
-            f"Need at least 3 full commands, got {len(full_commands)}: {full_commands}"
-        )
-        assert limited_commands == full_commands[:3], (
-            f"Order not preserved: {limited_commands} vs {full_commands[:3]}"
-        )
+        assert (
+            len(limited_commands) == 3
+        ), f"Expected 3 commands, got {len(limited_commands)}: {limited_commands}"
+        assert (
+            len(full_commands) >= 3
+        ), f"Need at least 3 full commands, got {len(full_commands)}: {full_commands}"
+        assert (
+            limited_commands == full_commands[:3]
+        ), f"Order not preserved: {limited_commands} vs {full_commands[:3]}"
 
 
 class TestInitForceMtimePreservation:
@@ -155,7 +158,9 @@ class TestInitForceMtimePreservation:
 
         # mtime should be preserved
         mtime_after = devcontainer_file.stat().st_mtime
-        assert mtime_before == mtime_after, f"mtime changed: {mtime_before} -> {mtime_after}"
+        assert (
+            mtime_before == mtime_after
+        ), f"mtime changed: {mtime_before} -> {mtime_after}"
 
 
 class TestRepoPathStability:
@@ -166,7 +171,9 @@ class TestRepoPathStability:
         # Create a test repository
         repo_dir = tmp_path / "test_repo"
         repo_dir.mkdir()
-        (repo_dir / "pyproject.toml").write_text('[build-system]\nrequires = ["setuptools"]')
+        (repo_dir / "pyproject.toml").write_text(
+            '[build-system]\nrequires = ["setuptools"]'
+        )
 
         # Test with absolute path
         result_abs = run_cli_subprocess(
@@ -233,7 +240,9 @@ class TestRepoPathStability:
         repo_file = repo_dir / "repro.md"
         current_file = tmp_path / "repro.md"
         assert repo_file.exists(), "File not created in repo directory"
-        assert not current_file.exists(), "File incorrectly created in current directory"
+        assert (
+            not current_file.exists()
+        ), "File incorrectly created in current directory"
 
 
 class TestOutputFilesEndWithNewline:
@@ -295,7 +304,8 @@ class TestOutputFilesEndWithNewline:
 
 
 class TestCommandFiltering:
-    """Test that command filtering only shows commands if keyword OR detected language matches."""
+    """Test that command filtering only shows commands if keyword OR detected language
+    matches."""
 
     def test_no_matches_shows_empty_list(self, tmp_path):
         """Test that no keyword matches and no detected languages shows no commands."""
@@ -317,7 +327,10 @@ class TestCommandFiltering:
                 if line.startswith("##"):  # Next section
                     break
                 if (
-                    any(keyword in line for keyword in [" — ", "matched", "detected", "bonuses"])
+                    any(
+                        keyword in line
+                        for keyword in [" — ", "matched", "detected", "bonuses"]
+                    )
                     and line.strip()
                     and not line.startswith("#")
                 ):
@@ -326,7 +339,9 @@ class TestCommandFiltering:
 
     def test_keyword_match_shows_command(self, tmp_path):
         """Test that keyword matches show relevant commands."""
-        result = run_cli_subprocess(["plan", "--desc", "pytest failing", "--dry-run"], cwd=tmp_path)
+        result = run_cli_subprocess(
+            ["plan", "--desc", "pytest failing", "--dry-run"], cwd=tmp_path
+        )
         assert result.returncode == 0
 
         # Should show pytest commands due to keyword match
@@ -341,14 +356,17 @@ class TestCommandFiltering:
                 if line.startswith("##"):  # Next section
                     break
                 if (
-                    any(keyword in line for keyword in [" — ", "matched", "detected", "bonuses"])
+                    any(
+                        keyword in line
+                        for keyword in [" — ", "matched", "detected", "bonuses"]
+                    )
                     and line.strip()
                     and not line.startswith("#")
                 ):
                     command_lines.append(line)
-        assert len(command_lines) > 0, (
-            f"Expected commands due to pytest keyword match, got: {command_lines}"
-        )
+        assert (
+            len(command_lines) > 0
+        ), f"Expected commands due to pytest keyword match, got: {command_lines}"
 
         # At least one should be pytest related
         pytest_commands = [line for line in command_lines if "pytest" in line]
@@ -357,7 +375,9 @@ class TestCommandFiltering:
     def test_language_detection_shows_command(self, tmp_path):
         """Test that detected languages show relevant commands."""
         # Create Python project marker
-        (tmp_path / "pyproject.toml").write_text('[build-system]\nrequires = ["setuptools"]')
+        (tmp_path / "pyproject.toml").write_text(
+            '[build-system]\nrequires = ["setuptools"]'
+        )
 
         result = run_cli_subprocess(
             ["plan", "--desc", "tests not working", "--dry-run"], cwd=tmp_path
@@ -376,20 +396,27 @@ class TestCommandFiltering:
                 if line.startswith("##"):  # Next section
                     break
                 if (
-                    any(keyword in line for keyword in [" — ", "matched", "detected", "bonuses"])
+                    any(
+                        keyword in line
+                        for keyword in [" — ", "matched", "detected", "bonuses"]
+                    )
                     and line.strip()
                     and not line.startswith("#")
                 ):
                     command_lines.append(line)
-        assert len(command_lines) > 0, (
-            f"Expected commands due to Python language detection, got: {command_lines}"
-        )
+        assert (
+            len(command_lines) > 0
+        ), f"Expected commands due to Python language detection, got: {command_lines}"
 
         # Should have Python-related commands
         python_commands = [
-            line for line in command_lines if any(py in line for py in ["python", "pytest"])
+            line
+            for line in command_lines
+            if any(py in line for py in ["python", "pytest"])
         ]
-        assert len(python_commands) > 0, "Expected Python commands due to language detection"
+        assert (
+            len(python_commands) > 0
+        ), "Expected Python commands due to language detection"
 
 
 class TestIntegrationExitCodes:
@@ -407,24 +434,30 @@ class TestIntegrationExitCodes:
 
         # Test init --out - success
         result = run_cli_subprocess(["init", "--out", "-"], cwd=tmp_path)
-        assert result.returncode == 0, f"init --out - should return 0, got {result.returncode}"
+        assert (
+            result.returncode == 0
+        ), f"init --out - should return 0, got {result.returncode}"
 
         # Test plan --out - success
-        result = run_cli_subprocess(["plan", "--desc", "test", "--out", "-"], cwd=tmp_path)
-        assert result.returncode == 0, f"plan --out - should return 0, got {result.returncode}"
+        result = run_cli_subprocess(
+            ["plan", "--desc", "test", "--out", "-"], cwd=tmp_path
+        )
+        assert (
+            result.returncode == 0
+        ), f"plan --out - should return 0, got {result.returncode}"
 
     def test_misuse_commands_return_two(self, tmp_path):
         """Test that CLI misuse returns exit code 2."""
         # Test plan without required --desc
         result = run_cli_subprocess(["plan"], cwd=tmp_path)
-        assert result.returncode == 2, (
-            f"plan without --desc should return 2, got {result.returncode}"
-        )
+        assert (
+            result.returncode == 2
+        ), f"plan without --desc should return 2, got {result.returncode}"
 
         # Test invalid --repo path
         result = run_cli_subprocess(
             ["plan", "--desc", "test", "--repo", "/nonexistent/path"], cwd=tmp_path
         )
-        assert result.returncode == 2, (
-            f"plan with invalid --repo should return 2, got {result.returncode}"
-        )
+        assert (
+            result.returncode == 2
+        ), f"plan with invalid --repo should return 2, got {result.returncode}"

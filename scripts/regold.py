@@ -46,9 +46,13 @@ def normalize_scan_json(json_str, cwd):
 def _setup_plan_test_case(tmp_path, case):
     """Setup test case directory with appropriate markers."""
     if case == "basic_pytest":
-        (tmp_path / "pyproject.toml").write_text('[build-system]\nrequires = ["setuptools"]')
+        (tmp_path / "pyproject.toml").write_text(
+            '[build-system]\nrequires = ["setuptools"]'
+        )
     elif case == "jest_watch":
-        (tmp_path / "package.json").write_text('{"name": "test-project", "version": "1.0.0"}')
+        (tmp_path / "package.json").write_text(
+            '{"name": "test-project", "version": "1.0.0"}'
+        )
         (tmp_path / "pnpm-lock.yaml").write_text("{}")
     # ambiguous case has no markers
 
@@ -95,7 +99,9 @@ def _process_plan_json(case, temp_desc, tmp_path, plan_dir, write):
         print(f"  Updated {expected_json}")
     else:
         if expected_json.exists():
-            existing = canon_json_bytes(expected_json.read_text().encode("utf-8")) + "\n"
+            existing = (
+                canon_json_bytes(expected_json.read_text().encode("utf-8")) + "\n"
+            )
             if existing != json_content:
                 print(f"  JSON differs for {case}")
         else:
@@ -196,7 +202,9 @@ def regold_scan(golden_dir, write=False):
     scan_dir = golden_dir / "scan"
     cases = {
         "empty": {},
-        "python_pyproject": {"pyproject.toml": '[build-system]\nrequires = ["setuptools"]'},
+        "python_pyproject": {
+            "pyproject.toml": '[build-system]\nrequires = ["setuptools"]'
+        },
         "node_lock": {"pnpm-lock.yaml": "{}"},
         "mixed_py_node": {
             "pyproject.toml": '[build-system]\nrequires = ["setuptools"]',

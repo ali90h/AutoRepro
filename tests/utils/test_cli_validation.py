@@ -1,8 +1,8 @@
 """
 Tests for autorepro.utils.cli_validation module.
 
-These tests validate the CLI validation utilities that replace duplicate
-argument validation patterns found across AutoRepro CLI commands.
+These tests validate the CLI validation utilities that replace duplicate argument
+validation patterns found across AutoRepro CLI commands.
 """
 
 import tempfile
@@ -24,12 +24,16 @@ class TestArgumentValidator:
 
     def test_validate_desc_file_exclusive_valid_desc_only(self):
         """Test validation passes with desc argument only."""
-        result = ArgumentValidator.validate_desc_file_exclusive(desc="test description", file=None)
+        result = ArgumentValidator.validate_desc_file_exclusive(
+            desc="test description", file=None
+        )
         assert result is None
 
     def test_validate_desc_file_exclusive_valid_file_only(self):
         """Test validation passes with file argument only."""
-        result = ArgumentValidator.validate_desc_file_exclusive(desc=None, file="test.txt")
+        result = ArgumentValidator.validate_desc_file_exclusive(
+            desc=None, file="test.txt"
+        )
         assert result is None
 
     def test_validate_desc_file_exclusive_missing_both(self):
@@ -158,7 +162,9 @@ class TestArgumentValidator:
 
     def test_validate_file_exists_nonexistent_file(self):
         """Test file exists validation fails for nonexistent file."""
-        result = ArgumentValidator.validate_file_exists("/nonexistent/file.txt", "Test file")
+        result = ArgumentValidator.validate_file_exists(
+            "/nonexistent/file.txt", "Test file"
+        )
         assert result is not None
         assert "Test file does not exist" in result
 

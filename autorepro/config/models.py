@@ -1,8 +1,9 @@
-"""Configuration models for AutoRepro.
+"""
+Configuration models for AutoRepro.
 
-This module provides type-safe configuration with environment variable support
-and validation. All defaults match the original hard-coded values to maintain
-backward compatibility.
+This module provides type-safe configuration with environment variable support and
+validation. All defaults match the original hard-coded values to maintain backward
+compatibility.
 """
 
 import os
@@ -53,7 +54,9 @@ class PathConfig:
         """Create PathConfig from environment variables."""
         return cls(
             devcontainer_dir=os.getenv("AUTOREPRO_DEVCONTAINER_DIR", ".devcontainer"),
-            devcontainer_file=os.getenv("AUTOREPRO_DEVCONTAINER_FILE", "devcontainer.json"),
+            devcontainer_file=os.getenv(
+                "AUTOREPRO_DEVCONTAINER_FILE", "devcontainer.json"
+            ),
             default_plan_file=os.getenv("AUTOREPRO_DEFAULT_PLAN_FILE", "repro.md"),
             temp_file_suffix=os.getenv("AUTOREPRO_TEMP_FILE_SUFFIX", ".tmp"),
         )
@@ -127,7 +130,9 @@ class FileConfig:
             markdown_extension=os.getenv("AUTOREPRO_MD_EXT", ".md"),
             yaml_extension=os.getenv("AUTOREPRO_YAML_EXT", ".yaml"),
             default_format=os.getenv("AUTOREPRO_DEFAULT_FORMAT", "md"),
-            supported_formats=tuple(os.getenv("AUTOREPRO_SUPPORTED_FORMATS", "md,json").split(",")),
+            supported_formats=tuple(
+                os.getenv("AUTOREPRO_SUPPORTED_FORMATS", "md,json").split(",")
+            ),
         )
 
 

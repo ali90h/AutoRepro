@@ -1,3 +1,7 @@
+minimum_pre_commit_version: "3.7.0"
+default_language_version:
+  python: python3.11
+
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
@@ -9,15 +13,49 @@ repos:
       - id: check-toml
       - id: check-merge-conflict
 
+  # Use a local docformatter hook to avoid parsing
+  # upstream manifests that may require newer pre-commit features.
+  - repo: local
+    hooks:
+      - id: docformatter
+        name: docformatter
+        entry: docformatter
+        language: python
+        types: [python]
+        additional_dependencies:
+          - docformatter==1.7.5
+        args:
+          - --in-place
+          - --wrap-summaries=88
+          - --wrap-descriptions=88
+          - --pre-summary-newline
+
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.12.11
+    rev: v0.6.9
     hooks:
       - id: ruff
-        args: [--fix, --exit-non-zero-on-fix]
+        args: [--fix]
       - id: ruff-format
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.17.1
+    rev: v1.11.2
     hooks:
+      # Source-only mypy (excludes tests, scripts, examples)
       - id: mypy
-        exclude: ^tests/
+        name: mypy (src)
+        files: ^autorepro/.*\.py$
+        args: ["--show-error-codes", "--config-file=mypy.ini"]
+        additional_dependencies:
+          - types-requests
+          - types-PyYAML
+          - types-setuptools
+
+      # Tests mypy (gradual). Start with top-level test_*.py and skip heavy baselines.
+      - id: mypy
+        name: mypy (tests)
+        files: ^tests/(test_.*\.py)$
+        args: ["--show-error-codes", "--config-file=mypy.ini"]
+        additional_dependencies:
+          - types-requests
+          - types-PyYAML
+          - types-setuptools

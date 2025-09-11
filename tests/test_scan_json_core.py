@@ -135,8 +135,12 @@ class TestScanJsonCore:
             tmpdir_path = Path(tmpdir)
 
             # Create files with different weights for Python
-            (tmpdir_path / "pyproject.toml").write_text("[build-system]")  # config: weight 3
-            (tmpdir_path / "setup.py").write_text("from setuptools import setup")  # setup: weight 2
+            (tmpdir_path / "pyproject.toml").write_text(
+                "[build-system]"
+            )  # config: weight 3
+            (tmpdir_path / "setup.py").write_text(
+                "from setuptools import setup"
+            )  # setup: weight 2
             (tmpdir_path / "main.py").write_text("print('hello')")  # source: weight 1
 
             evidence = collect_evidence(tmpdir_path)
@@ -264,12 +268,15 @@ class TestScanJsonCore:
             assert evidence == {}
 
     def test_multiple_causes_grouped_deterministic_order(self):
-        """Test multiple causes for same language are grouped with deterministic order."""
+        """Test multiple causes for same language are grouped with deterministic
+        order."""
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir_path = Path(tmpdir)
 
             # Create Python files with different weights
-            (tmpdir_path / "pyproject.toml").write_text("[build-system]")  # config: weight 3
+            (tmpdir_path / "pyproject.toml").write_text(
+                "[build-system]"
+            )  # config: weight 3
             (tmpdir_path / "requirements.txt").write_text("requests")  # setup: weight 2
 
             evidence = collect_evidence(tmpdir_path)

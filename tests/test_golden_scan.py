@@ -54,7 +54,9 @@ def test_scan_golden(case: str, text_expected: bool, tmp_path):
         expected_text = canon_md(read(GOLDEN_DIR / "scan" / f"{case}.expected.txt"))
 
         if actual_text != expected_text:
-            diff = unified_diff(expected_text, actual_text, "expected.txt", "actual.txt")
+            diff = unified_diff(
+                expected_text, actual_text, "expected.txt", "actual.txt"
+            )
             raise AssertionError(f"Text mismatch for {case}\n{diff}")
 
     # Test JSON output

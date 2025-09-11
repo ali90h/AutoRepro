@@ -83,7 +83,9 @@ class TestCLIIntegration:
         ]
         result = subprocess.run(cmd, capture_output=True, text=True)
         assert result.returncode == 0
-        assert "autorepro" in result.stdout.lower() or "autorepro" in result.stderr.lower()
+        assert (
+            "autorepro" in result.stdout.lower() or "autorepro" in result.stderr.lower()
+        )
 
         # Test --help flag
         args_str = ", ".join(f"'{arg}'" for arg in ["--help"])
@@ -95,7 +97,9 @@ class TestCLIIntegration:
         ]
         result = subprocess.run(cmd, capture_output=True, text=True)
         assert result.returncode == 0
-        assert "autorepro" in result.stdout.lower() or "autorepro" in result.stderr.lower()
+        assert (
+            "autorepro" in result.stdout.lower() or "autorepro" in result.stderr.lower()
+        )
 
     def test_cli_no_args_via_subprocess(self):
         """Test CLI without arguments using subprocess."""
@@ -108,7 +112,9 @@ class TestCLIIntegration:
         ]
         result = subprocess.run(cmd, capture_output=True, text=True)
         assert result.returncode == 0
-        assert "autorepro" in result.stdout.lower() or "autorepro" in result.stderr.lower()
+        assert (
+            "autorepro" in result.stdout.lower() or "autorepro" in result.stderr.lower()
+        )
 
     def test_cli_version_via_subprocess(self):
         """Test CLI version flag using subprocess."""
@@ -170,5 +176,6 @@ class TestCLIErrorHandling:
         # argparse may say either "unrecognized arguments" (unknown options)
         # or "invalid choice" (unknown subcommand). Accept both.
         assert any(
-            needle in error_output for needle in ("unrecognized arguments", "invalid choice")
+            needle in error_output
+            for needle in ("unrecognized arguments", "invalid choice")
         )

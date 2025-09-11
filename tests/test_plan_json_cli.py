@@ -30,14 +30,22 @@ def create_project_markers(tmp_path, project_type="python"):
         project_type: "python", "node", "go", or "mixed"
     """
     if project_type == "python":
-        (tmp_path / "pyproject.toml").write_text('[build-system]\nrequires = ["setuptools"]')
+        (tmp_path / "pyproject.toml").write_text(
+            '[build-system]\nrequires = ["setuptools"]'
+        )
     elif project_type == "node":
-        (tmp_path / "package.json").write_text('{"name": "test-project", "version": "1.0.0"}')
+        (tmp_path / "package.json").write_text(
+            '{"name": "test-project", "version": "1.0.0"}'
+        )
     elif project_type == "go":
         (tmp_path / "go.mod").write_text("module test\n\ngo 1.19")
     elif project_type == "mixed":
-        (tmp_path / "pyproject.toml").write_text('[build-system]\nrequires = ["setuptools"]')
-        (tmp_path / "package.json").write_text('{"name": "test-project", "version": "1.0.0"}')
+        (tmp_path / "pyproject.toml").write_text(
+            '[build-system]\nrequires = ["setuptools"]'
+        )
+        (tmp_path / "package.json").write_text(
+            '{"name": "test-project", "version": "1.0.0"}'
+        )
 
 
 def create_devcontainer(tmp_path, location="dir"):
@@ -353,7 +361,9 @@ class TestPlanJSONValidation:
 
     def test_json_with_missing_args_error(self, tmp_path):
         """Test --format json with missing --desc/--file returns error."""
-        result = run_plan_subprocess(["--format", "json", "--out", "test.json"], cwd=tmp_path)
+        result = run_plan_subprocess(
+            ["--format", "json", "--out", "test.json"], cwd=tmp_path
+        )
 
         assert result.returncode == 2
         assert "one of the arguments --desc --file is required" in result.stderr
@@ -406,7 +416,8 @@ class TestPlanJSONValidation:
         assert data["needs"]["devcontainer_present"] is True
 
     def test_json_stable_command_order(self, tmp_path):
-        """Test that JSON commands are in stable order (score desc, then alphabetical)."""
+        """Test that JSON commands are in stable order (score desc, then
+        alphabetical)."""
         create_project_markers(tmp_path, "mixed")  # Python + Node
 
         result = run_plan_subprocess(
@@ -431,7 +442,9 @@ class TestPlanJSONValidation:
 
         # Check scores are in descending order or tied
         for i in range(1, len(scores)):
-            assert scores[i] <= scores[i - 1], f"Scores not in descending order: {scores}"
+            assert (
+                scores[i] <= scores[i - 1]
+            ), f"Scores not in descending order: {scores}"
 
         # Within same score, should be alphabetical
         score_groups = {}
@@ -442,4 +455,6 @@ class TestPlanJSONValidation:
             score_groups[score].append(cmd["cmd"])
 
         for score, cmds in score_groups.items():
-            assert cmds == sorted(cmds), f"Commands with score {score} not alphabetical: {cmds}"
+            assert cmds == sorted(
+                cmds
+            ), f"Commands with score {score} not alphabetical: {cmds}"

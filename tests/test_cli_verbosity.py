@@ -26,7 +26,9 @@ class TestCLIVerbosity:
 
             assert result.returncode == 0
             assert "filtered" not in result.stderr
-            assert result.stderr.strip() == "", f"Expected empty stderr, got: {result.stderr}"
+            assert (
+                result.stderr.strip() == ""
+            ), f"Expected empty stderr, got: {result.stderr}"
 
     def test_plan_verbose_shows_filter_message(self):
         """Test -v shows 'filtered N low-score suggestions' message."""
@@ -86,7 +88,9 @@ class TestCLIVerbosity:
 
             assert result.returncode == 0
             assert "filtered" not in result.stderr
-            assert result.stderr.strip() == "", f"Expected empty stderr, got: {result.stderr}"
+            assert (
+                result.stderr.strip() == ""
+            ), f"Expected empty stderr, got: {result.stderr}"
 
     def test_plan_strict_quiet_shows_error_only(self):
         """Test --strict + -q shows error message only."""
@@ -177,7 +181,9 @@ class TestCLIVerbosity:
 
             assert result.returncode == 0
             assert "filtered" not in result.stderr
-            assert result.stderr.strip() == "", f"Expected empty stderr, got: {result.stderr}"
+            assert (
+                result.stderr.strip() == ""
+            ), f"Expected empty stderr, got: {result.stderr}"
 
     def test_scan_quiet_mode(self):
         """Test scan with -q shows errors only."""
@@ -192,7 +198,9 @@ class TestCLIVerbosity:
 
             assert result.returncode == 0
             # Should have stdout output (the scan results) but no stderr
-            assert result.stderr.strip() == "", f"Expected empty stderr, got: {result.stderr}"
+            assert (
+                result.stderr.strip() == ""
+            ), f"Expected empty stderr, got: {result.stderr}"
 
     def test_scan_verbose_mode(self):
         """Test scan with -v (informational messages)."""

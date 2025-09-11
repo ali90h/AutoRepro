@@ -130,7 +130,11 @@ class PlanConfigurationManager:
         config.print_to_stdout = config.out == "-"
 
         # Update output path to be repo-relative if needed
-        if config.repo_path and not Path(config.out).is_absolute() and not config.print_to_stdout:
+        if (
+            config.repo_path
+            and not Path(config.out).is_absolute()
+            and not config.print_to_stdout
+        ):
             config.out = str(config.repo_path / config.out)
 
         # Handle dry-run mode
@@ -139,13 +143,16 @@ class PlanConfigurationManager:
 
 
 class PlanContentGenerator:
-    """Generates plan content including suggestions, assumptions, and environment needs."""
+    """Generates plan content including suggestions, assumptions, and environment
+    needs."""
 
     def __init__(self, config: PlanConfig):
         self.config = config
         self.log = logging.getLogger("autorepro")
 
-    def generate_suggestions(self, text: str) -> tuple[set[str], list[str], list[Any], int]:
+    def generate_suggestions(
+        self, text: str
+    ) -> tuple[set[str], list[str], list[Any], int]:
         """Generate command suggestions from input text."""
         # Process the text
         normalized_text = normalize(text)
@@ -186,7 +193,9 @@ class PlanContentGenerator:
 
         return assumptions if assumptions else ["Issue can be reproduced locally"]
 
-    def generate_environment_needs(self, lang_names: list[str], keywords: set[str]) -> list[str]:
+    def generate_environment_needs(
+        self, lang_names: list[str], keywords: set[str]
+    ) -> list[str]:
         """Generate environment requirements based on detected languages."""
         needs = []
 
@@ -232,7 +241,9 @@ class PlanContentGenerator:
             assumptions.append("Installation or setup may be involved")
         return assumptions
 
-    def _add_filtering_assumptions(self, assumptions: list[str], filtered_count: int) -> None:
+    def _add_filtering_assumptions(
+        self, assumptions: list[str], filtered_count: int
+    ) -> None:
         """Add filtering information to assumptions if relevant."""
         if filtered_count > 0 and self._should_show_filtering_note():
             assumptions.append(
@@ -244,7 +255,9 @@ class PlanContentGenerator:
         """Determine if filtering note should be shown."""
         from autorepro.config import config as autorepro_config
 
-        min_score_explicit = self.config.min_score != autorepro_config.limits.min_score_threshold
+        min_score_explicit = (
+            self.config.min_score != autorepro_config.limits.min_score_threshold
+        )
         return min_score_explicit or self.config.strict
 
     def _has_devcontainer(self) -> bool:
@@ -287,7 +300,9 @@ class PlanOutputHandler:
             return error_code
 
         # Check for existing files
-        if not config.print_to_stdout and PlanOutputHandler._should_skip_existing_file(config):
+        if not config.print_to_stdout and PlanOutputHandler._should_skip_existing_file(
+            config
+        ):
             print(f"{config.out} exists; use --force to overwrite")
             return 0
 

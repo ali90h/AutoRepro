@@ -1,8 +1,8 @@
 """
 Tests for autorepro.utils.process module.
 
-These tests validate the process execution utilities that replace duplicate
-subprocess patterns found across the AutoRepro codebase.
+These tests validate the process execution utilities that replace duplicate subprocess
+patterns found across the AutoRepro codebase.
 """
 
 import subprocess
@@ -22,7 +22,9 @@ class TestProcessResult:
 
     def test_process_result_initialization(self):
         """Test ProcessResult initializes with correct attributes."""
-        result = ProcessResult(exit_code=0, stdout="output", stderr="error", cmd=["echo", "hello"])
+        result = ProcessResult(
+            exit_code=0, stdout="output", stderr="error", cmd=["echo", "hello"]
+        )
 
         assert result.exit_code == 0
         assert result.stdout == "output"
@@ -184,7 +186,9 @@ class TestProcessRunner:
     @patch("autorepro.utils.process.ProcessRunner.run_with_capture")
     def test_run_gh_command_uses_custom_gh_path(self, mock_run_with_capture):
         """Test run_gh_command uses custom gh executable path."""
-        mock_run_with_capture.return_value = ProcessResult(0, "", "", ["custom-gh", "pr", "list"])
+        mock_run_with_capture.return_value = ProcessResult(
+            0, "", "", ["custom-gh", "pr", "list"]
+        )
 
         ProcessRunner.run_gh_command(["pr", "list"], gh_path="custom-gh")
 
@@ -199,7 +203,9 @@ class TestProcessRunner:
             0, "", "", ["python3.9", "-c", "print('hello')"]
         )
 
-        ProcessRunner.run_python_command(["-c", "print('hello')"], python_executable="python3.9")
+        ProcessRunner.run_python_command(
+            ["-c", "print('hello')"], python_executable="python3.9"
+        )
 
         mock_run_with_capture.assert_called_once_with(
             ["python3.9", "-c", "print('hello')"], cwd=None, env=None, timeout=None
@@ -262,7 +268,9 @@ class TestSafeSubprocessRun:
 
     def test_safe_subprocess_run_integration_real_command(self):
         """Integration test with real command execution."""
-        config = SubprocessConfig(cmd=["echo", "safe test"], capture_output=True, text=True)
+        config = SubprocessConfig(
+            cmd=["echo", "safe test"], capture_output=True, text=True
+        )
         result = safe_subprocess_run(config)
 
         assert result.returncode == 0

@@ -1,8 +1,8 @@
 """
 Tests for GitHub API failure scenarios during PR enrichment workflows.
 
-This module focuses on timeout and HTTP error simulation with --json flag
-and proper exit code validation for PR enrichment operations.
+This module focuses on timeout and HTTP error simulation with --json flag and proper
+exit code validation for PR enrichment operations.
 """
 
 import subprocess
@@ -22,7 +22,9 @@ def fake_env_setup(tmp_path, monkeypatch):
 
     # Create minimal project structure
     (tmp_path / "README.md").write_text("# Test Project\n")
-    (tmp_path / "setup.py").write_text("from setuptools import setup\nsetup(name='test')")
+    (tmp_path / "setup.py").write_text(
+        "from setuptools import setup\nsetup(name='test')"
+    )
 
     # Mock environment variables for GitHub operations
     monkeypatch.setenv("GITHUB_TOKEN", "fake_token_12345")
@@ -75,7 +77,9 @@ class TestPREnrichmentTimeoutErrors:
     def test_pr_details_fetch_timeout_error(self, fake_env_setup):
         """Test get_pr_details function timeout handling."""
         with patch("autorepro.io.github.subprocess.run") as mock_run:
-            mock_run.side_effect = subprocess.TimeoutExpired(cmd=["gh", "pr", "view"], timeout=30)
+            mock_run.side_effect = subprocess.TimeoutExpired(
+                cmd=["gh", "pr", "view"], timeout=30
+            )
 
             # Test the function directly - TimeoutExpired should be caught
             try:
@@ -172,11 +176,17 @@ class TestPREnrichmentJSONFormat:
                 nonlocal call_count
                 call_count += 1
                 if call_count == 1:
-                    raise subprocess.TimeoutExpired(cmd=["gh", "pr", "view"], timeout=30)
+                    raise subprocess.TimeoutExpired(
+                        cmd=["gh", "pr", "view"], timeout=30
+                    )
                 elif call_count == 2:
-                    raise subprocess.CalledProcessError(returncode=1, cmd=["gh", "pr", "comment"])
+                    raise subprocess.CalledProcessError(
+                        returncode=1, cmd=["gh", "pr", "comment"]
+                    )
                 else:
-                    raise subprocess.CalledProcessError(returncode=22, cmd=["gh", "pr", "edit"])
+                    raise subprocess.CalledProcessError(
+                        returncode=22, cmd=["gh", "pr", "edit"]
+                    )
 
             mock_run.side_effect = side_effect
 

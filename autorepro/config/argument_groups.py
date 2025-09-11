@@ -28,7 +28,11 @@ class BaseCommandConfig(ConfigValidationMixin):
     def validate_base_fields(self) -> None:
         """Validate base configuration fields."""
         errors = self._validate_common_fields(
-            verbose=(CommonConfigValidator.validate_non_negative_integer, self.verbose, "verbose"),
+            verbose=(
+                CommonConfigValidator.validate_non_negative_integer,
+                self.verbose,
+                "verbose",
+            ),
         )
 
         if errors:
@@ -44,7 +48,9 @@ class InputConfig(ConfigValidationMixin):
 
     def validate(self) -> None:
         """Validate input configuration."""
-        error = CommonConfigValidator.validate_desc_file_mutual_exclusivity(self.desc, self.file)
+        error = CommonConfigValidator.validate_desc_file_mutual_exclusivity(
+            self.desc, self.file
+        )
         if error:
             raise CrossFieldValidationError(error, field="desc,file")
 
@@ -54,7 +60,9 @@ class OutputConfig(ConfigValidationMixin):
     """Configuration for output-related arguments."""
 
     out: str = field(default_factory=lambda: get_defaults().defaults.default_plan_file)
-    format_type: str = field(default_factory=lambda: get_defaults().defaults.format_type)
+    format_type: str = field(
+        default_factory=lambda: get_defaults().defaults.format_type
+    )
     force: bool = field(default_factory=lambda: get_defaults().defaults.force)
 
     def validate(self) -> None:
@@ -118,7 +126,9 @@ class EnhancedPlanConfig(
 ):
     """Enhanced plan configuration using composition of argument groups."""
 
-    max_commands: int = field(default_factory=lambda: get_defaults().defaults.max_commands)
+    max_commands: int = field(
+        default_factory=lambda: get_defaults().defaults.max_commands
+    )
     print_to_stdout: bool = False
 
     def validate(self) -> None:
@@ -155,7 +165,9 @@ class ExecutionConfig(ConfigValidationMixin):
     """Configuration for command execution arguments."""
 
     index: int = field(default_factory=lambda: get_defaults().defaults.exec_index)
-    timeout: int = field(default_factory=lambda: get_defaults().defaults.timeout_seconds)
+    timeout: int = field(
+        default_factory=lambda: get_defaults().defaults.timeout_seconds
+    )
     env_vars: list[str] = field(default_factory=list)
     env_file: str | None = None
     tee_path: str | None = None
@@ -164,8 +176,16 @@ class ExecutionConfig(ConfigValidationMixin):
     def validate(self) -> None:
         """Validate execution configuration."""
         errors = self._validate_common_fields(
-            index=(CommonConfigValidator.validate_non_negative_integer, self.index, "index"),
-            timeout=(CommonConfigValidator.validate_positive_integer, self.timeout, "timeout"),
+            index=(
+                CommonConfigValidator.validate_non_negative_integer,
+                self.index,
+                "index",
+            ),
+            timeout=(
+                CommonConfigValidator.validate_positive_integer,
+                self.timeout,
+                "timeout",
+            ),
         )
 
         if errors:
@@ -217,13 +237,19 @@ class GitHubConfig(ConfigValidationMixin):
 class PROperationConfig(ConfigValidationMixin):
     """Configuration for PR operation arguments."""
 
-    update_if_exists: bool = field(default_factory=lambda: get_defaults().defaults.update_if_exists)
+    update_if_exists: bool = field(
+        default_factory=lambda: get_defaults().defaults.update_if_exists
+    )
     skip_push: bool = field(default_factory=lambda: get_defaults().defaults.skip_push)
     comment: bool = field(default_factory=lambda: get_defaults().defaults.comment)
-    update_pr_body: bool = field(default_factory=lambda: get_defaults().defaults.update_pr_body)
+    update_pr_body: bool = field(
+        default_factory=lambda: get_defaults().defaults.update_pr_body
+    )
     link_issue: int | None = None
     add_labels: str | None = None
-    attach_report: bool = field(default_factory=lambda: get_defaults().defaults.attach_report)
+    attach_report: bool = field(
+        default_factory=lambda: get_defaults().defaults.attach_report
+    )
     summary: str | None = None
     no_details: bool = field(default_factory=lambda: get_defaults().defaults.no_details)
 
@@ -239,7 +265,12 @@ class PROperationConfig(ConfigValidationMixin):
 
 @dataclass
 class EnhancedPrConfig(
-    BaseCommandConfig, InputConfig, OutputConfig, ScoringConfig, GitHubConfig, PROperationConfig
+    BaseCommandConfig,
+    InputConfig,
+    OutputConfig,
+    ScoringConfig,
+    GitHubConfig,
+    PROperationConfig,
 ):
     """Enhanced PR configuration using composition of argument groups."""
 

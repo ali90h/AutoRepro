@@ -71,7 +71,9 @@ class TestDetectLanguages:
             (Path(tmpdir) / "pyproject.toml").write_text("[build-system]")
 
             result = detect_languages(tmpdir)
-            assert result == [("python", ["pyproject.toml", "requirements.txt", "setup.py"])]
+            assert result == [
+                ("python", ["pyproject.toml", "requirements.txt", "setup.py"])
+            ]
 
     def test_glob_pattern_with_multiple_matches(self):
         """Test glob patterns that match multiple files."""
@@ -109,7 +111,9 @@ class TestDetectLanguages:
         """Test language with both exact filenames and glob patterns."""
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create both exact match and glob match for Python
-            (Path(tmpdir) / "setup.py").write_text("from setuptools import setup")  # exact
+            (Path(tmpdir) / "setup.py").write_text(
+                "from setuptools import setup"
+            )  # exact
             (Path(tmpdir) / "main.py").write_text("print('hello')")  # glob *.py
 
             result = detect_languages(tmpdir)

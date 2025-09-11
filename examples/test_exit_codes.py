@@ -7,7 +7,9 @@ import tempfile
 
 # Test scan in current directory
 print("=== Test 1: Scan in current directory ===")
-result = subprocess.run([sys.executable, "-m", "autorepro", "scan"], capture_output=True, text=True)
+result = subprocess.run(
+    [sys.executable, "-m", "autorepro", "scan"], capture_output=True, text=True
+)
 print(f"Exit code: {result.returncode}")
 print(f"Stdout: {result.stdout.strip()}")
 if result.stderr:

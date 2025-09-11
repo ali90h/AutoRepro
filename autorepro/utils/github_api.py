@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""
-Common GitHub API utilities.
-"""
+"""Common GitHub API utilities."""
 
 from __future__ import annotations
 
@@ -56,7 +54,9 @@ def update_comment(
             print(f"Would run: {' '.join(cmd)}")
             return 0
 
-        safe_subprocess_run(cmd, capture_output=True, check=True, operation="update GitHub comment")
+        safe_subprocess_run(
+            cmd, capture_output=True, check=True, operation="update GitHub comment"
+        )
         return 0
 
     except SubprocessError as e:

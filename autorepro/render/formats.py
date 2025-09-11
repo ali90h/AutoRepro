@@ -12,7 +12,9 @@ from .. import __version__
 
 def _parse_devcontainer_status(needs: list[str]) -> bool:
     """Check if devcontainer is present in needs list."""
-    return any("devcontainer" in need.lower() and "present" in need.lower() for need in needs)
+    return any(
+        "devcontainer" in need.lower() and "present" in need.lower() for need in needs
+    )
 
 
 def _extract_section_from_rationale(
@@ -68,7 +70,9 @@ def _extract_matched_keywords(rationale: str) -> list[str]:
 
 def _extract_matched_languages(rationale: str) -> list[str]:
     """Extract matched languages from rationale text."""
-    section = _extract_section_from_rationale(rationale, "detected langs:", ["; bonuses:", ";"])
+    section = _extract_section_from_rationale(
+        rationale, "detected langs:", ["; bonuses:", ";"]
+    )
     return _extract_tokens_from_text(section)
 
 

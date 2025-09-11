@@ -57,7 +57,8 @@ BUILTIN_RULES = {
 
 
 def _get_plugin_list() -> list[str]:
-    """Get list of plugins from environment variable.
+    """
+    Get list of plugins from environment variable.
 
     Returns:
         List of plugin names/paths, empty if none specified
@@ -69,7 +70,8 @@ def _get_plugin_list() -> list[str]:
 
 
 def _load_plugin_module(plugin_name: str) -> object:
-    """Load a single plugin module.
+    """
+    Load a single plugin module.
 
     Args:
         plugin_name: Name or file path of plugin to load
@@ -94,8 +96,11 @@ def _load_plugin_module(plugin_name: str) -> object:
         return importlib.import_module(plugin_name)
 
 
-def _extract_rules_from_module(plugin_module: object, plugin_rules: dict[str, list[Rule]]) -> None:
-    """Extract rules from a loaded plugin module.
+def _extract_rules_from_module(
+    plugin_module: object, plugin_rules: dict[str, list[Rule]]
+) -> None:
+    """
+    Extract rules from a loaded plugin module.
 
     Args:
         plugin_module: Loaded plugin module
@@ -111,7 +116,8 @@ def _extract_rules_from_module(plugin_module: object, plugin_rules: dict[str, li
 
 
 def _handle_plugin_loading_error(plugin_name: str, error: Exception) -> None:
-    """Handle plugin loading errors with optional debug output.
+    """
+    Handle plugin loading errors with optional debug output.
 
     Args:
         plugin_name: Name of plugin that failed to load
@@ -139,7 +145,8 @@ def _load_plugin_rules() -> dict[str, list[Rule]]:
 
 
 def get_rules() -> dict[str, list[Rule]]:
-    """Get combined rules from built-in rules and loaded plugins.
+    """
+    Get combined rules from built-in rules and loaded plugins.
 
     Plugin rules take priority and can override built-in rules.
     """

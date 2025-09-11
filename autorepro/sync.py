@@ -60,7 +60,9 @@ def _render_sync_comment_impl(config: SyncCommentConfig) -> str:
         header_lines.append("**Summary**: AutoRepro reproduction plan for this PR")
     else:
         header_lines.append(f"## {title}")
-        header_lines.append("**Summary**: AutoRepro plan generated from issue description")
+        header_lines.append(
+            "**Summary**: AutoRepro plan generated from issue description"
+        )
 
     header_lines.append("")
 

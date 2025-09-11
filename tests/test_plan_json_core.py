@@ -10,7 +10,9 @@ class TestBuildReproJsonStructure:
         """Test that build_repro_json returns dict with exact required keys."""
         title = "Test Issue"
         assumptions = ["Test assumption"]
-        commands = [("pytest -q", 6, "matched keywords: pytest; detected langs: python")]
+        commands = [
+            ("pytest -q", 6, "matched keywords: pytest; detected langs: python")
+        ]
         needs = ["Python 3.11+"]
         next_steps = ["Run the command"]
 
@@ -41,8 +43,12 @@ class TestBuildReproJsonStructure:
 
     def test_key_order_is_stable(self):
         """Test that key order is deterministic and stable."""
-        result1 = build_repro_json("Test", ["A"], [("cmd", 1, "reason")], ["need"], ["step"])
-        result2 = build_repro_json("Test", ["A"], [("cmd", 1, "reason")], ["need"], ["step"])
+        result1 = build_repro_json(
+            "Test", ["A"], [("cmd", 1, "reason")], ["need"], ["step"]
+        )
+        result2 = build_repro_json(
+            "Test", ["A"], [("cmd", 1, "reason")], ["need"], ["step"]
+        )
 
         # Keys should be in same order both times
         assert list(result1.keys()) == list(result2.keys())

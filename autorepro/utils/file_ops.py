@@ -1,8 +1,8 @@
 """
 File operations utilities to eliminate duplicate I/O patterns.
 
-This module provides consistent file operations with error handling,
-replacing duplicate patterns found across the AutoRepro codebase.
+This module provides consistent file operations with error handling, replacing duplicate
+patterns found across the AutoRepro codebase.
 """
 
 import json
@@ -16,7 +16,8 @@ class FileOperations:
 
     @staticmethod
     def ensure_directory(path: Path) -> None:
-        """Ensure directory exists, create with parents if needed.
+        """
+        Ensure directory exists, create with parents if needed.
 
         Args:
             path: Directory path to ensure exists
@@ -31,7 +32,8 @@ class FileOperations:
 
     @staticmethod
     def atomic_write(path: Path, content: str, encoding: str = "utf-8") -> None:
-        """Atomic file write using temp file + rename pattern.
+        """
+        Atomic file write using temp file + rename pattern.
 
         Args:
             path: Target file path
@@ -64,8 +66,11 @@ class FileOperations:
             raise OSError(f"Failed to write file: {path}") from e
 
     @staticmethod
-    def safe_read_text(path: Path, encoding: str = "utf-8", default: str | None = None) -> str:
-        """Read text file with fallback on error.
+    def safe_read_text(
+        path: Path, encoding: str = "utf-8", default: str | None = None
+    ) -> str:
+        """
+        Read text file with fallback on error.
 
         Args:
             path: File path to read
@@ -86,8 +91,11 @@ class FileOperations:
             raise OSError(f"Failed to read file: {path}") from e
 
     @staticmethod
-    def safe_read_json(path: Path, default: dict[str, Any] | None = None) -> dict[str, Any]:
-        """Read JSON file with fallback on error.
+    def safe_read_json(
+        path: Path, default: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        """
+        Read JSON file with fallback on error.
 
         Args:
             path: JSON file path to read
@@ -116,7 +124,8 @@ class FileOperations:
         sort_keys: bool = True,
         ensure_ascii: bool = False,
     ) -> None:
-        """Atomic JSON file write with consistent formatting.
+        """
+        Atomic JSON file write with consistent formatting.
 
         Args:
             path: Target JSON file path
@@ -143,7 +152,8 @@ class FileOperations:
 
 
 def create_temp_file(content: str, suffix: str = "", encoding: str = "utf-8") -> Path:
-    """Create a temporary file with content and return the path.
+    """
+    Create a temporary file with content and return the path.
 
     Args:
         content: Content to write to temp file
@@ -156,6 +166,8 @@ def create_temp_file(content: str, suffix: str = "", encoding: str = "utf-8") ->
     Note:
         Caller is responsible for cleaning up the temporary file.
     """
-    with tempfile.NamedTemporaryFile(mode="w", suffix=suffix, encoding=encoding, delete=False) as f:
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=suffix, encoding=encoding, delete=False
+    ) as f:
         f.write(content)
         return Path(f.name)

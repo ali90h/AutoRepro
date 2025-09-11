@@ -28,11 +28,17 @@ class TestScanJsonCLI:
             tmpdir_path = Path(tmpdir)
 
             # Create mixed indices
-            (tmpdir_path / "pyproject.toml").write_text("[build-system]")  # Python config
-            (tmpdir_path / "pnpm-lock.yaml").write_text("lockfileVersion: 5.4")  # Node lock
+            (tmpdir_path / "pyproject.toml").write_text(
+                "[build-system]"
+            )  # Python config
+            (tmpdir_path / "pnpm-lock.yaml").write_text(
+                "lockfileVersion: 5.4"
+            )  # Node lock
             (tmpdir_path / "main.py").write_text("print('hello')")  # Python source
 
-            exit_code = self._run_in_temp_dir(tmpdir_path, ["autorepro", "scan", "--json"])
+            exit_code = self._run_in_temp_dir(
+                tmpdir_path, ["autorepro", "scan", "--json"]
+            )
 
             captured = capsys.readouterr()
             assert exit_code == 0
@@ -76,7 +82,9 @@ class TestScanJsonCLI:
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir_path = Path(tmpdir)
 
-            exit_code = self._run_in_temp_dir(tmpdir_path, ["autorepro", "scan", "--json"])
+            exit_code = self._run_in_temp_dir(
+                tmpdir_path, ["autorepro", "scan", "--json"]
+            )
 
             captured = capsys.readouterr()
             assert exit_code == 0
@@ -97,7 +105,9 @@ class TestScanJsonCLI:
             # Create test file
             (tmpdir_path / "pyproject.toml").write_text("[build-system]")
 
-            exit_code = self._run_in_temp_dir(tmpdir_path, ["autorepro", "scan", "--show-scores"])
+            exit_code = self._run_in_temp_dir(
+                tmpdir_path, ["autorepro", "scan", "--show-scores"]
+            )
 
             captured = capsys.readouterr()
             assert exit_code == 0
@@ -139,7 +149,9 @@ class TestScanJsonCLI:
             (tmpdir_path / "main.py").write_text("print('hello')")  # python
             (tmpdir_path / "go.mod").write_text("module test")  # go
 
-            exit_code = self._run_in_temp_dir(tmpdir_path, ["autorepro", "scan", "--json"])
+            exit_code = self._run_in_temp_dir(
+                tmpdir_path, ["autorepro", "scan", "--json"]
+            )
 
             captured = capsys.readouterr()
             assert exit_code == 0
@@ -157,7 +169,9 @@ class TestScanJsonCLI:
             # Create Java config
             (tmpdir_path / "pom.xml").write_text("<project></project>")
 
-            exit_code = self._run_in_temp_dir(tmpdir_path, ["autorepro", "scan", "--json"])
+            exit_code = self._run_in_temp_dir(
+                tmpdir_path, ["autorepro", "scan", "--json"]
+            )
 
             captured = capsys.readouterr()
             assert exit_code == 0
@@ -177,7 +191,9 @@ class TestScanJsonCLI:
             (tmpdir_path / "Cargo.toml").write_text("[package]")
             (tmpdir_path / "Cargo.lock").write_text("[[package]]")
 
-            exit_code = self._run_in_temp_dir(tmpdir_path, ["autorepro", "scan", "--json"])
+            exit_code = self._run_in_temp_dir(
+                tmpdir_path, ["autorepro", "scan", "--json"]
+            )
 
             captured = capsys.readouterr()
             assert exit_code == 0
@@ -240,7 +256,9 @@ class TestScanJsonCLI:
             (tmpdir_path / "package.json").write_text('{"name": "test"}')
             (tmpdir_path / "yarn.lock").write_text("# yarn lock")
 
-            exit_code = self._run_in_temp_dir(tmpdir_path, ["autorepro", "scan", "--json"])
+            exit_code = self._run_in_temp_dir(
+                tmpdir_path, ["autorepro", "scan", "--json"]
+            )
 
             captured = capsys.readouterr()
             assert exit_code == 0
@@ -260,7 +278,9 @@ class TestScanJsonCLI:
             (tmpdir_path / "main.go").write_text("package main")
             (tmpdir_path / "utils.go").write_text("package main")
 
-            exit_code = self._run_in_temp_dir(tmpdir_path, ["autorepro", "scan", "--json"])
+            exit_code = self._run_in_temp_dir(
+                tmpdir_path, ["autorepro", "scan", "--json"]
+            )
 
             captured = capsys.readouterr()
             assert exit_code == 0
@@ -285,7 +305,9 @@ class TestScanJsonCLI:
             (tmpdir_path / "LICENSE").write_text("MIT License")
             (tmpdir_path / "data.txt").write_text("Some data")
 
-            exit_code = self._run_in_temp_dir(tmpdir_path, ["autorepro", "scan", "--json"])
+            exit_code = self._run_in_temp_dir(
+                tmpdir_path, ["autorepro", "scan", "--json"]
+            )
 
             captured = capsys.readouterr()
             assert exit_code == 0  # Should exit with success

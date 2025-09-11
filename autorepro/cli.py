@@ -58,7 +58,8 @@ def ensure_trailing_newline(content: str) -> str:
 
 @contextmanager
 def temp_chdir(path: Path) -> Generator[None, None, None]:
-    """Temporarily change to the given directory, then restore original working directory."""
+    """Temporarily change to the given directory, then restore original working
+    directory."""
     original_cwd = Path.cwd()
     try:
         os.chdir(path)
@@ -70,13 +71,21 @@ def temp_chdir(path: Path) -> Generator[None, None, None]:
 def _add_common_args(parser) -> None:
     """Add common arguments (verbose, quiet, dry-run)."""
     parser.add_argument(
-        "-v", "--verbose", action="count", default=0, help="Increase verbosity (-v, -vv)"
+        "-v",
+        "--verbose",
+        action="count",
+        default=0,
+        help="Increase verbosity (-v, -vv)",
     )
     parser.add_argument("-q", "--quiet", action="store_true", help="Show errors only")
-    parser.add_argument("--dry-run", action="store_true", help="Print actions without executing")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Print actions without executing"
+    )
 
 
-def _add_file_input_group(parser, required: bool = True) -> argparse._MutuallyExclusiveGroup:
+def _add_file_input_group(
+    parser, required: bool = True
+) -> argparse._MutuallyExclusiveGroup:
     """Add mutually exclusive desc/file input group."""
     input_group = parser.add_mutually_exclusive_group(required=required)
     input_group.add_argument("--desc", help="Issue description text")
@@ -459,7 +468,9 @@ For more information, visit: https://github.com/ali90h/AutoRepro
         """.strip(),
     )
 
-    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+    parser.add_argument(
+        "--version", action="version", version=f"%(prog)s {__version__}"
+    )
 
     # Add subcommands
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
@@ -567,12 +578,14 @@ class PlanConfig:
         # Field validation
         if self.max_commands <= 0:
             raise FieldValidationError(
-                f"max_commands must be positive, got: {self.max_commands}", field="max_commands"
+                f"max_commands must be positive, got: {self.max_commands}",
+                field="max_commands",
             )
 
         if self.min_score < 0:
             raise FieldValidationError(
-                f"min_score must be non-negative, got: {self.min_score}", field="min_score"
+                f"min_score must be non-negative, got: {self.min_score}",
+                field="min_score",
             )
 
         # Format validation
@@ -652,12 +665,14 @@ class PrConfig:
         # Field validation
         if self.min_score < 0:
             raise FieldValidationError(
-                f"min_score must be non-negative, got: {self.min_score}", field="min_score"
+                f"min_score must be non-negative, got: {self.min_score}",
+                field="min_score",
             )
 
         if self.format_type not in ("md", "json"):
             raise FieldValidationError(
-                f"format_type must be 'md' or 'json', got: {self.format_type}", field="format_type"
+                f"format_type must be 'md' or 'json', got: {self.format_type}",
+                field="format_type",
             )
 
         # Repo slug format validation
@@ -770,7 +785,11 @@ def _prepare_plan_config(config: PlanConfig) -> PlanConfig:
     config.print_to_stdout = config.out == "-"
 
     # Update output path to be under the repo if relative path specified (but not for stdout)
-    if config.repo_path and not Path(config.out).is_absolute() and not config.print_to_stdout:
+    if (
+        config.repo_path
+        and not Path(config.out).is_absolute()
+        and not config.print_to_stdout
+    ):
         config.out = str(config.repo_path / config.out)
 
     # Handle dry-run mode
@@ -821,7 +840,8 @@ def _read_plan_input_text(config: PlanConfig) -> str:
 def _process_plan_text_and_generate_suggestions(
     text: str, config: PlanConfig
 ) -> tuple[set[str], list[str], list, int]:
-    """Process text and generate command suggestions.
+    """
+    Process text and generate command suggestions.
 
     Returns:
         Tuple of (keywords, lang_names, suggestions, filtered_count)
@@ -858,7 +878,9 @@ def _process_plan_text_and_generate_suggestions(
 
 def _generate_plan_title(normalized_text: str) -> str:
     """Generate plan title from normalized text."""
-    title_words = normalized_text.split()[:8]  # Increased to allow more words before truncation
+    title_words = normalized_text.split()[
+        :8
+    ]  # Increased to allow more words before truncation
     title = "Issue Reproduction Plan"
     if title_words:
         title = " ".join(title_words).title()
@@ -946,8 +968,8 @@ def _generate_plan_content(config: PlanConfig) -> PlanData:
     normalized_text = normalize(text)
 
     # Process text and generate suggestions
-    keywords, lang_names, suggestions, filtered_count = _process_plan_text_and_generate_suggestions(
-        text, config
+    keywords, lang_names, suggestions, filtered_count = (
+        _process_plan_text_and_generate_suggestions(text, config)
     )
 
     # Limit to max_commands
@@ -955,7 +977,9 @@ def _generate_plan_content(config: PlanConfig) -> PlanData:
 
     # Generate plan components
     title = _generate_plan_title(normalized_text)
-    assumptions = _generate_plan_assumptions(lang_names, keywords, config, filtered_count)
+    assumptions = _generate_plan_assumptions(
+        lang_names, keywords, config, filtered_count
+    )
     needs = _generate_plan_environment_needs(lang_names, keywords, config)
 
     # Generate next steps
@@ -1001,7 +1025,11 @@ def _output_plan_result(plan_data: PlanData, config: PlanConfig) -> int:
                 else ["Standard development environment"]
             ),
             commands=plan_data.suggestions,
-            needs=(plan_data.needs if plan_data.needs else ["Standard development environment"]),
+            needs=(
+                plan_data.needs
+                if plan_data.needs
+                else ["Standard development environment"]
+            ),
             next_steps=(
                 plan_data.next_steps
                 if plan_data.next_steps
@@ -1056,7 +1084,9 @@ def cmd_plan(config: PlanConfig | None = None, **kwargs) -> int:
             file=kwargs.get("file"),
             out=kwargs.get("out", global_config.paths.default_plan_file),
             force=kwargs.get("force", False),
-            max_commands=kwargs.get("max_commands", global_config.limits.max_plan_suggestions),
+            max_commands=kwargs.get(
+                "max_commands", global_config.limits.max_plan_suggestions
+            ),
             format_type=kwargs.get("format_type", "md"),
             dry_run=kwargs.get("dry_run", False),
             repo=kwargs.get("repo"),
@@ -1072,7 +1102,11 @@ def cmd_plan(config: PlanConfig | None = None, **kwargs) -> int:
 
 
 def _validate_init_repo_path(config: InitConfig) -> int | None:
-    """Validate repo path for init command. Returns error code if invalid."""
+    """
+    Validate repo path for init command.
+
+    Returns error code if invalid.
+    """
     if config.repo is None:
         return None
 
@@ -1117,7 +1151,11 @@ def _handle_init_stdout_output(devcontainer_config: dict) -> int:
 
 
 def _validate_init_output_path(config: InitConfig) -> int | None:
-    """Validate output path for init command. Returns error code if invalid."""
+    """
+    Validate output path for init command.
+
+    Returns error code if invalid.
+    """
     if config.out and os.path.isdir(config.out):
         print(f"Error: Output path is a directory: {config.out}")
         return 2
@@ -1226,7 +1264,8 @@ def load_env_file(env_file: str) -> dict[str, str]:
 
 
 def _validate_exec_repo_path(repo: str | None) -> tuple[Path | None, int | None]:
-    """Validate and resolve repo path for exec command.
+    """
+    Validate and resolve repo path for exec command.
 
     Returns:
         Tuple of (resolved_path, error_code). If error_code is not None, should return it.
@@ -1249,7 +1288,8 @@ def _validate_exec_repo_path(repo: str | None) -> tuple[Path | None, int | None]
 def _read_exec_input_text(
     config: ExecConfig, repo_path: Path | None
 ) -> tuple[str | None, int | None]:
-    """Read input text for exec command.
+    """
+    Read input text for exec command.
 
     Returns:
         Tuple of (text, error_code). If error_code is not None, should return it.
@@ -1286,7 +1326,8 @@ def _read_exec_input_text(
 def _generate_exec_suggestions(
     text: str, repo_path: Path | None, config: ExecConfig
 ) -> tuple[list, int | None]:
-    """Generate command suggestions for exec.
+    """
+    Generate command suggestions for exec.
 
     Returns:
         Tuple of (suggestions, error_code). If error_code is not None, should return it.
@@ -1322,8 +1363,11 @@ def _generate_exec_suggestions(
     return suggestions, None
 
 
-def _select_exec_command(suggestions: list, config: ExecConfig) -> tuple[tuple | None, int | None]:
-    """Select command by index for execution.
+def _select_exec_command(
+    suggestions: list, config: ExecConfig
+) -> tuple[tuple | None, int | None]:
+    """
+    Select command by index for execution.
 
     Returns:
         Tuple of (selected_command, error_code). If error_code is not None, should return it.
@@ -1342,7 +1386,8 @@ def _select_exec_command(suggestions: list, config: ExecConfig) -> tuple[tuple |
 
 
 def _prepare_exec_environment(config: ExecConfig) -> tuple[dict | None, int | None]:
-    """Prepare environment variables for command execution.
+    """
+    Prepare environment variables for command execution.
 
     Returns:
         Tuple of (env_dict, error_code). If error_code is not None, should return it.
@@ -1375,7 +1420,8 @@ def _prepare_exec_environment(config: ExecConfig) -> tuple[dict | None, int | No
 def _execute_command(
     command_str: str, env: dict, exec_dir: Path, config: ExecConfig
 ) -> tuple[dict, int | None]:
-    """Execute the selected command and return results.
+    """
+    Execute the selected command and return results.
 
     Returns:
         Tuple of (execution_results_dict, error_code). If error_code is not None, should return it.
@@ -1469,8 +1515,12 @@ def _handle_exec_output_logging(results: dict, config: ExecConfig) -> None:
             FileOperations.ensure_directory(jsonl_path_obj.parent)
 
             # Prepare previews (first 2000 chars)
-            stdout_preview = results["stdout_full"][:2000] if results["stdout_full"] else ""
-            stderr_preview = results["stderr_full"][:2000] if results["stderr_full"] else ""
+            stdout_preview = (
+                results["stdout_full"][:2000] if results["stdout_full"] else ""
+            )
+            stderr_preview = (
+                results["stderr_full"][:2000] if results["stderr_full"] else ""
+            )
 
             jsonl_record = {
                 "schema_version": 1,
@@ -1519,7 +1569,9 @@ def _execute_exec_pipeline(config: ExecConfig) -> int:
     selected_command, error = _select_exec_command(suggestions, config)
     if error is not None:
         return error
-    assert selected_command is not None  # Type assertion - we know command is valid if no error
+    assert (
+        selected_command is not None
+    )  # Type assertion - we know command is valid if no error
 
     command_str, score, rationale = selected_command
 
@@ -1531,7 +1583,9 @@ def _execute_exec_pipeline(config: ExecConfig) -> int:
     return _execute_exec_command_real(command_str, repo_path, config)
 
 
-def _execute_exec_command_real(command_str: str, repo_path: Path | None, config: ExecConfig) -> int:
+def _execute_exec_command_real(
+    command_str: str, repo_path: Path | None, config: ExecConfig
+) -> int:
     """Execute the actual command and handle output."""
     # Prepare environment variables
     env, error = _prepare_exec_environment(config)
@@ -1766,7 +1820,9 @@ def cmd_pr(config: PrConfig | None = None, **kwargs) -> int:
                 label=kwargs.get("label"),
                 assignee=kwargs.get("assignee"),
                 reviewer=kwargs.get("reviewer"),
-                min_score=kwargs.get("min_score", global_config.limits.min_score_threshold),
+                min_score=kwargs.get(
+                    "min_score", global_config.limits.min_score_threshold
+                ),
                 strict=kwargs.get("strict", False),
                 comment=kwargs.get("comment", False),
                 update_pr_body=kwargs.get("update_pr_body", False),
@@ -1837,7 +1893,12 @@ def _merge_strict(cli_flag: bool, settings: dict) -> bool:
     if cli_flag:
         return True
     env_val = os.environ.get("AUTOREPRO_STRICT")
-    if isinstance(env_val, str) and env_val.strip().lower() in {"1", "true", "yes", "on"}:
+    if isinstance(env_val, str) and env_val.strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }:
         return True
     if isinstance(settings.get("strict"), bool):
         return bool(settings["strict"])

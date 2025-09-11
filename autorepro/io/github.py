@@ -40,7 +40,9 @@ class GitHubPRConfig:
         """Validate GitHub PR configuration and raise descriptive errors."""
         # Field validation
         if not self.title.strip():
-            raise FieldValidationError("title cannot be empty or whitespace-only", field="title")
+            raise FieldValidationError(
+                "title cannot be empty or whitespace-only", field="title"
+            )
 
         if not self.base_branch.strip():
             raise FieldValidationError(
@@ -59,7 +61,8 @@ class GitHubPRConfig:
         if self.head_branch is not None:
             if not self.head_branch.strip():
                 raise FieldValidationError(
-                    "head_branch cannot be empty or whitespace-only", field="head_branch"
+                    "head_branch cannot be empty or whitespace-only",
+                    field="head_branch",
                 )
 
             for char in invalid_chars:
@@ -85,7 +88,9 @@ class IssueConfig:
         """Validate GitHub issue configuration and raise descriptive errors."""
         # Field validation
         if not self.title.strip():
-            raise FieldValidationError("title cannot be empty or whitespace-only", field="title")
+            raise FieldValidationError(
+                "title cannot be empty or whitespace-only", field="title"
+            )
 
 
 def detect_repo_slug() -> str:
@@ -113,11 +118,15 @@ def detect_repo_slug() -> str:
         if ssh_match:
             return f"{ssh_match.group(1)}/{ssh_match.group(2)}"
 
-        https_match = re.search(r"https://github\.com/([^/]+)/([^/]+)(?:\.git)?/?$", remote_url)
+        https_match = re.search(
+            r"https://github\.com/([^/]+)/([^/]+)(?:\.git)?/?$", remote_url
+        )
         if https_match:
             return f"{https_match.group(1)}/{https_match.group(2)}"
 
-        raise RuntimeError(f"Unable to parse GitHub repository from remote URL: {remote_url}")
+        raise RuntimeError(
+            f"Unable to parse GitHub repository from remote URL: {remote_url}"
+        )
 
     except subprocess.CalledProcessError as e:
         raise RuntimeError(f"Failed to get git remote origin URL: {e}") from e
@@ -242,8 +251,12 @@ def get_pr_details(pr_number: int, gh_path: str = "gh") -> dict[str, Any]:
         raise RuntimeError(f"Failed to get PR details: {e}") from e
     except json.JSONDecodeError as e:
         # Include the raw output for debugging
-        raw_output = result.stdout[:200] + "..." if len(result.stdout) > 200 else result.stdout
-        raise RuntimeError(f"Invalid JSON response from gh: {e}. Raw output: {raw_output!r}") from e
+        raw_output = (
+            result.stdout[:200] + "..." if len(result.stdout) > 200 else result.stdout
+        )
+        raise RuntimeError(
+            f"Invalid JSON response from gh: {e}. Raw output: {raw_output!r}"
+        ) from e
 
 
 def create_pr_comment(
@@ -388,7 +401,8 @@ def add_pr_labels(
 
 
 def _get_current_branch_if_needed(config: GitHubPRConfig) -> tuple[int, bool] | None:
-    """Get current branch if head_branch not specified.
+    """
+    Get current branch if head_branch not specified.
 
     Returns:
         None if successful, or (exit_code, created_new) tuple if error occurred
@@ -410,7 +424,8 @@ def _get_current_branch_if_needed(config: GitHubPRConfig) -> tuple[int, bool] | 
 
 
 def _create_temp_body_file(body: str) -> str:
-    """Create temporary file with PR body content.
+    """
+    Create temporary file with PR body content.
 
     Returns:
         Path to the temporary file
@@ -423,7 +438,8 @@ def _create_temp_body_file(body: str) -> str:
 def _update_existing_pr(
     config: GitHubPRConfig, existing_pr: int, body_file: str
 ) -> tuple[int, bool]:
-    """Update an existing PR.
+    """
+    Update an existing PR.
 
     Returns:
         Tuple of (exit_code, created_new)
@@ -451,7 +467,8 @@ def _update_existing_pr(
 
 
 def _build_create_pr_command(config: GitHubPRConfig, body_file: str) -> list[str]:
-    """Build command for creating new PR.
+    """
+    Build command for creating new PR.
 
     Returns:
         List of command arguments
@@ -479,12 +496,16 @@ def _build_create_pr_command(config: GitHubPRConfig, body_file: str) -> list[str
             cmd.extend(["--label", ",".join(labels_filtered)])
 
     if config.assignees:
-        assignees_filtered = [assignee for assignee in config.assignees if assignee is not None]
+        assignees_filtered = [
+            assignee for assignee in config.assignees if assignee is not None
+        ]
         if assignees_filtered:
             cmd.extend(["--assignee", ",".join(assignees_filtered)])
 
     if config.reviewers:
-        reviewers_filtered = [reviewer for reviewer in config.reviewers if reviewer is not None]
+        reviewers_filtered = [
+            reviewer for reviewer in config.reviewers if reviewer is not None
+        ]
         if reviewers_filtered:
             cmd.extend(["--reviewer", ",".join(reviewers_filtered)])
 
@@ -492,7 +513,8 @@ def _build_create_pr_command(config: GitHubPRConfig, body_file: str) -> list[str
 
 
 def _create_new_pr(config: GitHubPRConfig, body_file: str) -> tuple[int, bool]:
-    """Create a new PR.
+    """
+    Create a new PR.
 
     Returns:
         Tuple of (exit_code, created_new)
@@ -513,7 +535,9 @@ def _create_new_pr(config: GitHubPRConfig, body_file: str) -> tuple[int, bool]:
     return 0, True
 
 
-def create_or_update_pr(config: GitHubPRConfig) -> tuple[int, bool]:  # (exit_code, created_new)
+def create_or_update_pr(
+    config: GitHubPRConfig,
+) -> tuple[int, bool]:  # (exit_code, created_new)
     """
     Create or update a GitHub PR.
 
@@ -742,7 +766,9 @@ def create_issue(config: IssueConfig) -> int:
     except subprocess.CalledProcessError as e:
         raise RuntimeError(f"Failed to create issue: {e}") from e
     except (ValueError, IndexError) as e:
-        raise RuntimeError(f"Could not parse issue number from response: {result.stdout}") from e
+        raise RuntimeError(
+            f"Could not parse issue number from response: {result.stdout}"
+        ) from e
     finally:
         # Clean up temp file
         if body_file:

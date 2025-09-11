@@ -1,7 +1,8 @@
-"""AutoRepro planner module for generating reproduction plans from issue descriptions.
+"""
+AutoRepro planner module for generating reproduction plans from issue descriptions.
 
-This module provides a legacy compatibility layer. The actual implementations
-have been moved to the layered architecture in core/, render/, and utils/.
+This module provides a legacy compatibility layer. The actual implementations have been
+moved to the layered architecture in core/, render/, and utils/.
 """
 
 from typing import TypedDict

@@ -89,6 +89,7 @@ def default_devcontainer() -> dict[str, str | dict[str, dict[str, str]]]:
 def _shorten_value(value_str: str, max_length: int | None = None) -> str:
     """
     Shorten a JSON string representation if it's too long.
+
     Show first/last portions with length indicator for long values.
     """
     if max_length is None:
@@ -105,8 +106,9 @@ def _shorten_value(value_str: str, max_length: int | None = None) -> str:
 
 def json_diff(old: dict[str, Any], new: dict[str, Any]) -> list[str]:
     """
-    Return a list of human-readable change lines comparing `old` vs `new`,
-    using dot-paths (e.g., features.go.version) and action prefixes:
+    Return a list of human-readable change lines comparing `old` vs `new`, using dot-
+    paths (e.g., features.go.version) and action prefixes:
+
       + path: <new>
       - path: <old>
       ~ path: <old> -> <new>
@@ -238,7 +240,9 @@ def _write_devcontainer_content(out_path: Path, content: dict) -> str:
     # Write file atomically
     try:
         # Write to temporary file first, then move (atomic operation)
-        temp_path = out_path.with_suffix(out_path.suffix + config.paths.temp_file_suffix)
+        temp_path = out_path.with_suffix(
+            out_path.suffix + config.paths.temp_file_suffix
+        )
 
         try:
             with open(temp_path, "w", encoding="utf-8") as f:
