@@ -1,4 +1,4 @@
-minimum_pre_commit_version: "3.5.0"
+minimum_pre_commit_version: "3.7.0"
 default_language_version:
   python: python3.11
 
@@ -13,10 +13,17 @@ repos:
       - id: check-toml
       - id: check-merge-conflict
 
-  - repo: https://github.com/PyCQA/docformatter
-    rev: v1.7.5
+  # Use a local docformatter hook to avoid parsing
+  # upstream manifests that may require newer pre-commit features.
+  - repo: local
     hooks:
-      - id: docformatter # Note: not docformatter-venv
+      - id: docformatter
+        name: docformatter
+        entry: docformatter
+        language: python
+        types: [python]
+        additional_dependencies:
+          - docformatter==1.7.5
         args:
           - --in-place
           - --wrap-summaries=88
@@ -24,21 +31,19 @@ repos:
           - --pre-summary-newline
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.6
+    rev: v0.6.9
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
       - id: ruff-format
-
-  - repo: https://github.com/psf/black
-    rev: 24.8.0
-    hooks:
-      - id: black
-        language_version: python3.11
 
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.11.2
     hooks:
       - id: mypy
         args: ["--show-error-codes"]
+        additional_dependencies:
+          - types-requests
+          - types-PyYAML
+          - types-setuptools
         exclude: ^tests/
