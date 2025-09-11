@@ -16,8 +16,12 @@ repos:
   - repo: https://github.com/PyCQA/docformatter
     rev: v1.7.5
     hooks:
-      - id: docformatter # Don't use docformatter-venv
-        args: ["--in-place", "--wrap-summaries=88", "--wrap-descriptions=88", "--pre-summary-newline"]
+      - id: docformatter # Note: not docformatter-venv
+        args:
+          - --in-place
+          - --wrap-summaries=88
+          - --wrap-descriptions=88
+          - --pre-summary-newline
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.6.6
