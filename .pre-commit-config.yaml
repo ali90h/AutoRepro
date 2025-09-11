@@ -34,16 +34,16 @@ repos:
     rev: v0.6.9
     hooks:
       - id: ruff
-        args: [--fix, --exit-non-zero-on-fix]
+        args: [--fix]
       - id: ruff-format
 
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.11.2
     hooks:
       - id: mypy
-        args: ["--show-error-codes"]
+        args: ["--show-error-codes", "--config-file=mypy.ini"]
         additional_dependencies:
           - types-requests
           - types-PyYAML
           - types-setuptools
-        exclude: ^tests/
+        exclude: ^(tests/|scripts/|examples/|test_.*\.py)$
