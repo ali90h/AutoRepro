@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 Behavioral validation script to ensure no regressions after refactoring.
+
 Compares current CLI output with baseline outputs.
 """
 
@@ -29,7 +30,9 @@ def run_command(cmd: list[str]) -> str:
         raise
 
 
-def compare_json_outputs(baseline_file: str, current_output: str, test_name: str) -> bool:
+def compare_json_outputs(
+    baseline_file: str, current_output: str, test_name: str
+) -> bool:
     """Compare JSON outputs, ignoring whitespace differences."""
     baseline_path = Path(__file__).parent / baseline_file
 
@@ -58,7 +61,9 @@ def compare_json_outputs(baseline_file: str, current_output: str, test_name: str
         return False
 
 
-def compare_text_outputs(baseline_file: str, current_output: str, test_name: str) -> bool:
+def compare_text_outputs(
+    baseline_file: str, current_output: str, test_name: str
+) -> bool:
     """Compare text outputs line by line."""
     baseline_path = Path(__file__).parent / baseline_file
 

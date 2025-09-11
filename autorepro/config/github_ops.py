@@ -1,8 +1,8 @@
 """
 GitHub operations configuration for AutoRepro.
 
-This module provides configuration dataclasses for GitHub operations to reduce
-function parameter counts and improve maintainability.
+This module provides configuration dataclasses for GitHub operations to reduce function
+parameter counts and improve maintainability.
 """
 
 from __future__ import annotations
@@ -37,7 +37,9 @@ class PlanGenerationConfig:
     def __post_init__(self) -> None:
         """Validate configuration after initialization."""
         if self.format_type not in ("md", "json"):
-            raise ValueError(f"format_type must be 'md' or 'json', got: {self.format_type}")
+            raise ValueError(
+                f"format_type must be 'md' or 'json', got: {self.format_type}"
+            )
         if self.min_score < 0:
             raise ValueError(f"min_score must be non-negative, got: {self.min_score}")
         if self.max_commands <= 0:

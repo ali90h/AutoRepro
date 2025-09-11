@@ -4,7 +4,8 @@ from typing import Any
 
 
 def has_any_keyword_variant(keywords: set[str], variants: list[str]) -> bool:
-    """Check if any keyword variant exists in the keywords set.
+    """
+    Check if any keyword variant exists in the keywords set.
 
     Args:
         keywords: Set of keywords to check
@@ -42,7 +43,8 @@ def has_ci_keywords(keywords: set[str]) -> bool:
 
 
 def determine_rule_source(ecosystem: str, rule: Any, builtin_rules: dict) -> str:
-    """Determine if a rule is from builtin or plugin source.
+    """
+    Determine if a rule is from builtin or plugin source.
 
     Args:
         ecosystem: The ecosystem name
@@ -56,8 +58,11 @@ def determine_rule_source(ecosystem: str, rule: Any, builtin_rules: dict) -> str
     return "builtin" if is_builtin else "plugin"
 
 
-def should_apply_repo_relative_path(repo_path: Any, out_path: str, print_to_stdout: bool) -> bool:
-    """Determine if output path should be made relative to repository path.
+def should_apply_repo_relative_path(
+    repo_path: Any, out_path: str, print_to_stdout: bool
+) -> bool:
+    """
+    Determine if output path should be made relative to repository path.
 
     Args:
         repo_path: Repository path (may be None)
@@ -76,7 +81,8 @@ def should_apply_repo_relative_path(repo_path: Any, out_path: str, print_to_stdo
 
 
 def needs_pr_update_operation(pr_config: Any) -> bool:
-    """Check if any PR update operation is requested.
+    """
+    Check if any PR update operation is requested.
 
     Args:
         pr_config: PR configuration object with boolean flags
@@ -93,8 +99,11 @@ def needs_pr_update_operation(pr_config: Any) -> bool:
     )
 
 
-def is_safe_to_write_file(print_to_stdout: bool, output_path: str, force_overwrite: bool) -> bool:
-    """Check if it's safe to write to the output file.
+def is_safe_to_write_file(
+    print_to_stdout: bool, output_path: str, force_overwrite: bool
+) -> bool:
+    """
+    Check if it's safe to write to the output file.
 
     Args:
         print_to_stdout: Whether output goes to stdout

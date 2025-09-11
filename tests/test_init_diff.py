@@ -120,7 +120,9 @@ class TestWriteDevcontainerWithDiff:
 
         # Overwrite with new config
         new_config = {"name": "new", "features": {"python": {"version": "3.11"}}}
-        result_path, diff_lines = write_devcontainer(new_config, force=True, out=str(output_file))
+        result_path, diff_lines = write_devcontainer(
+            new_config, force=True, out=str(output_file)
+        )
 
         assert result_path == output_file
         assert diff_lines is not None
@@ -138,7 +140,9 @@ class TestWriteDevcontainerWithDiff:
         output_file.write_text(json.dumps(config, indent=2, sort_keys=True) + "\n")
 
         # Overwrite with same config
-        result_path, diff_lines = write_devcontainer(config, force=True, out=str(output_file))
+        result_path, diff_lines = write_devcontainer(
+            config, force=True, out=str(output_file)
+        )
 
         assert result_path == output_file
         assert diff_lines is not None
@@ -150,7 +154,9 @@ class TestWriteDevcontainerWithDiff:
         output_file.write_text("invalid json content")
 
         config = {"name": "test"}
-        result_path, diff_lines = write_devcontainer(config, force=True, out=str(output_file))
+        result_path, diff_lines = write_devcontainer(
+            config, force=True, out=str(output_file)
+        )
 
         assert result_path == output_file
         assert diff_lines is not None
@@ -185,10 +191,14 @@ class TestInitCommandDiff:
         # Patch default_devcontainer to return different config for comparison
         old_config = {
             "name": "old-name",
-            "features": {"ghcr.io/devcontainers/features/python:1": {"version": "3.10"}},
+            "features": {
+                "ghcr.io/devcontainers/features/python:1": {"version": "3.10"}
+            },
             "postCreateCommand": "old command",
         }
-        devcontainer_file.write_text(json.dumps(old_config, indent=2, sort_keys=True) + "\n")
+        devcontainer_file.write_text(
+            json.dumps(old_config, indent=2, sort_keys=True) + "\n"
+        )
 
         with patch("sys.argv", ["autorepro", "init", "--force"]):
             exit_code = main()
@@ -201,7 +211,7 @@ class TestInitCommandDiff:
         assert "+" in captured.out or "~" in captured.out or "-" in captured.out
 
     def test_init_force_no_changes(self, tmp_path, monkeypatch, capsys):
-        """Test force overwrite with no changes shows 'No changes.'"""
+        """Test force overwrite with no changes shows 'No changes.'."""
         monkeypatch.chdir(tmp_path)
 
         # Create initial devcontainer with same config as default
@@ -211,7 +221,9 @@ class TestInitCommandDiff:
 
         # Write the exact default configuration
         default_config = default_devcontainer()
-        devcontainer_file.write_text(json.dumps(default_config, indent=2, sort_keys=True) + "\n")
+        devcontainer_file.write_text(
+            json.dumps(default_config, indent=2, sort_keys=True) + "\n"
+        )
 
         with patch("sys.argv", ["autorepro", "init", "--force"]):
             exit_code = main()
@@ -232,7 +244,9 @@ class TestInitCommandDiff:
 
         config_with_diff = default_devcontainer()
         config_with_diff["postCreateCommand"] = "echo 'old command'"
-        devcontainer_file.write_text(json.dumps(config_with_diff, indent=2, sort_keys=True) + "\n")
+        devcontainer_file.write_text(
+            json.dumps(config_with_diff, indent=2, sort_keys=True) + "\n"
+        )
 
         with patch("sys.argv", ["autorepro", "init", "--force"]):
             exit_code = main()
@@ -256,11 +270,15 @@ class TestInitCommandDiff:
         # Start with default config and modify it
         old_config = default_devcontainer()
         # Add a rust feature that won't be in the new default
-        old_config["features"]["ghcr.io/devcontainers/features/rust:1"] = {"version": "1.75"}
+        old_config["features"]["ghcr.io/devcontainers/features/rust:1"] = {
+            "version": "1.75"
+        }
         # Remove go feature
         del old_config["features"]["ghcr.io/devcontainers/features/go:1"]
 
-        devcontainer_file.write_text(json.dumps(old_config, indent=2, sort_keys=True) + "\n")
+        devcontainer_file.write_text(
+            json.dumps(old_config, indent=2, sort_keys=True) + "\n"
+        )
 
         with patch("sys.argv", ["autorepro", "init", "--force"]):
             exit_code = main()
@@ -321,7 +339,9 @@ class TestInitDiffIntegration:
         devcontainer_file = devcontainer_dir / "devcontainer.json"
 
         default_config = default_devcontainer()
-        devcontainer_file.write_text(json.dumps(default_config, indent=2, sort_keys=True) + "\n")
+        devcontainer_file.write_text(
+            json.dumps(default_config, indent=2, sort_keys=True) + "\n"
+        )
 
         args_str = ", ".join(f"'{arg}'" for arg in ["init", "--force"])
         cmd = [

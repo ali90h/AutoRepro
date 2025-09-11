@@ -133,7 +133,9 @@ requires = ["setuptools", "wheel"]
 
             # Create Python environment with multiple possible commands
             (repo_path / "test.py").write_text("import unittest")
-            (repo_path / "pyproject.toml").write_text("[build-system]\nrequires = ['setuptools']")
+            (repo_path / "pyproject.toml").write_text(
+                "[build-system]\nrequires = ['setuptools']"
+            )
 
             jsonl_path = repo_path / "exec.jsonl"
 

@@ -1,8 +1,8 @@
 """
 Tests for autorepro.utils.file_ops module.
 
-These tests validate the file operation utilities that replace duplicate
-patterns found across the AutoRepro codebase.
+These tests validate the file operation utilities that replace duplicate patterns found
+across the AutoRepro codebase.
 """
 
 import json

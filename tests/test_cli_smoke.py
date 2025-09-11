@@ -1,8 +1,8 @@
 """
 CLI smoke tests for AutoRepro commands.
 
-These tests verify that basic CLI commands work without errors and produce
-expected output. They use subprocess to test the actual CLI interface.
+These tests verify that basic CLI commands work without errors and produce expected
+output. They use subprocess to test the actual CLI interface.
 """
 
 import subprocess
@@ -24,7 +24,11 @@ class TestCLISmokeBasic:
     def test_help_command_smoke(self, python_cmd):
         """Test that --help command works without errors."""
         result = subprocess.run(
-            python_cmd + ["--help"], capture_output=True, text=True, check=False, timeout=10
+            python_cmd + ["--help"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=10,
         )
 
         assert result.returncode == 0
@@ -35,7 +39,11 @@ class TestCLISmokeBasic:
     def test_version_command_smoke(self, python_cmd):
         """Test that --version command works without errors."""
         result = subprocess.run(
-            python_cmd + ["--version"], capture_output=True, text=True, check=False, timeout=10
+            python_cmd + ["--version"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=10,
         )
 
         assert result.returncode == 0
@@ -47,11 +55,16 @@ class TestCLISmokeBasic:
 
     def test_no_command_shows_help_smoke(self, python_cmd):
         """Test that calling without commands displays help."""
-        result = subprocess.run(python_cmd, capture_output=True, text=True, check=False, timeout=10)
+        result = subprocess.run(
+            python_cmd, capture_output=True, text=True, check=False, timeout=10
+        )
 
         assert result.returncode == 0
         assert "usage:" in result.stdout.lower()
-        assert "available commands" in result.stdout.lower() or "commands:" in result.stdout.lower()
+        assert (
+            "available commands" in result.stdout.lower()
+            or "commands:" in result.stdout.lower()
+        )
 
 
 @pytest.mark.smoke
@@ -66,12 +79,18 @@ class TestCLISmokeSubcommands:
     def test_scan_help_smoke(self, python_cmd):
         """Test scan --help command works."""
         result = subprocess.run(
-            python_cmd + ["scan", "--help"], capture_output=True, text=True, check=False, timeout=10
+            python_cmd + ["scan", "--help"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=10,
         )
 
         assert result.returncode == 0
         assert "scan" in result.stdout.lower()
-        assert "language" in result.stdout.lower() or "framework" in result.stdout.lower()
+        assert (
+            "language" in result.stdout.lower() or "framework" in result.stdout.lower()
+        )
 
     def test_scan_json_flag_smoke(self, python_cmd, tmp_path):
         """Test scan command with --json flag."""
@@ -108,7 +127,11 @@ class TestCLISmokeSubcommands:
     def test_plan_help_smoke(self, python_cmd):
         """Test plan --help command works."""
         result = subprocess.run(
-            python_cmd + ["plan", "--help"], capture_output=True, text=True, check=False, timeout=10
+            python_cmd + ["plan", "--help"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=10,
         )
 
         assert result.returncode == 0
@@ -128,12 +151,19 @@ class TestCLISmokeSubcommands:
         assert result.returncode == 0
         assert len(result.stdout) > 0  # Should produce output
         # Dry run should not create files
-        assert "assumptions" in result.stdout.lower() or "commands" in result.stdout.lower()
+        assert (
+            "assumptions" in result.stdout.lower()
+            or "commands" in result.stdout.lower()
+        )
 
     def test_init_help_smoke(self, python_cmd):
         """Test init --help command works."""
         result = subprocess.run(
-            python_cmd + ["init", "--help"], capture_output=True, text=True, check=False, timeout=10
+            python_cmd + ["init", "--help"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=10,
         )
 
         assert result.returncode == 0
@@ -165,7 +195,11 @@ class TestCLISmokeSubcommands:
     def test_exec_help_smoke(self, python_cmd):
         """Test exec --help command works."""
         result = subprocess.run(
-            python_cmd + ["exec", "--help"], capture_output=True, text=True, check=False, timeout=10
+            python_cmd + ["exec", "--help"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=10,
         )
 
         assert result.returncode == 0
@@ -175,12 +209,18 @@ class TestCLISmokeSubcommands:
     def test_pr_help_smoke(self, python_cmd):
         """Test pr --help command works."""
         result = subprocess.run(
-            python_cmd + ["pr", "--help"], capture_output=True, text=True, check=False, timeout=10
+            python_cmd + ["pr", "--help"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=10,
         )
 
         assert result.returncode == 0
         assert "pr" in result.stdout.lower()
-        assert "draft pr" in result.stdout.lower() or "repo-slug" in result.stdout.lower()
+        assert (
+            "draft pr" in result.stdout.lower() or "repo-slug" in result.stdout.lower()
+        )
 
 
 @pytest.mark.smoke
@@ -195,7 +235,8 @@ class TestCLISmokeComplexCommands:
     def test_plan_json_format_smoke(self, python_cmd):
         """Test plan command with --format json."""
         result = subprocess.run(
-            python_cmd + ["plan", "--desc", "test issue", "--format", "json", "--dry-run"],
+            python_cmd
+            + ["plan", "--desc", "test issue", "--format", "json", "--dry-run"],
             capture_output=True,
             text=True,
             check=False,
@@ -289,24 +330,40 @@ class TestCLISmokeErrorHandling:
     def test_plan_missing_required_args_smoke(self, python_cmd):
         """Test plan command with missing required arguments."""
         result = subprocess.run(
-            python_cmd + ["plan"], capture_output=True, text=True, check=False, timeout=10
+            python_cmd + ["plan"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=10,
         )
 
         # Should fail with error about required arguments
         assert result.returncode == 2  # argparse error code
         error_output = result.stderr.lower()
-        assert "required" in error_output or "desc" in error_output or "file" in error_output
+        assert (
+            "required" in error_output
+            or "desc" in error_output
+            or "file" in error_output
+        )
 
     def test_exec_missing_required_args_smoke(self, python_cmd):
         """Test exec command with missing required arguments."""
         result = subprocess.run(
-            python_cmd + ["exec"], capture_output=True, text=True, check=False, timeout=10
+            python_cmd + ["exec"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=10,
         )
 
         # Should fail with error about required arguments
         assert result.returncode == 2  # argparse error code
         error_output = result.stderr.lower()
-        assert "required" in error_output or "desc" in error_output or "file" in error_output
+        assert (
+            "required" in error_output
+            or "desc" in error_output
+            or "file" in error_output
+        )
 
     def test_pr_missing_required_args_smoke(self, python_cmd):
         """Test pr command with missing required arguments."""
@@ -344,11 +401,15 @@ class TestCLISmokePerformance:
         for cmd in commands:
             cmd_args = cmd.split()
             result = subprocess.run(
-                python_cmd + cmd_args, capture_output=True, text=True, check=False, timeout=10
+                python_cmd + cmd_args,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=10,
             )
-            assert result.returncode == 0, (
-                f"Command '{cmd}' failed with exit code {result.returncode}"
-            )
+            assert (
+                result.returncode == 0
+            ), f"Command '{cmd}' failed with exit code {result.returncode}"
 
     @pytest.mark.timeout(30)
     def test_dry_run_commands_fast(self, python_cmd):
@@ -361,8 +422,12 @@ class TestCLISmokePerformance:
 
         for cmd_args in commands:
             result = subprocess.run(
-                python_cmd + cmd_args, capture_output=True, text=True, check=False, timeout=15
+                python_cmd + cmd_args,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=15,
             )
-            assert result.returncode == 0, (
-                f"Command {cmd_args} failed with exit code {result.returncode}"
-            )
+            assert (
+                result.returncode == 0
+            ), f"Command {cmd_args} failed with exit code {result.returncode}"

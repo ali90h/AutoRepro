@@ -30,7 +30,9 @@ class TestPREnrichmentCommand:
 
             # Initialize working repo
             subprocess.run(["git", "init"], cwd=work_repo, check=True)
-            subprocess.run(["git", "config", "user.name", "Test User"], cwd=work_repo, check=True)
+            subprocess.run(
+                ["git", "config", "user.name", "Test User"], cwd=work_repo, check=True
+            )
             subprocess.run(
                 ["git", "config", "user.email", "test@example.com"],
                 cwd=work_repo,
@@ -57,7 +59,9 @@ class TestPREnrichmentCommand:
             # Create initial commit and branch
             (work_repo / "README.md").write_text("# Test Repo")
             subprocess.run(["git", "add", "README.md"], cwd=work_repo, check=True)
-            subprocess.run(["git", "commit", "-m", "Initial commit"], cwd=work_repo, check=True)
+            subprocess.run(
+                ["git", "commit", "-m", "Initial commit"], cwd=work_repo, check=True
+            )
 
             # Rename to main if needed
             current_branch = subprocess.run(
@@ -69,15 +73,23 @@ class TestPREnrichmentCommand:
             ).stdout.strip()
 
             if current_branch != "main":
-                subprocess.run(["git", "branch", "-m", "main"], cwd=work_repo, check=True)
+                subprocess.run(
+                    ["git", "branch", "-m", "main"], cwd=work_repo, check=True
+                )
 
-            subprocess.run(["git", "push", "-u", "origin", "main"], cwd=work_repo, check=True)
+            subprocess.run(
+                ["git", "push", "-u", "origin", "main"], cwd=work_repo, check=True
+            )
 
             # Create feature branch
-            subprocess.run(["git", "checkout", "-b", "feature/test-pr"], cwd=work_repo, check=True)
+            subprocess.run(
+                ["git", "checkout", "-b", "feature/test-pr"], cwd=work_repo, check=True
+            )
             (work_repo / "test.py").write_text("# Test file")
             subprocess.run(["git", "add", "test.py"], cwd=work_repo, check=True)
-            subprocess.run(["git", "commit", "-m", "Add test file"], cwd=work_repo, check=True)
+            subprocess.run(
+                ["git", "commit", "-m", "Add test file"], cwd=work_repo, check=True
+            )
             subprocess.run(
                 ["git", "push", "-u", "origin", "feature/test-pr"],
                 cwd=work_repo,
@@ -176,7 +188,9 @@ if [[ "$ARGS" == *"pr view"* ]]; then
         )
 
         # Verify success
-        assert result.returncode == 0, f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        assert (
+            result.returncode == 0
+        ), f"stdout: {result.stdout}\nstderr: {result.stderr}"
         # Should create PR comment with sync block
         assert "Created autorepro comment" in result.stderr
 
@@ -218,7 +232,9 @@ if [[ "$ARGS" == *"pr view"* ]]; then
         )
 
         # Verify success and that existing comment was updated
-        assert result.returncode == 0, f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        assert (
+            result.returncode == 0
+        ), f"stdout: {result.stdout}\nstderr: {result.stderr}"
         assert (
             "Updated autorepro comment" in result.stderr
             or "Created autorepro comment" in result.stderr
@@ -262,9 +278,14 @@ if [[ "$ARGS" == *"pr view"* ]]; then
         )
 
         # Verify success
-        assert result.returncode == 0, f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        assert (
+            result.returncode == 0
+        ), f"stdout: {result.stdout}\nstderr: {result.stderr}"
         # Should update PR body with sync block
-        assert "Updated sync block" in result.stderr or "Adding new sync block" in result.stderr
+        assert (
+            "Updated sync block" in result.stderr
+            or "Adding new sync block" in result.stderr
+        )
 
     def test_pr_body_update_existing_sync_block(self, fake_env_setup):
         """Test --update-pr-body flag replaces existing sync block in PR description."""
@@ -304,7 +325,9 @@ if [[ "$ARGS" == *"pr view"* ]]; then
         )
 
         # Verify success and existing sync block was replaced
-        assert result.returncode == 0, f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        assert (
+            result.returncode == 0
+        ), f"stdout: {result.stdout}\nstderr: {result.stderr}"
         assert (
             "Updated sync block" in result.stderr
             or "Replacing existing sync block" in result.stderr
@@ -349,9 +372,13 @@ if [[ "$ARGS" == *"pr view"* ]]; then
         )
 
         # Verify success
-        assert result.returncode == 0, f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        assert (
+            result.returncode == 0
+        ), f"stdout: {result.stdout}\nstderr: {result.stderr}"
         # Should add labels to PR
-        assert "Added labels" in result.stderr or "Updated PR with labels" in result.stderr
+        assert (
+            "Added labels" in result.stderr or "Updated PR with labels" in result.stderr
+        )
 
     def test_pr_link_issue_cross_reference(self, fake_env_setup):
         """Test --link-issue flag creates cross-reference links."""
@@ -392,9 +419,14 @@ if [[ "$ARGS" == *"pr view"* ]]; then
         )
 
         # Verify success
-        assert result.returncode == 0, f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        assert (
+            result.returncode == 0
+        ), f"stdout: {result.stdout}\nstderr: {result.stderr}"
         # Should create cross-reference link
-        assert "Cross-linked to issue" in result.stderr or "Created issue comment" in result.stderr
+        assert (
+            "Cross-linked to issue" in result.stderr
+            or "Created issue comment" in result.stderr
+        )
 
     def test_pr_attach_report_metadata(self, fake_env_setup):
         """Test --attach-report flag includes report metadata in comment."""
@@ -435,7 +467,9 @@ if [[ "$ARGS" == *"pr view"* ]]; then
         )
 
         # Verify success
-        assert result.returncode == 0, f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        assert (
+            result.returncode == 0
+        ), f"stdout: {result.stdout}\nstderr: {result.stderr}"
         # Comment should include report metadata
         assert (
             "Created autorepro comment" in result.stderr
@@ -482,7 +516,9 @@ if [[ "$ARGS" == *"pr view"* ]]; then
         )
 
         # Verify success
-        assert result.returncode == 0, f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        assert (
+            result.returncode == 0
+        ), f"stdout: {result.stdout}\nstderr: {result.stderr}"
         # Comment should include summary context
         assert (
             "Created autorepro comment" in result.stderr
@@ -528,7 +564,9 @@ if [[ "$ARGS" == *"pr view"* ]]; then
         )
 
         # Verify success
-        assert result.returncode == 0, f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        assert (
+            result.returncode == 0
+        ), f"stdout: {result.stdout}\nstderr: {result.stderr}"
         # Comment should be created without details wrapper
         assert (
             "Created autorepro comment" in result.stderr
@@ -582,7 +620,9 @@ if [[ "$ARGS" == *"pr view"* ]]; then
         )
 
         # Verify success with all features
-        assert result.returncode == 0, f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        assert (
+            result.returncode == 0
+        ), f"stdout: {result.stdout}\nstderr: {result.stderr}"
         # Should create/update PR comment, update body, add labels, create cross-links
         stderr_text = result.stderr
         assert any(
@@ -637,12 +677,17 @@ if [[ "$ARGS" == *"pr view"* ]]; then
         )
 
         # Verify dry-run success
-        assert result.returncode == 0, f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        assert (
+            result.returncode == 0
+        ), f"stdout: {result.stdout}\nstderr: {result.stderr}"
         # Should show what would be done without actually doing it
         stdout_text = result.stdout
         assert "Would run: gh pr create" in stdout_text
         # Dry-run should not actually call gh commands for enrichment
-        assert "Would update PR comment" in stdout_text or "Would add sync block" in stdout_text
+        assert (
+            "Would update PR comment" in stdout_text
+            or "Would add sync block" in stdout_text
+        )
 
     def test_pr_enrichment_format_json(self, fake_env_setup):
         """Test enrichment with JSON format output."""
@@ -684,7 +729,9 @@ if [[ "$ARGS" == *"pr view"* ]]; then
         )
 
         # Verify success with JSON format
-        assert result.returncode == 0, f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        assert (
+            result.returncode == 0
+        ), f"stdout: {result.stdout}\nstderr: {result.stderr}"
         # Comment should be created with JSON format
         assert (
             "Created autorepro comment" in result.stderr
@@ -800,5 +847,7 @@ fi
         )
 
         # This combination should work (both comment and body updates)
-        assert result.returncode == 0, f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        assert (
+            result.returncode == 0
+        ), f"stdout: {result.stdout}\nstderr: {result.stderr}"
         assert "Would run: gh pr create" in result.stdout

@@ -133,7 +133,9 @@ class TestSyncCommentRendering:
         plan_content = "# Test Plan\n\nContent"
         report_meta = ReportMeta("test_bundle.zip", 1024, "/tmp/test_bundle.zip")
 
-        result = render_sync_comment(plan_content, "md", "pr", attach_report=report_meta)
+        result = render_sync_comment(
+            plan_content, "md", "pr", attach_report=report_meta
+        )
 
         assert "**Report Bundle**:" in result
         assert "- File: `test_bundle.zip`" in result
@@ -266,7 +268,9 @@ class TestReportMeta:
 
     def test_report_meta_fields(self):
         """Test ReportMeta field access."""
-        meta = ReportMeta(filename="bundle.zip", size_bytes=1024, path="/tmp/bundle.zip")
+        meta = ReportMeta(
+            filename="bundle.zip", size_bytes=1024, path="/tmp/bundle.zip"
+        )
 
         assert hasattr(meta, "filename")
         assert hasattr(meta, "size_bytes")

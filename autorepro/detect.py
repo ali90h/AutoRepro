@@ -171,7 +171,9 @@ SOURCE_PATTERNS = {
 }
 
 
-def _ensure_evidence_entry(evidence: dict[str, dict[str, object]], language: str) -> None:
+def _ensure_evidence_entry(
+    evidence: dict[str, dict[str, object]], language: str
+) -> None:
     """Ensure evidence entry exists for the given language."""
     if language not in evidence:
         evidence[language] = {"score": 0, "reasons": []}
@@ -207,7 +209,9 @@ def _check_pattern_already_added(
     )
 
 
-def _process_weighted_patterns(evidence: dict[str, dict[str, object]], root_path: Path) -> None:
+def _process_weighted_patterns(
+    evidence: dict[str, dict[str, object]], root_path: Path
+) -> None:
     """Process exact filename matches from WEIGHTED_PATTERNS."""
     for filename, info in WEIGHTED_PATTERNS.items():
         file_path = root_path / filename
@@ -220,12 +224,16 @@ def _process_weighted_patterns(evidence: dict[str, dict[str, object]], root_path
                     pattern=filename,
                     path=f"./{filename}",
                     kind=str(info["kind"]),
-                    weight=int(info["weight"]) if isinstance(info["weight"], int | str) else 0,
+                    weight=int(info["weight"])
+                    if isinstance(info["weight"], int | str)
+                    else 0,
                 ),
             )
 
 
-def _process_source_patterns(evidence: dict[str, dict[str, object]], root_path: Path) -> None:
+def _process_source_patterns(
+    evidence: dict[str, dict[str, object]], root_path: Path
+) -> None:
     """Process SOURCE_PATTERNS for both glob patterns and exact filenames."""
     for pattern, info in SOURCE_PATTERNS.items():
         lang = str(info["language"])
@@ -256,7 +264,9 @@ def _process_glob_pattern(
                         pattern=pattern,
                         path=f"./{basename}",
                         kind=str(info["kind"]),
-                        weight=int(info["weight"]) if isinstance(info["weight"], int | str) else 0,
+                        weight=int(info["weight"])
+                        if isinstance(info["weight"], int | str)
+                        else 0,
                     ),
                 )
 
@@ -278,7 +288,9 @@ def _process_exact_filename(
                 pattern=pattern,
                 path=f"./{pattern}",
                 kind=str(info["kind"]),
-                weight=int(info["weight"]) if isinstance(info["weight"], int | str) else 0,
+                weight=int(info["weight"])
+                if isinstance(info["weight"], int | str)
+                else 0,
             ),
         )
 

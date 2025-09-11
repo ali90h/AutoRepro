@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""
-Shared reproduction bundle generation utilities.
-"""
+"""Shared reproduction bundle generation utilities."""
 
 from __future__ import annotations
 
@@ -121,7 +119,9 @@ def _cleanup_temp_files(log_path: Path | None, jsonl_path: Path | None) -> None:
             pass  # Ignore cleanup errors
 
 
-def build_repro_bundle(desc: str, timeout: int = 30, exec_: bool = False) -> tuple[Path, int]:
+def build_repro_bundle(
+    desc: str, timeout: int = 30, exec_: bool = False
+) -> tuple[Path, int]:
     """
     Build a reproduction bundle with plan content and optional execution results.
 
@@ -153,7 +153,9 @@ def build_repro_bundle(desc: str, timeout: int = 30, exec_: bool = False) -> tup
         # Execute command if requested
         log_path, jsonl_path = None, None
         if exec_:
-            log_path, jsonl_path = _execute_and_add_results(files, desc, repo_path, timeout)
+            log_path, jsonl_path = _execute_and_add_results(
+                files, desc, repo_path, timeout
+            )
 
         # Create bundle in temp directory
         temp_dir = Path(tempfile.mkdtemp())

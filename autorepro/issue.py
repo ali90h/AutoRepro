@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-AutoRepro Issue module for creating and updating GitHub issue comments with tagged plan content.
+AutoRepro Issue module for creating and updating GitHub issue comments with tagged plan
+content.
 
 This module handles GitHub issue synchronization with autorepro plans, including:
 - Comment rendering with tagged sync blocks
@@ -267,7 +268,9 @@ def upsert_issue_comment(  # noqa: PLR0913 # Backward compatibility requires ext
             config=config,
         )
     else:
-        raise ValueError("Either issue_number_or_request or issue_number must be provided")
+        raise ValueError(
+            "Either issue_number_or_request or issue_number must be provided"
+        )
 
     log = logging.getLogger("autorepro")
 
@@ -289,7 +292,10 @@ def upsert_issue_comment(  # noqa: PLR0913 # Backward compatibility requires ext
             # Create new comment
             log.info(f"Creating new autorepro comment on issue #{request.target_id}")
             exit_code = create_issue_comment(
-                request.target_id, request.body, request.config.gh_path, request.config.dry_run
+                request.target_id,
+                request.body,
+                request.config.gh_path,
+                request.config.dry_run,
             )
             return exit_code, False
 

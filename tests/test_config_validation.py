@@ -2,8 +2,8 @@
 """
 Test module for configuration validation methods.
 
-Tests custom exceptions, validation methods for all config classes,
-and proper error reporting.
+Tests custom exceptions, validation methods for all config classes, and proper error
+reporting.
 """
 
 from pathlib import Path
@@ -118,7 +118,10 @@ class TestPrConfigValidation:
     def test_invalid_repo_slug_format(self):
         """Test that repo_slug must follow owner/repo format."""
         config = PrConfig(
-            desc="test description", title="Test PR", body="Test body", repo_slug="invalid-slug"
+            desc="test description",
+            title="Test PR",
+            body="Test body",
+            repo_slug="invalid-slug",
         )
 
         with pytest.raises(FieldValidationError) as exc_info:
@@ -333,7 +336,10 @@ class TestGitHubPRConfigValidation:
     def test_valid_config_passes(self):
         """Test that valid configuration passes validation."""
         config = GitHubPRConfig(
-            title="Test PR", body="Test body", base_branch="main", head_branch="feature-branch"
+            title="Test PR",
+            body="Test body",
+            base_branch="main",
+            head_branch="feature-branch",
         )
         # Should not raise any exception
         config.validate()
@@ -379,7 +385,9 @@ class TestGitHubPRConfigValidation:
         ]
 
         for invalid_branch in invalid_branches:
-            config = GitHubPRConfig(title="Test PR", body="Test body", base_branch=invalid_branch)
+            config = GitHubPRConfig(
+                title="Test PR", body="Test body", base_branch=invalid_branch
+            )
 
             with pytest.raises(FieldValidationError) as exc_info:
                 config.validate()
@@ -397,7 +405,9 @@ class TestGitHubPRConfigValidation:
 
     def test_invalid_head_branch_characters(self):
         """Test that head_branch cannot contain invalid characters."""
-        config = GitHubPRConfig(title="Test PR", body="Test body", head_branch="branch name")
+        config = GitHubPRConfig(
+            title="Test PR", body="Test body", head_branch="branch name"
+        )
 
         with pytest.raises(FieldValidationError) as exc_info:
             config.validate()

@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""
-Common plan processing utilities for generating reproduction plans.
-"""
+"""Common plan processing utilities for generating reproduction plans."""
 
 from __future__ import annotations
 
@@ -49,7 +47,9 @@ def _read_plan_input_content(desc_or_file: str | None, repo_path: Path) -> str:
         return desc_or_file or ""
 
 
-def _process_plan_keywords_and_languages(text: str, repo_path: Path) -> tuple[set[str], list[str]]:
+def _process_plan_keywords_and_languages(
+    text: str, repo_path: Path
+) -> tuple[set[str], list[str]]:
     """Process text to extract keywords and detect languages."""
     original_cwd = Path.cwd()
     try:
@@ -137,7 +137,9 @@ def _build_plan_title(normalized_text: str) -> str:
     return "Issue Reproduction Plan"
 
 
-def process_plan_input(desc_or_file: str | None, repo_path: Path, min_score: int = 0) -> PlanData:
+def process_plan_input(
+    desc_or_file: str | None, repo_path: Path, min_score: int = 0
+) -> PlanData:
     """
     Process plan input and generate common plan components.
 

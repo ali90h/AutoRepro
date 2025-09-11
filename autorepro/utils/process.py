@@ -1,8 +1,8 @@
 """
 Process execution utilities to eliminate duplicate subprocess patterns.
 
-This module provides consistent subprocess execution with error handling,
-replacing duplicate patterns found across the AutoRepro codebase.
+This module provides consistent subprocess execution with error handling, replacing
+duplicate patterns found across the AutoRepro codebase.
 """
 
 import subprocess
@@ -54,7 +54,8 @@ class ProcessRunner:
         timeout: int | None = None,
         check: bool = False,
     ) -> ProcessResult:
-        """Run command with output capture and consistent error handling.
+        """
+        Run command with output capture and consistent error handling.
 
         Args:
             cmd: Command to run (string or list of strings)
@@ -103,7 +104,11 @@ class ProcessRunner:
         except subprocess.TimeoutExpired as e:
             stdout_str = ""
             if e.stdout:
-                stdout_str = e.stdout.decode("utf-8") if isinstance(e.stdout, bytes) else e.stdout
+                stdout_str = (
+                    e.stdout.decode("utf-8")
+                    if isinstance(e.stdout, bytes)
+                    else e.stdout
+                )
             return ProcessResult(
                 exit_code=124,  # Standard timeout exit code
                 stdout=stdout_str,
@@ -119,14 +124,18 @@ class ProcessRunner:
             )
         except OSError as e:
             return ProcessResult(
-                exit_code=1, stdout="", stderr=f"Failed to execute command: {e}", cmd=cmd_list
+                exit_code=1,
+                stdout="",
+                stderr=f"Failed to execute command: {e}",
+                cmd=cmd_list,
             )
 
     @staticmethod
     def run_git_command(
         git_args: list[str], cwd: str | Path | None = None, check: bool = True
     ) -> ProcessResult:
-        """Run git command with consistent error handling.
+        """
+        Run git command with consistent error handling.
 
         Args:
             git_args: Git command arguments (without 'git' prefix)
@@ -144,9 +153,13 @@ class ProcessRunner:
 
     @staticmethod
     def run_gh_command(
-        gh_args: list[str], cwd: str | Path | None = None, check: bool = True, gh_path: str = "gh"
+        gh_args: list[str],
+        cwd: str | Path | None = None,
+        check: bool = True,
+        gh_path: str = "gh",
     ) -> ProcessResult:
-        """Run GitHub CLI command with consistent error handling.
+        """
+        Run GitHub CLI command with consistent error handling.
 
         Args:
             gh_args: GitHub CLI command arguments (without 'gh' prefix)
@@ -171,7 +184,8 @@ class ProcessRunner:
         env: dict[str, str] | None = None,
         timeout: int | None = None,
     ) -> ProcessResult:
-        """Run Python command with consistent error handling.
+        """
+        Run Python command with consistent error handling.
 
         Args:
             python_args: Python command arguments (without python prefix)
@@ -188,7 +202,8 @@ class ProcessRunner:
 
 
 def safe_subprocess_run(config: SubprocessConfig) -> subprocess.CompletedProcess:
-    """Safe subprocess.run wrapper that handles common error cases.
+    """
+    Safe subprocess.run wrapper that handles common error cases.
 
     This is a drop-in replacement for subprocess.run with better error handling.
     Use ProcessRunner.run_with_capture for more structured results.

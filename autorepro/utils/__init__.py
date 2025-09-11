@@ -1,3 +1,1 @@
-"""
-AutoRepro utilities package.
-"""
+"""AutoRepro utilities package."""

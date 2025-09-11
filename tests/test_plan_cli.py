@@ -34,14 +34,22 @@ def create_project_markers(tmp_path, project_type="python"):
         project_type: "python", "node", "go", or "mixed"
     """
     if project_type == "python":
-        (tmp_path / "pyproject.toml").write_text('[build-system]\nrequires = ["setuptools"]')
+        (tmp_path / "pyproject.toml").write_text(
+            '[build-system]\nrequires = ["setuptools"]'
+        )
     elif project_type == "node":
-        (tmp_path / "package.json").write_text('{"name": "test-project", "version": "1.0.0"}')
+        (tmp_path / "package.json").write_text(
+            '{"name": "test-project", "version": "1.0.0"}'
+        )
     elif project_type == "go":
         (tmp_path / "go.mod").write_text("module test\n\ngo 1.19")
     elif project_type == "mixed":
-        (tmp_path / "pyproject.toml").write_text('[build-system]\nrequires = ["setuptools"]')
-        (tmp_path / "package.json").write_text('{"name": "test-project", "version": "1.0.0"}')
+        (tmp_path / "pyproject.toml").write_text(
+            '[build-system]\nrequires = ["setuptools"]'
+        )
+        (tmp_path / "package.json").write_text(
+            '{"name": "test-project", "version": "1.0.0"}'
+        )
 
 
 def create_devcontainer(tmp_path, location="dir"):
@@ -94,7 +102,9 @@ class TestPlanCLIArgumentValidation:
             temp_file = f.name
 
         try:
-            with patch("sys.argv", ["autorepro", "plan", "--desc", "test", "--file", temp_file]):
+            with patch(
+                "sys.argv", ["autorepro", "plan", "--desc", "test", "--file", temp_file]
+            ):
                 exit_code = main()
 
             assert exit_code == 2
@@ -125,12 +135,13 @@ class TestPlanCLIArgumentValidation:
 
         # Check that error message mentions one of --desc/--file is required
         error_output = result.stderr
-        assert "one of the arguments --desc --file is required" in error_output, (
-            f"Expected missing argument error, got: {error_output}"
-        )
+        assert (
+            "one of the arguments --desc --file is required" in error_output
+        ), f"Expected missing argument error, got: {error_output}"
 
     def test_plan_writes_md_default_path(self, tmp_path):
-        """Test that plan writes to repro.md by default and contains expected content."""
+        """Test that plan writes to repro.md by default and contains expected
+        content."""
         # Touch pyproject.toml to bias detection toward Python
         (tmp_path / "pyproject.toml").touch()
 
@@ -138,9 +149,9 @@ class TestPlanCLIArgumentValidation:
         result = run_cli(tmp_path, "--desc", "pytest failing")
 
         # Should succeed
-        assert result.returncode == 0, (
-            f"Expected success, got {result.returncode}. STDERR: {result.stderr}"
-        )
+        assert (
+            result.returncode == 0
+        ), f"Expected success, got {result.returncode}. STDERR: {result.stderr}"
 
         # Assert repro.md exists
         repro_file = tmp_path / "repro.md"
@@ -148,7 +159,9 @@ class TestPlanCLIArgumentValidation:
 
         # Assert content contains pytest -q in Candidate Commands
         content = repro_file.read_text()
-        assert "## Candidate Commands" in content, "Should have Candidate Commands section"
+        assert (
+            "## Candidate Commands" in content
+        ), "Should have Candidate Commands section"
         assert "pytest -q" in content, "Should contain pytest -q command"
 
     def test_plan_respects_out_and_force(self, tmp_path):
@@ -164,9 +177,9 @@ class TestPlanCLIArgumentValidation:
         result = run_cli(tmp_path, "--desc", "pytest failing", "--out", str(out_path))
 
         # Should succeed and write to docs/ directory
-        assert result.returncode == 0, (
-            f"Expected success, got {result.returncode}. STDERR: {result.stderr}"
-        )
+        assert (
+            result.returncode == 0
+        ), f"Expected success, got {result.returncode}. STDERR: {result.stderr}"
         assert docs_dir.exists(), "docs/ directory should exist"
         assert out_path.exists(), "repro.md should be created in docs/"
 
@@ -181,9 +194,9 @@ class TestPlanCLIArgumentValidation:
 
         # Should succeed but not overwrite
         assert result2.returncode == 0, f"Expected success, got {result2.returncode}"
-        assert "exists; use --force to overwrite" in result2.stdout, (
-            "Should warn about existing file"
-        )
+        assert (
+            "exists; use --force to overwrite" in result2.stdout
+        ), "Should warn about existing file"
 
         # mtime should be unchanged
         mtime_unchanged = os.path.getmtime(out_path)
@@ -193,21 +206,24 @@ class TestPlanCLIArgumentValidation:
         time.sleep(0.1)
 
         # Run again with --force
-        result3 = run_cli(tmp_path, "--desc", "pytest failing", "--out", str(out_path), "--force")
+        result3 = run_cli(
+            tmp_path, "--desc", "pytest failing", "--out", str(out_path), "--force"
+        )
 
         # Should succeed and overwrite
-        assert result3.returncode == 0, (
-            f"Expected success, got {result3.returncode}. STDERR: {result3.stderr}"
-        )
+        assert (
+            result3.returncode == 0
+        ), f"Expected success, got {result3.returncode}. STDERR: {result3.stderr}"
 
         # mtime2 should be greater than mtime1
         mtime2 = os.path.getmtime(out_path)
-        assert mtime2 > mtime1, (
-            f"File should be modified with --force. mtime1={mtime1}, mtime2={mtime2}"
-        )
+        assert (
+            mtime2 > mtime1
+        ), f"File should be modified with --force. mtime1={mtime1}, mtime2={mtime2}"
 
     def test_plan_infers_env_presence(self, tmp_path):
-        """Test that plan includes Needed Files/Env section and environment detection."""
+        """Test that plan includes Needed Files/Env section and environment
+        detection."""
         # Create .devcontainer/devcontainer.json
         devcontainer_dir = tmp_path / ".devcontainer"
         devcontainer_dir.mkdir()
@@ -217,9 +233,9 @@ class TestPlanCLIArgumentValidation:
         result = run_cli(tmp_path, "--desc", "anything")
 
         # Should succeed
-        assert result.returncode == 0, (
-            f"Expected success, got {result.returncode}. STDERR: {result.stderr}"
-        )
+        assert (
+            result.returncode == 0
+        ), f"Expected success, got {result.returncode}. STDERR: {result.stderr}"
 
         # Assert repro.md contains Needed Files/Env section
         repro_file = tmp_path / "repro.md"
@@ -238,7 +254,9 @@ class TestPlanCLIArgumentValidation:
             elif env_section_found and line.strip().startswith("- "):
                 has_env_content = True
                 break
-        assert has_env_content, "Should have environment content in Needed Files/Env section"
+        assert (
+            has_env_content
+        ), "Should have environment content in Needed Files/Env section"
 
     def test_plan_node_keywords(self, tmp_path):
         """Test that plan detects Node keywords and suggests appropriate commands."""
@@ -250,23 +268,25 @@ class TestPlanCLIArgumentValidation:
         result = run_cli(tmp_path, "--desc", "tests failing on jest")
 
         # Should succeed
-        assert result.returncode == 0, (
-            f"Expected success, got {result.returncode}. STDERR: {result.stderr}"
-        )
+        assert (
+            result.returncode == 0
+        ), f"Expected success, got {result.returncode}. STDERR: {result.stderr}"
 
         # Assert output contains either npm test -s or npx jest -w=1
         repro_file = tmp_path / "repro.md"
         assert repro_file.exists(), "repro.md should be created"
 
         content = repro_file.read_text()
-        assert "## Candidate Commands" in content, "Should have Candidate Commands section"
+        assert (
+            "## Candidate Commands" in content
+        ), "Should have Candidate Commands section"
 
         # Should contain either npm test -s or npx jest -w=1
         has_npm_test = "npm test -s" in content
         has_npx_jest = "npx jest -w=1" in content
-        assert has_npm_test or has_npx_jest, (
-            f"Should contain either 'npm test -s' or 'npx jest -w=1' in content: {content}"
-        )
+        assert (
+            has_npm_test or has_npx_jest
+        ), f"Should contain either 'npm test -s' or 'npx jest -w=1' in content: {content}"
 
 
 class TestPlanCLIBasicFunctionality:
@@ -367,7 +387,9 @@ class TestPlanCLIBasicFunctionality:
 class TestPlanCLIOverwriteBehavior:
     """Test plan command file overwrite behavior."""
 
-    def test_existing_file_without_force_no_overwrite(self, tmp_path, monkeypatch, capsys):
+    def test_existing_file_without_force_no_overwrite(
+        self, tmp_path, monkeypatch, capsys
+    ):
         """Test existing file without --force doesn't overwrite and returns exit 0."""
         monkeypatch.chdir(tmp_path)
 
@@ -396,7 +418,9 @@ class TestPlanCLIOverwriteBehavior:
         existing_file = tmp_path / "repro.md"
         existing_file.write_text("# Old content")
 
-        with patch("sys.argv", ["autorepro", "plan", "--desc", "new pytest issue", "--force"]):
+        with patch(
+            "sys.argv", ["autorepro", "plan", "--desc", "new pytest issue", "--force"]
+        ):
             exit_code = main()
 
         assert exit_code == 0
@@ -542,7 +566,9 @@ class TestPlanCLIMaxCommands:
         # Count command lines (format: "command — rationale")
         lines = content.split("\n")
         command_lines = [
-            line for line in lines if " — " in line and not line.startswith("#") and line.strip()
+            line
+            for line in lines
+            if " — " in line and not line.startswith("#") and line.strip()
         ]
 
         # Should have at most 2 command lines
@@ -553,7 +579,9 @@ class TestPlanCLIMaxCommands:
         monkeypatch.chdir(tmp_path)
         create_project_markers(tmp_path, "mixed")
 
-        with patch("sys.argv", ["autorepro", "plan", "--desc", "pytest jest npm test failing"]):
+        with patch(
+            "sys.argv", ["autorepro", "plan", "--desc", "pytest jest npm test failing"]
+        ):
             exit_code = main()
 
         assert exit_code == 0
@@ -563,7 +591,9 @@ class TestPlanCLIMaxCommands:
         # Count command lines
         lines = content.split("\n")
         command_lines = [
-            line for line in lines if " — " in line and not line.startswith("#") and line.strip()
+            line
+            for line in lines
+            if " — " in line and not line.startswith("#") and line.strip()
         ]
 
         # Should allow more than 2 commands (default max is 5)
@@ -618,14 +648,14 @@ class TestPlanCLIMaxCommands:
         ]
 
         # Verify command count is limited to 3
-        assert len(limited_commands) == 3, (
-            f"Expected 3 commands, got {len(limited_commands)}: {limited_commands}"
-        )
+        assert (
+            len(limited_commands) == 3
+        ), f"Expected 3 commands, got {len(limited_commands)}: {limited_commands}"
 
         # Verify that limited commands are the first 3 from the full list (proper ordering)
-        assert len(full_commands) >= 3, (
-            f"Need at least 3 commands in full list, got {len(full_commands)}"
-        )
+        assert (
+            len(full_commands) >= 3
+        ), f"Need at least 3 commands in full list, got {len(full_commands)}"
         assert limited_commands == full_commands[:3], (
             f"Limited should be first 3 of full list.\n"
             f"Limited: {limited_commands}\nFull[:3]: {full_commands[:3]}"
@@ -652,7 +682,9 @@ class TestPlanCLIFormatFlag:
         monkeypatch.chdir(tmp_path)
 
         # Create Python project markers for testing
-        (tmp_path / "pyproject.toml").write_text('[build-system]\nrequires = ["setuptools"]')
+        (tmp_path / "pyproject.toml").write_text(
+            '[build-system]\nrequires = ["setuptools"]'
+        )
 
         with patch(
             "sys.argv",
@@ -695,12 +727,16 @@ class TestPlanCLIFormatFlag:
         # Should contain pytest command due to Python detection and keyword
         commands = [cmd["cmd"] for cmd in data["commands"]]
         pytest_commands = [cmd for cmd in commands if "pytest" in cmd]
-        assert len(pytest_commands) > 0, f"Should include pytest commands. Commands: {commands}"
+        assert (
+            len(pytest_commands) > 0
+        ), f"Should include pytest commands. Commands: {commands}"
 
     def test_json_format_stdout(self, tmp_path):
         """Test --format json --out - produces JSON to stdout."""
         # Create Python project markers for testing
-        (tmp_path / "pyproject.toml").write_text('[build-system]\nrequires = ["setuptools"]')
+        (tmp_path / "pyproject.toml").write_text(
+            '[build-system]\nrequires = ["setuptools"]'
+        )
 
         result = run_plan_subprocess(
             ["--desc", "pytest failing", "--format", "json", "--out", "-"], cwd=tmp_path
@@ -729,7 +765,9 @@ class TestPlanCLIFormatFlag:
         """Test explicit --format md works."""
         monkeypatch.chdir(tmp_path)
 
-        with patch("sys.argv", ["autorepro", "plan", "--desc", "test issue", "--format", "md"]):
+        with patch(
+            "sys.argv", ["autorepro", "plan", "--desc", "test issue", "--format", "md"]
+        ):
             exit_code = main()
 
         assert exit_code == 0
@@ -852,7 +890,8 @@ class TestPlanCLICommandFiltering:
     """Test command filtering logic to ensure relevant commands are shown."""
 
     def test_ambiguous_case_shows_relevant_commands(self, tmp_path):
-        """Test ambiguous case where keywords don't clearly match but language is detected."""
+        """Test ambiguous case where keywords don't clearly match but language is
+        detected."""
         # Create a Python project but use ambiguous description
         create_project_markers(tmp_path, "python")
 
@@ -865,21 +904,27 @@ class TestPlanCLICommandFiltering:
         content = (tmp_path / "ambiguous.md").read_text()
         lines = content.split("\n")
         command_lines = [
-            line for line in lines if " — " in line and not line.startswith("#") and line.strip()
+            line
+            for line in lines
+            if " — " in line and not line.startswith("#") and line.strip()
         ]
 
         # Should show Python commands due to language detection even without specific keywords
         assert len(command_lines) > 0, "Should show commands based on detected language"
 
         # Should include pytest command since Python was detected
-        commands = [line.split(" — ")[0].lstrip("- ").strip().strip("`") for line in command_lines]
+        commands = [
+            line.split(" — ")[0].lstrip("- ").strip().strip("`")
+            for line in command_lines
+        ]
         python_commands = [cmd for cmd in commands if "pytest" in cmd]
-        assert len(python_commands) > 0, (
-            f"Should include pytest commands for Python project. Commands: {commands}"
-        )
+        assert (
+            len(python_commands) > 0
+        ), f"Should include pytest commands for Python project. Commands: {commands}"
 
     def test_keyword_match_without_language_detection(self, tmp_path):
-        """Test that specific keywords show relevant commands even without language detection."""
+        """Test that specific keywords show relevant commands even without language
+        detection."""
         # Don't create any project markers (no language detection)
 
         result = run_plan_subprocess(
@@ -891,18 +936,23 @@ class TestPlanCLICommandFiltering:
         content = (tmp_path / "keyword.md").read_text()
         lines = content.split("\n")
         command_lines = [
-            line for line in lines if " — " in line and not line.startswith("#") and line.strip()
+            line
+            for line in lines
+            if " — " in line and not line.startswith("#") and line.strip()
         ]
 
         # Should show Node commands due to npm test and jest keywords
         assert len(command_lines) > 0, "Should show commands based on keywords"
 
-        commands = [line.split(" — ")[0].lstrip("- ").strip().strip("`") for line in command_lines]
+        commands = [
+            line.split(" — ")[0].lstrip("- ").strip().strip("`")
+            for line in command_lines
+        ]
         # Should include npm test or jest commands
         node_commands = [cmd for cmd in commands if "npm test" in cmd or "jest" in cmd]
-        assert len(node_commands) > 0, (
-            f"Should include npm/jest commands based on keywords. Commands: {commands}"
-        )
+        assert (
+            len(node_commands) > 0
+        ), f"Should include npm/jest commands based on keywords. Commands: {commands}"
 
     def test_no_matches_shows_no_commands(self, tmp_path):
         """Test that when no keywords or languages match, no commands are shown."""
@@ -917,11 +967,15 @@ class TestPlanCLICommandFiltering:
         content = (tmp_path / "generic.md").read_text()
         lines = content.split("\n")
         command_lines = [
-            line for line in lines if " — " in line and not line.startswith("#") and line.strip()
+            line
+            for line in lines
+            if " — " in line and not line.startswith("#") and line.strip()
         ]
 
         # Should show NO commands when no keyword or language matches
-        assert not command_lines, f"Should show no commands when no matches. Got: {command_lines}"
+        assert (
+            not command_lines
+        ), f"Should show no commands when no matches. Got: {command_lines}"
 
     def test_plan_dry_run_ignores_force_flag(self, tmp_path):
         """Test that --dry-run ignores --force flag and outputs to stdout."""
@@ -947,7 +1001,8 @@ class TestPlanCLICommandFilteringAlt:
     """Test command filtering logic to ensure relevant commands are shown (alt)."""
 
     def test_ambiguous_case_shows_relevant_commands(self, tmp_path):
-        """Test ambiguous case where keywords don't clearly match but language is detected."""
+        """Test ambiguous case where keywords don't clearly match but language is
+        detected."""
         # Create a Python project but use ambiguous description
         create_project_markers(tmp_path, "python")
 
@@ -960,21 +1015,27 @@ class TestPlanCLICommandFilteringAlt:
         content = (tmp_path / "ambiguous.md").read_text()
         lines = content.split("\n")
         command_lines = [
-            line for line in lines if " — " in line and not line.startswith("#") and line.strip()
+            line
+            for line in lines
+            if " — " in line and not line.startswith("#") and line.strip()
         ]
 
         # Should show Python commands due to language detection even without specific keywords
         assert len(command_lines) > 0, "Should show commands based on detected language"
 
         # Should include pytest command since Python was detected
-        commands = [line.split(" — ")[0].lstrip("- ").strip().strip("`") for line in command_lines]
+        commands = [
+            line.split(" — ")[0].lstrip("- ").strip().strip("`")
+            for line in command_lines
+        ]
         python_commands = [cmd for cmd in commands if "pytest" in cmd]
-        assert len(python_commands) > 0, (
-            f"Should include pytest commands for Python project. Commands: {commands}"
-        )
+        assert (
+            len(python_commands) > 0
+        ), f"Should include pytest commands for Python project. Commands: {commands}"
 
     def test_keyword_match_without_language_detection(self, tmp_path):
-        """Test that specific keywords show relevant commands even without language detection."""
+        """Test that specific keywords show relevant commands even without language
+        detection."""
         # Don't create any project markers (no language detection)
 
         result = run_plan_subprocess(
@@ -986,18 +1047,23 @@ class TestPlanCLICommandFilteringAlt:
         content = (tmp_path / "keyword.md").read_text()
         lines = content.split("\n")
         command_lines = [
-            line for line in lines if " — " in line and not line.startswith("#") and line.strip()
+            line
+            for line in lines
+            if " — " in line and not line.startswith("#") and line.strip()
         ]
 
         # Should show Node commands due to npm test and jest keywords
         assert len(command_lines) > 0, "Should show commands based on keywords"
 
-        commands = [line.split(" — ")[0].lstrip("- ").strip().strip("`") for line in command_lines]
+        commands = [
+            line.split(" — ")[0].lstrip("- ").strip().strip("`")
+            for line in command_lines
+        ]
         # Should include npm test or jest commands
         node_commands = [cmd for cmd in commands if "npm test" in cmd or "jest" in cmd]
-        assert len(node_commands) > 0, (
-            f"Should include npm/jest commands based on keywords. Commands: {commands}"
-        )
+        assert (
+            len(node_commands) > 0
+        ), f"Should include npm/jest commands based on keywords. Commands: {commands}"
 
     def test_no_matches_shows_no_commands(self, tmp_path):
         """Test that when no keywords or languages match, no commands are shown."""
@@ -1012,8 +1078,12 @@ class TestPlanCLICommandFilteringAlt:
         content = (tmp_path / "generic.md").read_text()
         lines = content.split("\n")
         command_lines = [
-            line for line in lines if " — " in line and not line.startswith("#") and line.strip()
+            line
+            for line in lines
+            if " — " in line and not line.startswith("#") and line.strip()
         ]
 
         # Should show NO commands when no keyword or language matches
-        assert not command_lines, f"Should show no commands when no matches. Got: {command_lines}"
+        assert (
+            not command_lines
+        ), f"Should show no commands when no matches. Got: {command_lines}"

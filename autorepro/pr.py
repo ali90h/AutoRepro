@@ -60,7 +60,9 @@ def _extract_pr_title_from_content(plan_content: str, format_type: str) -> str:
             return "Reproduction Plan"
     else:
         lines = plan_content.split("\n")
-        title_line = next((line for line in lines if line.startswith("# ")), "# Reproduction Plan")
+        title_line = next(
+            (line for line in lines if line.startswith("# ")), "# Reproduction Plan"
+        )
         return title_line[2:].strip()
 
 
@@ -251,7 +253,10 @@ def upsert_pr_comment(  # noqa: PLR0913 # Backward compatibility requires extra 
             # Create new comment
             log.info(f"Creating new autorepro comment on PR #{request.target_id}")
             exit_code = create_pr_comment(
-                request.target_id, request.body, request.config.gh_path, request.config.dry_run
+                request.target_id,
+                request.body,
+                request.config.gh_path,
+                request.config.dry_run,
             )
             return exit_code, False
 

@@ -1,8 +1,8 @@
 """
 Centralized default value management for AutoRepro CLI arguments.
 
-This module provides a single source of truth for default values used across
-CLI commands, configuration dataclasses, and argument parsing.
+This module provides a single source of truth for default values used across CLI
+commands, configuration dataclasses, and argument parsing.
 """
 
 from dataclasses import dataclass
@@ -71,7 +71,8 @@ class DefaultValueProvider:
     """Provides consistent default values for CLI argument groups."""
 
     def __init__(self, use_config: bool = True):
-        """Initialize with option to use global config or class defaults.
+        """
+        Initialize with option to use global config or class defaults.
 
         Args:
             use_config: If True, use global config values; if False, use class defaults
@@ -163,8 +164,11 @@ def reset_defaults() -> None:
     _default_provider = None
 
 
-def with_defaults(base_values: dict[str, Any], defaults: dict[str, Any]) -> dict[str, Any]:
-    """Merge base values with defaults, giving priority to base values.
+def with_defaults(
+    base_values: dict[str, Any], defaults: dict[str, Any]
+) -> dict[str, Any]:
+    """
+    Merge base values with defaults, giving priority to base values.
 
     Args:
         base_values: Primary values (e.g., from CLI args)

@@ -163,7 +163,9 @@ def _collect_active_rules(
         if ecosystem in all_rules:
             for rule in all_rules[ecosystem]:
                 # Check if rule is from plugin or builtin
-                is_builtin = ecosystem in builtin_rules and rule in builtin_rules[ecosystem]
+                is_builtin = (
+                    ecosystem in builtin_rules and rule in builtin_rules[ecosystem]
+                )
                 source = "builtin" if is_builtin else "plugin"
                 active_rules.append((rule, source))
     return active_rules
@@ -254,7 +256,8 @@ def suggest_commands(
     keywords: set[str], detected_langs: list[str], min_score: int = 2
 ) -> list[tuple[str, int, str]]:
     """
-    Suggest commands based on keywords and detected languages using precise scoring rules.
+    Suggest commands based on keywords and detected languages using precise scoring
+    rules.
 
     Scoring Rules:
     - +3 for direct tool/framework match (keyword present for a command)
@@ -276,7 +279,9 @@ def suggest_commands(
 
     # Use helper functions to break down the complexity
     ecosystems_to_include = _determine_ecosystems_to_include(keywords)
-    active_rules = _collect_active_rules(ecosystems_to_include, all_rules, BUILTIN_RULES)
+    active_rules = _collect_active_rules(
+        ecosystems_to_include, all_rules, BUILTIN_RULES
+    )
 
     # Calculate scores for each rule
     command_candidates = []

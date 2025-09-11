@@ -132,7 +132,9 @@ class TestRulesCore:
 
         suggestions = suggest_commands(java_keywords, detected_langs, min_score=0)
         java_suggestions = [s for s in suggestions if "mvn" in s[0]]
-        assert len(java_suggestions) > 0  # Should include Java commands when maven keyword present
+        assert (
+            len(java_suggestions) > 0
+        )  # Should include Java commands when maven keyword present
 
         # Test without Java keywords - should not include Java
         other_keywords = {"pytest"}

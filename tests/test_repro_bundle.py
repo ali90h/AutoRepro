@@ -20,7 +20,9 @@ class TestBuildReproBundleBasic:
         """Test build_repro_bundle with exec_=False creates basic bundle."""
         # Change to temp directory to avoid side effects
         with patch("autorepro.utils.repro_bundle.Path.cwd", return_value=tmp_path):
-            bundle_path, size_bytes = build_repro_bundle("test issue description", exec_=False)
+            bundle_path, size_bytes = build_repro_bundle(
+                "test issue description", exec_=False
+            )
 
         # Assert bundle exists and has non-trivial size
         assert bundle_path.exists()
@@ -40,7 +42,8 @@ class TestBuildReproBundleBasic:
             assert "execution.jsonl" not in files
 
     def test_build_repro_bundle_exec_true(self, tmp_path):
-        """Test build_repro_bundle with exec_=True creates bundle with execution results."""
+        """Test build_repro_bundle with exec_=True creates bundle with execution
+        results."""
         # Mock execution results
         mock_log_path = tmp_path / "test.log"
         mock_jsonl_path = tmp_path / "test.jsonl"
@@ -52,7 +55,9 @@ class TestBuildReproBundleBasic:
             patch("autorepro.report.maybe_exec") as mock_exec,
         ):
             mock_exec.return_value = (0, mock_log_path, mock_jsonl_path)
-            bundle_path, size_bytes = build_repro_bundle("test issue description", exec_=True)
+            bundle_path, size_bytes = build_repro_bundle(
+                "test issue description", exec_=True
+            )
 
         # Assert bundle exists and has non-trivial size
         assert bundle_path.exists()
@@ -78,7 +83,9 @@ class TestBuildReproBundleDescriptionVariations:
             bundle_path, size_bytes = build_repro_bundle(small_desc, exec_=False)
 
         assert bundle_path.exists()
-        assert size_bytes > 50  # Even small descriptions should generate meaningful content
+        assert (
+            size_bytes > 50
+        )  # Even small descriptions should generate meaningful content
 
         # Verify the description is included in the plan
         with zipfile.ZipFile(bundle_path, "r") as zf:
@@ -110,13 +117,18 @@ class TestBuildReproBundleTimeoutVariations:
     """Test build_repro_bundle with different timeout values."""
 
     def test_short_timeout_simulation(self, tmp_path):
-        """Test build_repro_bundle with short timeout (simulated via monkeypatch/sleep)."""
+        """Test build_repro_bundle with short timeout (simulated via
+        monkeypatch/sleep)."""
         with (
             patch("autorepro.utils.repro_bundle.Path.cwd", return_value=tmp_path),
             patch("autorepro.report.maybe_exec") as mock_exec,
         ):
             # Simulate timeout behavior
-            mock_exec.return_value = (124, None, None)  # 124 is typical timeout exit code
+            mock_exec.return_value = (
+                124,
+                None,
+                None,
+            )  # 124 is typical timeout exit code
 
             bundle_path, size_bytes = build_repro_bundle(
                 "test timeout issue",
@@ -126,7 +138,9 @@ class TestBuildReproBundleTimeoutVariations:
 
             # Verify timeout was passed to maybe_exec
             mock_exec.assert_called_once()
-            call_args = mock_exec.call_args[0][1]  # Get the opts dict (second positional arg)
+            call_args = mock_exec.call_args[0][
+                1
+            ]  # Get the opts dict (second positional arg)
             assert call_args["timeout"] == 1
 
         assert bundle_path.exists()
@@ -236,8 +250,12 @@ class TestGeneratePlanContentCoverage:
     def test_generate_plan_content_different_min_scores(self, tmp_path):
         """Test generate_plan_content with different min_score values."""
         with patch("autorepro.utils.repro_bundle.Path.cwd", return_value=tmp_path):
-            content_low = generate_plan_content("test issue", tmp_path, "md", min_score=1)
-            content_high = generate_plan_content("test issue", tmp_path, "md", min_score=5)
+            content_low = generate_plan_content(
+                "test issue", tmp_path, "md", min_score=1
+            )
+            content_high = generate_plan_content(
+                "test issue", tmp_path, "md", min_score=5
+            )
 
         # Both should generate content, but might differ in command suggestions
         assert len(content_low) > 10
@@ -256,7 +274,9 @@ class TestBuildReproBundleIntegration:
         )
 
         with patch("autorepro.utils.repro_bundle.Path.cwd", return_value=tmp_path):
-            bundle_path, size_bytes = build_repro_bundle(python_issue, timeout=15, exec_=False)
+            bundle_path, size_bytes = build_repro_bundle(
+                python_issue, timeout=15, exec_=False
+            )
 
         assert bundle_path.exists()
         assert size_bytes > 200  # Detailed issue should generate substantial content

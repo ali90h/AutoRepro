@@ -1,4 +1,5 @@
-"""Integration tests for CLI exit codes via subprocess.
+"""
+Integration tests for CLI exit codes via subprocess.
 
 Tests that main() returns:
 - 0 on success (including scan with no languages detected)
@@ -29,7 +30,9 @@ class TestSuccessExitCodes:
 
         returncode, stdout, stderr = run_autorepro_subprocess(["scan"], cwd=tmp_path)
 
-        assert returncode == 0, f"Expected exit code 0, got {returncode}. stderr: {stderr}"
+        assert (
+            returncode == 0
+        ), f"Expected exit code 0, got {returncode}. stderr: {stderr}"
         assert "Detected: python" in stdout
         assert "python -> pyproject.toml" in stdout
 
@@ -38,14 +41,18 @@ class TestSuccessExitCodes:
         # Empty directory - no language markers
         returncode, stdout, stderr = run_autorepro_subprocess(["scan"], cwd=tmp_path)
 
-        assert returncode == 0, f"Expected exit code 0, got {returncode}. stderr: {stderr}"
+        assert (
+            returncode == 0
+        ), f"Expected exit code 0, got {returncode}. stderr: {stderr}"
         assert "No known languages detected." in stdout
 
     def test_init_first_time_returns_zero(self, tmp_path):
         """Test that init returns 0 on successful creation."""
         returncode, stdout, stderr = run_autorepro_subprocess(["init"], cwd=tmp_path)
 
-        assert returncode == 0, f"Expected exit code 0, got {returncode}. stderr: {stderr}"
+        assert (
+            returncode == 0
+        ), f"Expected exit code 0, got {returncode}. stderr: {stderr}"
         assert "Wrote devcontainer to" in stdout
 
         # Verify file was created
@@ -60,7 +67,9 @@ class TestSuccessExitCodes:
         # Run again - should be idempotent success
         returncode, stdout, stderr = run_autorepro_subprocess(["init"], cwd=tmp_path)
 
-        assert returncode == 0, f"Expected exit code 0, got {returncode}. stderr: {stderr}"
+        assert (
+            returncode == 0
+        ), f"Expected exit code 0, got {returncode}. stderr: {stderr}"
         assert "devcontainer.json already exists" in stdout
         assert "Use --force to overwrite" in stdout
 
@@ -70,7 +79,9 @@ class TestSuccessExitCodes:
             ["plan", "--desc", "test issue"], cwd=tmp_path
         )
 
-        assert returncode == 0, f"Expected exit code 0, got {returncode}. stderr: {stderr}"
+        assert (
+            returncode == 0
+        ), f"Expected exit code 0, got {returncode}. stderr: {stderr}"
         assert "Wrote repro to" in stdout
 
         # Verify file was created
@@ -83,14 +94,18 @@ class TestSuccessExitCodes:
             ["plan", "--desc", "test issue", "--out", "-"], cwd=tmp_path
         )
 
-        assert returncode == 0, f"Expected exit code 0, got {returncode}. stderr: {stderr}"
+        assert (
+            returncode == 0
+        ), f"Expected exit code 0, got {returncode}. stderr: {stderr}"
         assert "# Test Issue" in stdout  # Should contain markdown output
 
     def test_help_returns_zero(self, tmp_path):
         """Test that --help returns 0."""
         returncode, stdout, stderr = run_autorepro_subprocess(["--help"], cwd=tmp_path)
 
-        assert returncode == 0, f"Expected exit code 0, got {returncode}. stderr: {stderr}"
+        assert (
+            returncode == 0
+        ), f"Expected exit code 0, got {returncode}. stderr: {stderr}"
         assert "CLI for AutoRepro" in stdout
 
 
@@ -101,7 +116,9 @@ class TestMisuseExitCodes:
         """Test that plan without --desc returns 2."""
         returncode, stdout, stderr = run_autorepro_subprocess(["plan"], cwd=tmp_path)
 
-        assert returncode == 2, f"Expected exit code 2, got {returncode}. stdout: {stdout}"
+        assert (
+            returncode == 2
+        ), f"Expected exit code 2, got {returncode}. stdout: {stdout}"
         assert "one of the arguments --desc --file is required" in stderr
 
     def test_plan_desc_and_file_returns_two(self, tmp_path):
@@ -114,14 +131,20 @@ class TestMisuseExitCodes:
             ["plan", "--desc", "test", "--file", str(test_file)], cwd=tmp_path
         )
 
-        assert returncode == 2, f"Expected exit code 2, got {returncode}. stdout: {stdout}"
+        assert (
+            returncode == 2
+        ), f"Expected exit code 2, got {returncode}. stdout: {stdout}"
         assert "not allowed with argument" in stderr
 
     def test_invalid_command_returns_two(self, tmp_path):
         """Test that invalid command returns 2."""
-        returncode, stdout, stderr = run_autorepro_subprocess(["invalid_command"], cwd=tmp_path)
+        returncode, stdout, stderr = run_autorepro_subprocess(
+            ["invalid_command"], cwd=tmp_path
+        )
 
-        assert returncode == 2, f"Expected exit code 2, got {returncode}. stdout: {stdout}"
+        assert (
+            returncode == 2
+        ), f"Expected exit code 2, got {returncode}. stdout: {stdout}"
         assert "invalid choice: 'invalid_command'" in stderr
 
     def test_invalid_repo_path_returns_two(self, tmp_path):
@@ -130,7 +153,9 @@ class TestMisuseExitCodes:
             ["plan", "--desc", "test", "--repo", "/nonexistent/path"], cwd=tmp_path
         )
 
-        assert returncode == 2, f"Expected exit code 2, got {returncode}. stdout: {stdout}"
+        assert (
+            returncode == 2
+        ), f"Expected exit code 2, got {returncode}. stdout: {stdout}"
         assert "does not exist or is not a directory" in stderr
 
     def test_out_points_to_directory_returns_two(self, tmp_path):
@@ -143,7 +168,9 @@ class TestMisuseExitCodes:
             ["plan", "--desc", "test", "--out", str(out_dir)], cwd=tmp_path
         )
 
-        assert returncode == 2, f"Expected exit code 2, got {returncode}. stdout: {stdout}"
+        assert (
+            returncode == 2
+        ), f"Expected exit code 2, got {returncode}. stdout: {stdout}"
         assert "Output path is a directory" in stdout
 
     def test_init_out_points_to_directory_returns_two(self, tmp_path):
@@ -156,7 +183,9 @@ class TestMisuseExitCodes:
             ["init", "--out", str(out_dir)], cwd=tmp_path
         )
 
-        assert returncode == 2, f"Expected exit code 2, got {returncode}. stdout: {stdout}"
+        assert (
+            returncode == 2
+        ), f"Expected exit code 2, got {returncode}. stdout: {stdout}"
         assert "Output path is a directory" in stdout
 
 
@@ -171,7 +200,9 @@ class TestIOErrorExitCodes:
             ["plan", "--file", str(nonexistent_file)], cwd=tmp_path
         )
 
-        assert returncode == 1, f"Expected exit code 1, got {returncode}. stdout: {stdout}"
+        assert (
+            returncode == 1
+        ), f"Expected exit code 1, got {returncode}. stdout: {stdout}"
         assert f"Error reading file {nonexistent_file}" in stderr
 
     def test_plan_file_permission_denied_returns_one(self, tmp_path):
@@ -189,7 +220,9 @@ class TestIOErrorExitCodes:
                 ["plan", "--file", str(restricted_file)], cwd=tmp_path
             )
 
-            assert returncode == 1, f"Expected exit code 1, got {returncode}. stdout: {stdout}"
+            assert (
+                returncode == 1
+            ), f"Expected exit code 1, got {returncode}. stdout: {stdout}"
             assert f"Error reading file {restricted_file}" in stderr
         finally:
             # Restore permissions for cleanup
@@ -212,7 +245,9 @@ class TestIOErrorExitCodes:
                 ["plan", "--desc", "test", "--out", str(output_file)], cwd=tmp_path
             )
 
-            assert returncode == 1, f"Expected exit code 1, got {returncode}. stdout: {stdout}"
+            assert (
+                returncode == 1
+            ), f"Expected exit code 1, got {returncode}. stdout: {stdout}"
             assert f"Error writing file {output_file}" in stderr
         finally:
             # Restore permissions for cleanup

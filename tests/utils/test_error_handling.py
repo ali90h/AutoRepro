@@ -1,8 +1,8 @@
 """
 Tests for autorepro.utils.error_handling module.
 
-These tests validate the standardized error handling utilities that replace
-scattered exception handling patterns across the AutoRepro codebase.
+These tests validate the standardized error handling utilities that replace scattered
+exception handling patterns across the AutoRepro codebase.
 """
 
 import logging
@@ -44,7 +44,9 @@ class TestStandardizedExceptions:
     def test_subprocess_error_attributes(self):
         """Test SubprocessError attributes and initialization."""
         cmd = ["echo", "test"]
-        details = SubprocessDetails(cmd=cmd, exit_code=1, stdout="output", stderr="error")
+        details = SubprocessDetails(
+            cmd=cmd, exit_code=1, stdout="output", stderr="error"
+        )
         error = SubprocessError(
             message="test failed",
             details=details,

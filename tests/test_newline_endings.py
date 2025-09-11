@@ -25,13 +25,17 @@ class TestNewlineEndings:
 
     def test_plan_markdown_ends_with_newline(self, tmp_path):
         """Test that plan --out - produces Markdown ending with newline."""
-        result = run_cli_subprocess(["plan", "--desc", "test issue", "--out", "-"], cwd=tmp_path)
+        result = run_cli_subprocess(
+            ["plan", "--desc", "test issue", "--out", "-"], cwd=tmp_path
+        )
         assert result.returncode == 0
         assert result.stdout.endswith("\n"), "Markdown output should end with newline"
 
     def test_plan_dry_run_ends_with_newline(self, tmp_path):
         """Test that plan --dry-run produces Markdown ending with newline."""
-        result = run_cli_subprocess(["plan", "--desc", "test issue", "--dry-run"], cwd=tmp_path)
+        result = run_cli_subprocess(
+            ["plan", "--desc", "test issue", "--dry-run"], cwd=tmp_path
+        )
         assert result.returncode == 0
         assert result.stdout.endswith("\n"), "Markdown output should end with newline"
 

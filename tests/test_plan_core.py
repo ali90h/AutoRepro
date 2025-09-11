@@ -128,12 +128,16 @@ class TestSuggestCommands:
 
         # Find pytest commands
         pytest_commands = [
-            (cmd, score, rationale) for cmd, score, rationale in suggestions if "pytest" in cmd
+            (cmd, score, rationale)
+            for cmd, score, rationale in suggestions
+            if "pytest" in cmd
         ]
         assert len(pytest_commands) > 0
 
         # Check that pytest -q gets highest score (should be 6: +3 direct, +2 lang, +1 specific)
-        pytest_q = next((score for cmd, score, _ in suggestions if cmd == "pytest -q"), None)
+        pytest_q = next(
+            (score for cmd, score, _ in suggestions if cmd == "pytest -q"), None
+        )
         assert pytest_q is not None
         assert pytest_q >= 6
 
@@ -174,8 +178,12 @@ class TestSuggestCommands:
         suggestions = suggest_commands(keywords, detected_langs)
 
         # pytest -q should score higher than plain pytest
-        pytest_score = next((score for cmd, score, _ in suggestions if cmd == "pytest"), None)
-        pytest_q_score = next((score for cmd, score, _ in suggestions if cmd == "pytest -q"), None)
+        pytest_score = next(
+            (score for cmd, score, _ in suggestions if cmd == "pytest"), None
+        )
+        pytest_q_score = next(
+            (score for cmd, score, _ in suggestions if cmd == "pytest -q"), None
+        )
 
         if pytest_score is not None and pytest_q_score is not None:
             assert pytest_q_score > pytest_score
@@ -196,9 +204,9 @@ class TestSuggestCommands:
 
         # Check each score group is alphabetically ordered
         for score, commands in score_groups.items():
-            assert commands == sorted(commands), (
-                f"Commands with score {score} not alphabetically ordered"
-            )
+            assert commands == sorted(
+                commands
+            ), f"Commands with score {score} not alphabetically ordered"
 
     def test_detailed_rationales(self):
         """Test that rationales show matched keywords and detected langs."""
@@ -256,13 +264,15 @@ class TestSuggestCommands:
         )
 
         # pytest -q should appear before npx vitest run in the sorted list
-        pytest_index = next(i for i, (cmd, _, _) in enumerate(suggestions) if cmd == "pytest -q")
+        pytest_index = next(
+            i for i, (cmd, _, _) in enumerate(suggestions) if cmd == "pytest -q"
+        )
         vitest_index = next(
             i for i, (cmd, _, _) in enumerate(suggestions) if cmd == "npx vitest run"
         )
-        assert pytest_index < vitest_index, (
-            "pytest -q should appear before npx vitest run in sorted results"
-        )
+        assert (
+            pytest_index < vitest_index
+        ), "pytest -q should appear before npx vitest run in sorted results"
 
 
 class TestSafeTruncate60:
@@ -292,12 +302,15 @@ class TestSafeTruncate60:
         result = safe_truncate_60(text)
         assert len(result) <= 61  # 60 chars + ellipsis
         assert result.endswith("…")
-        assert result.startswith("This is definitely longer than sixty characters and should b")
+        assert result.startswith(
+            "This is definitely longer than sixty characters and should b"
+        )
 
     def test_trailing_whitespace_trimmed(self):
         """Test that trailing whitespace is trimmed before adding ellipsis."""
         text = (
-            "This text has trailing spaces and is long enough to need truncation" + " " * 30
+            "This text has trailing spaces and is long enough to need truncation"
+            + " " * 30
         )  # Over 60 chars
         result = safe_truncate_60(text)
         assert not result.endswith(" …")  # Should not have space before ellipsis
@@ -371,7 +384,10 @@ class TestBuildReproMd:
         assert "|-------|---------|-----|" not in result
 
         # Should have line format
-        assert "- `pytest -q` — matched: pytest (+3), lang: python (+2), specific (+1)" in result
+        assert (
+            "- `pytest -q` — matched: pytest (+3), lang: python (+2), specific (+1)"
+            in result
+        )
         assert "- `npm test -s` — matched: npm test (+3), specific (+1)" in result
 
     def test_command_sorting(self):
@@ -400,8 +416,12 @@ class TestBuildReproMd:
 
         assert len(command_lines) == 3
         assert command_lines[0].startswith("- `pytest -q`")  # Highest score (6)
-        assert command_lines[1].startswith("- `go test`")  # Score 4, alphabetically first
-        assert command_lines[2].startswith("- `npm test -s`")  # Score 4, alphabetically second
+        assert command_lines[1].startswith(
+            "- `go test`"
+        )  # Score 4, alphabetically first
+        assert command_lines[2].startswith(
+            "- `npm test -s`"
+        )  # Score 4, alphabetically second
 
     def test_default_next_steps(self):
         """Test that default next steps are provided when list is empty."""
@@ -487,15 +507,19 @@ class TestBuildReproMd:
         # Assert sections are in correct order
         expected_order = ["title", "assumptions", "commands", "needs", "next_steps"]
         actual_order = sorted(section_indices.keys(), key=lambda k: section_indices[k])
-        assert actual_order == expected_order, (
-            f"Sections not in correct order. Expected {expected_order}, got {actual_order}"
-        )
+        assert (
+            actual_order == expected_order
+        ), f"Sections not in correct order. Expected {expected_order}, got {actual_order}"
 
         # Verify section content makes sense
         assert "Test Issue Title" in lines[section_indices["title"]]
-        assert any("Test assumption" in line for line in lines), "Assumption content not found"
+        assert any(
+            "Test assumption" in line for line in lines
+        ), "Assumption content not found"
         assert any("test-cmd" in line for line in lines), "Command content not found"
-        assert any("Test requirement" in line for line in lines), "Need content not found"
+        assert any(
+            "Test requirement" in line for line in lines
+        ), "Need content not found"
         assert any("Test step" in line for line in lines), "Next step content not found"
 
 
@@ -506,7 +530,9 @@ class TestBuildReproJson:
         """Test that JSON output has the correct basic structure."""
         title = "Test Issue"
         assumptions = ["Test assumption"]
-        commands = [("pytest -q", 6, "matched: pytest (+3), lang: python (+2), specific (+1)")]
+        commands = [
+            ("pytest -q", 6, "matched: pytest (+3), lang: python (+2), specific (+1)")
+        ]
         needs = ["Python 3.11+"]
         next_steps = ["Run the command"]
 
@@ -667,7 +693,9 @@ class TestBuildReproJson:
 
     def test_key_order_preservation(self):
         """Test that key order is preserved as specified."""
-        result = build_repro_json("Test", ["A"], [("cmd", 1, "reason")], ["need"], ["step"])
+        result = build_repro_json(
+            "Test", ["A"], [("cmd", 1, "reason")], ["need"], ["step"]
+        )
 
         # Check top-level key order
         expected_keys = [
@@ -698,7 +726,9 @@ class TestBuildReproJson:
         """Test that schema versioning fields are present with correct values."""
         from autorepro import __version__
 
-        result = build_repro_json("Test", ["A"], [("cmd", 1, "reason")], ["need"], ["step"])
+        result = build_repro_json(
+            "Test", ["A"], [("cmd", 1, "reason")], ["need"], ["step"]
+        )
 
         # Check schema versioning fields are present and have correct values
         assert "schema_version" in result

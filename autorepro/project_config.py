@@ -1,4 +1,5 @@
-"""Project-level configuration loader for AutoRepro.
+"""
+Project-level configuration loader for AutoRepro.
 
 Supports reading `.autorepro.toml` from a repository root, with optional
 named profiles. Provides a minimal API so CLI can merge settings with
@@ -24,7 +25,8 @@ class ProjectSettings:
 
 
 def load_config(repo: Path) -> dict[str, Any]:
-    """Load `.autorepro.toml` from repository root if present.
+    """
+    Load `.autorepro.toml` from repository root if present.
 
     Returns an empty dict if file not found or unreadable.
     """
@@ -75,11 +77,14 @@ def _normalize_settings(raw: dict[str, Any]) -> ProjectSettings:
     else:
         verbosity = None
 
-    return ProjectSettings(min_score=min_score, strict=strict, plugins=plugins, verbosity=verbosity)
+    return ProjectSettings(
+        min_score=min_score, strict=strict, plugins=plugins, verbosity=verbosity
+    )
 
 
 def resolve_profile(cfg: dict[str, Any], name: str | None) -> ProjectSettings:
-    """Resolve defaults + optional profile into a ProjectSettings instance.
+    """
+    Resolve defaults + optional profile into a ProjectSettings instance.
 
     - Base is `[defaults]` table
     - If `name` is provided and exists under `[profiles.NAME]`, overlay it.

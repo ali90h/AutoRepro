@@ -1,9 +1,9 @@
 """
 Standardized error handling utilities for subprocess and file operations.
 
-This module provides consistent error handling patterns to replace scattered
-exception handling across the AutoRepro codebase, particularly for subprocess
-execution and file operations.
+This module provides consistent error handling patterns to replace scattered exception
+handling across the AutoRepro codebase, particularly for subprocess execution and file
+operations.
 """
 
 import contextlib
@@ -44,7 +44,9 @@ class SubprocessDetails:
 class AutoReproError(Exception):
     """Base exception class for AutoRepro operations."""
 
-    def __init__(self, message: str, operation: str | None = None, cause: Exception | None = None):
+    def __init__(
+        self, message: str, operation: str | None = None, cause: Exception | None = None
+    ):
         super().__init__(message)
         self.message = message
         self.operation = operation
@@ -92,7 +94,8 @@ def safe_subprocess_run(
     operation: str | None = None,
     log_command: bool = False,
 ) -> subprocess.CompletedProcess:
-    """Safe subprocess.run wrapper with consistent error formatting and logging.
+    """
+    Safe subprocess.run wrapper with consistent error formatting and logging.
 
     This is a drop-in replacement for subprocess.run with standardized error handling,
     consistent logging, and better error messages.
@@ -120,7 +123,8 @@ def safe_subprocess_run_simple(
     log_command: bool = False,
     **subprocess_kwargs,
 ) -> subprocess.CompletedProcess:
-    """Backward-compatible interface for safe_subprocess_run with individual parameters.
+    """
+    Backward-compatible interface for safe_subprocess_run with individual parameters.
 
     Args:
         cmd: Command to run (string or list of strings)
@@ -157,7 +161,8 @@ def _safe_subprocess_run_impl(
     operation: str | None,
     log_command: bool,
 ) -> subprocess.CompletedProcess:
-    """Safe subprocess.run wrapper with consistent error formatting and logging.
+    """
+    Safe subprocess.run wrapper with consistent error formatting and logging.
 
     This is a drop-in replacement for subprocess.run with standardized error handling,
     consistent logging, and better error messages.
@@ -210,7 +215,9 @@ def _safe_subprocess_run_impl(
         )
 
         if result.returncode != 0 and log_command:
-            logger.warning(f"{operation_name} exited with code {result.returncode}: {cmd_str}")
+            logger.warning(
+                f"{operation_name} exited with code {result.returncode}: {cmd_str}"
+            )
 
         return result
 
@@ -264,9 +271,13 @@ def _safe_subprocess_run_impl(
         except Exception:
             errno_val = None
 
-        if config.timeout is not None and (errno_val == 1 or "not permitted" in str(e).lower()):
+        if config.timeout is not None and (
+            errno_val == 1 or "not permitted" in str(e).lower()
+        ):
             te = subprocess.TimeoutExpired(
-                cmd if isinstance(cmd, list) else (cmd.split() if isinstance(cmd, str) else cmd),
+                cmd
+                if isinstance(cmd, list)
+                else (cmd.split() if isinstance(cmd, str) else cmd),
                 config.timeout,
             )
             error_msg = f"{operation_name} timed out after {config.timeout}s: {cmd_str}"
@@ -297,7 +308,8 @@ def _safe_subprocess_run_impl(
 def safe_file_operation(
     operation: str, path: Path | str | None = None, log_operations: bool = False
 ) -> Generator[None, None, None]:
-    """Context manager for safe file operations with consistent error handling.
+    """
+    Context manager for safe file operations with consistent error handling.
 
     Args:
         operation: Name of the file operation for logging and error messages
@@ -323,11 +335,15 @@ def safe_file_operation(
     except (OSError, PermissionError, FileNotFoundError, UnicodeDecodeError) as e:
         error_msg = f"{operation} failed for {path_str}: {e}"
         logger.error(error_msg)
-        raise FileOperationError(message=error_msg, path=path, operation=operation, cause=e) from e
+        raise FileOperationError(
+            message=error_msg, path=path, operation=operation, cause=e
+        ) from e
     except Exception as e:
         error_msg = f"{operation} failed unexpectedly for {path_str}: {e}"
         logger.error(error_msg)
-        raise FileOperationError(message=error_msg, path=path, operation=operation, cause=e) from e
+        raise FileOperationError(
+            message=error_msg, path=path, operation=operation, cause=e
+        ) from e
 
 
 def safe_subprocess_capture(
@@ -337,7 +353,8 @@ def safe_subprocess_capture(
     operation: str | None = None,
     log_command: bool = False,
 ) -> tuple[int, str, str]:
-    """Run subprocess with output capture and return exit code, stdout, stderr.
+    """
+    Run subprocess with output capture and return exit code, stdout, stderr.
 
     This is a convenience wrapper around safe_subprocess_run for cases where you
     need to handle both success and failure cases and want structured output.
@@ -402,7 +419,8 @@ def safe_write_file(
     operation: str | None = None,
     log_operations: bool = False,
 ) -> None:
-    """Write file safely with consistent error handling and logging.
+    """
+    Write file safely with consistent error handling and logging.
 
     Args:
         path: File path to write
@@ -429,7 +447,8 @@ def safe_read_file(
     operation: str | None = None,
     log_operations: bool = False,
 ) -> str:
-    """Read file safely with consistent error handling and logging.
+    """
+    Read file safely with consistent error handling and logging.
 
     Args:
         path: File path to read
@@ -457,7 +476,8 @@ def safe_ensure_directory(
     operation: str | None = None,
     log_operations: bool = False,
 ) -> None:
-    """Ensure directory exists with consistent error handling and logging.
+    """
+    Ensure directory exists with consistent error handling and logging.
 
     Args:
         path: Directory path to ensure exists

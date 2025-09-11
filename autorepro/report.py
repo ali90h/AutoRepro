@@ -68,7 +68,9 @@ def collect_env_info(repo: Path) -> str:
 
     # Python version
     try:
-        python_version = subprocess.check_output([sys.executable, "--version"], text=True).strip()
+        python_version = subprocess.check_output(
+            [sys.executable, "--version"], text=True
+        ).strip()
         env_lines.append(f"Python: {python_version}")
     except (subprocess.CalledProcessError, OSError) as e:
         log.warning(f"Failed to get Python version: {e}")
@@ -103,7 +105,9 @@ def collect_env_info(repo: Path) -> str:
             "languages": evidence,
         }
 
-        env_lines.append(f"Scan Synopsis: {json.dumps(scan_data, separators=(',', ':'))}")
+        env_lines.append(
+            f"Scan Synopsis: {json.dumps(scan_data, separators=(',', ':'))}"
+        )
 
     except Exception as e:
         log.warning(f"Failed to collect scan info: {e}")
@@ -114,7 +118,9 @@ def collect_env_info(repo: Path) -> str:
     return "\n".join(env_lines) + "\n"
 
 
-def write_plan(repo: Path, desc_or_file: str | None, format_type: str) -> tuple[Path, str | bytes]:
+def write_plan(
+    repo: Path, desc_or_file: str | None, format_type: str
+) -> tuple[Path, str | bytes]:
     """
     Generate plan content and write to temporary file.
 
@@ -169,7 +175,8 @@ def _generate_exec_suggestions_for_maybe_exec(
 def _validate_and_select_command(
     suggestions: list[tuple[str, int, str]], opts: dict[str, Any]
 ) -> int | None:
-    """Validate suggestions and select command by index.
+    """
+    Validate suggestions and select command by index.
 
     Returns:
         Exit code if validation fails, None if successful
@@ -199,7 +206,8 @@ def _validate_and_select_command(
 def _prepare_exec_environment_for_maybe_exec(
     repo: Path, opts: dict[str, Any]
 ) -> dict[str, str] | None:
-    """Prepare execution environment with env file and variables.
+    """
+    Prepare execution environment with env file and variables.
 
     Returns:
         Environment dict or None if error occurred
@@ -261,9 +269,14 @@ def _setup_exec_log_paths(repo: Path, opts: dict[str, Any]) -> tuple[Path, Path]
 
 
 def _execute_command_subprocess(
-    command_str: str, cmd_parts: list[str], repo: Path, env: dict[str, str], timeout: int
+    command_str: str,
+    cmd_parts: list[str],
+    repo: Path,
+    env: dict[str, str],
+    timeout: int,
 ) -> tuple[int, str, str, bool] | None:
-    """Execute command via subprocess.
+    """
+    Execute command via subprocess.
 
     Returns:
         Tuple of (exit_code, stdout, stderr, timed_out) or None if execution failed
@@ -341,8 +354,11 @@ def _write_exec_output_logs(config: ExecOutputConfig) -> None:
     FileOperations.atomic_write(config.jsonl_path, jsonl_content)
 
 
-def maybe_exec(repo: Path, opts: dict[str, Any]) -> tuple[int, Path | None, Path | None]:
-    """Optionally execute the best command and return execution results.
+def maybe_exec(
+    repo: Path, opts: dict[str, Any]
+) -> tuple[int, Path | None, Path | None]:
+    """
+    Optionally execute the best command and return execution results.
 
     Args:
         repo: Repository path
@@ -395,7 +411,9 @@ def maybe_exec(repo: Path, opts: dict[str, Any]) -> tuple[int, Path | None, Path
         start_iso = start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
         timeout = opts.get("timeout", config.timeouts.default_seconds)
 
-        exec_result = _execute_command_subprocess(command_str, cmd_parts, repo, env, timeout)
+        exec_result = _execute_command_subprocess(
+            command_str, cmd_parts, repo, env, timeout
+        )
 
         if exec_result is None:
             return 127, None, None  # Command not found or execution failed
@@ -456,7 +474,9 @@ def pack_zip(out_path: Path, files: dict[str, Path | str | bytes]) -> None:
                     # Add bytes content
                     zf.writestr(archive_name, content)
                 else:
-                    log.warning(f"Unknown content type for {archive_name}: {type(content)}")
+                    log.warning(
+                        f"Unknown content type for {archive_name}: {type(content)}"
+                    )
 
         log.info(f"Created report bundle: {out_path}")
 

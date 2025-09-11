@@ -13,9 +13,13 @@ def run_cli_subprocess(args, cwd=None):
 def create_project_markers(tmp_path, project_type="python"):
     """Create minimal marker files for different project types."""
     if project_type == "python":
-        (tmp_path / "pyproject.toml").write_text('[build-system]\nrequires = ["setuptools"]')
+        (tmp_path / "pyproject.toml").write_text(
+            '[build-system]\nrequires = ["setuptools"]'
+        )
     elif project_type == "node":
-        (tmp_path / "package.json").write_text('{"name": "test-project", "version": "1.0.0"}')
+        (tmp_path / "package.json").write_text(
+            '{"name": "test-project", "version": "1.0.0"}'
+        )
     elif project_type == "go":
         (tmp_path / "go.mod").write_text("module test\n\ngo 1.19")
 
@@ -81,7 +85,9 @@ class TestRepoPathStability:
         repo_dir2.mkdir()
 
         # Test with ./dir/ format
-        result1 = run_cli_subprocess(["init", "--repo", f"./{repo_dir1.name}/"], cwd=tmp_path)
+        result1 = run_cli_subprocess(
+            ["init", "--repo", f"./{repo_dir1.name}/"], cwd=tmp_path
+        )
         assert result1.returncode == 0
 
         # Test with dir format
@@ -91,8 +97,12 @@ class TestRepoPathStability:
         # Both should create devcontainer files in their respective repo directories
         devcontainer1 = repo_dir1 / ".devcontainer" / "devcontainer.json"
         devcontainer2 = repo_dir2 / ".devcontainer" / "devcontainer.json"
-        assert devcontainer1.exists(), "devcontainer.json should be created in repo_dir1"
-        assert devcontainer2.exists(), "devcontainer.json should be created in repo_dir2"
+        assert (
+            devcontainer1.exists()
+        ), "devcontainer.json should be created in repo_dir1"
+        assert (
+            devcontainer2.exists()
+        ), "devcontainer.json should be created in repo_dir2"
 
     def test_repo_nonexistent_path_exit_2(self, tmp_path):
         """Test that nonexistent --repo path returns exit code 2."""
@@ -102,7 +112,9 @@ class TestRepoPathStability:
         assert result1.returncode == 2
         assert "does not exist" in result1.stderr
 
-        result2 = run_cli_subprocess(["init", "--repo", "nonexistent_dir"], cwd=tmp_path)
+        result2 = run_cli_subprocess(
+            ["init", "--repo", "nonexistent_dir"], cwd=tmp_path
+        )
         assert result2.returncode == 2
         assert "does not exist" in result2.stderr
 
@@ -130,7 +142,9 @@ class TestRepoPathStability:
         repo_plan_file = repo_dir / "repro.md"
         current_plan_file = tmp_path / "repro.md"
         assert repo_plan_file.exists(), "Plan should be created in repo directory"
-        assert not current_plan_file.exists(), "Plan should NOT be created in current directory"
+        assert (
+            not current_plan_file.exists()
+        ), "Plan should NOT be created in current directory"
 
         # Run init command with --repo
         result2 = run_cli_subprocess(["init", "--repo", str(repo_dir)], cwd=tmp_path)
@@ -142,7 +156,9 @@ class TestRepoPathStability:
         # Devcontainer should be created in repo directory
         repo_devcontainer = repo_dir / ".devcontainer" / "devcontainer.json"
         current_devcontainer = tmp_path / ".devcontainer" / "devcontainer.json"
-        assert repo_devcontainer.exists(), "Devcontainer should be created in repo directory"
-        assert not current_devcontainer.exists(), (
-            "Devcontainer should NOT be created in current directory"
-        )
+        assert (
+            repo_devcontainer.exists()
+        ), "Devcontainer should be created in repo directory"
+        assert (
+            not current_devcontainer.exists()
+        ), "Devcontainer should NOT be created in current directory"
