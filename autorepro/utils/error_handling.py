@@ -258,10 +258,7 @@ def _safe_subprocess_run_impl(
             cause=e,
         ) from e
     except OSError as e:
-        # In some sandboxed environments (e.g., macOS seatbelt), certain subprocess
-        # executions can raise EPERM (Operation not permitted) instead of timing out.
-        # If a timeout was requested, normalize this to a timeout to keep behavior
-        # consistent and predictable for callers and tests.
+        # Normalize sandbox EPERM cases to a timeout when a timeout was requested.
         try:
             errno_val = getattr(e, "errno", None)
         except Exception:
@@ -274,10 +271,7 @@ def _safe_subprocess_run_impl(
             )
             error_msg = f"{operation_name} timed out after {config.timeout}s: {cmd_str}"
             logger.error(error_msg)
-            details = SubprocessDetails(
-                cmd=cmd,
-                exit_code=124,
-            )
+            details = SubprocessDetails(cmd=cmd, exit_code=124)
             raise SubprocessError(
                 message=error_msg,
                 details=details,
