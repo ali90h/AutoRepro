@@ -44,7 +44,7 @@ jobs:
         run: pre-commit clean
 
       - name: Pre-commit (repo policy)
-        uses: pre-commit/action@v4.0.1
+        uses: pre-commit/action@v3.0.1
 
 
 
