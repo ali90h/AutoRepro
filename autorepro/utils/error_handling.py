@@ -258,6 +258,27 @@ def _safe_subprocess_run_impl(
             cause=e,
         ) from e
     except OSError as e:
+        # Normalize sandbox EPERM cases to a timeout when a timeout was requested.
+        try:
+            errno_val = getattr(e, "errno", None)
+        except Exception:
+            errno_val = None
+
+        if config.timeout is not None and (errno_val == 1 or "not permitted" in str(e).lower()):
+            te = subprocess.TimeoutExpired(
+                cmd if isinstance(cmd, list) else (cmd.split() if isinstance(cmd, str) else cmd),
+                config.timeout,
+            )
+            error_msg = f"{operation_name} timed out after {config.timeout}s: {cmd_str}"
+            logger.error(error_msg)
+            details = SubprocessDetails(cmd=cmd, exit_code=124)
+            raise SubprocessError(
+                message=error_msg,
+                details=details,
+                operation=operation_name,
+                cause=te,
+            ) from e
+
         error_msg = f"{operation_name} execution failed: {e}"
         logger.error(error_msg)
         details = SubprocessDetails(
