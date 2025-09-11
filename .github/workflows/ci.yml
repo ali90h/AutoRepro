@@ -40,6 +40,9 @@ jobs:
           python -m pip install -e ".[dev]"
           python -m pip install ruff mypy pytest-cov radon import-linter autoflake pyupgrade reorder-python-imports
 
+      - name: Pre-commit clean
+        run: pre-commit clean
+
       - name: Pre-commit (repo policy)
         run: pre-commit run --all-files
 
