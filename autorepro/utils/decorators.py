@@ -66,7 +66,11 @@ def dry_run_aware(
                         pass
 
             if dry_run:
-                print(message_template.format(operation=operation))
+                log = logging.getLogger("autorepro")
+                log.info(
+                    message_template.format(operation=operation),
+                    extra={"operation": operation, "dry_run": True},
+                )
                 return return_code
 
             return func(*args, **kwargs)
