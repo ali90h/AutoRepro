@@ -24,6 +24,10 @@ Thanks for contributing! This project enforces automated formatting, linting, do
 
 Configuration lives in `pyproject.toml` (Black, Ruff, docformatter) and `mypy.ini`.
 
+### Mypy strictness ratchet
+
+We use an incremental approach to tighten type checks. See `docs/mypy-ratchet.md` for the current allowlist and how to add modules under stricter rules.
+
 ## CI
 
 GitHub Actions enforces pre-commit on PRs and pushes to `main`. Ensure hooks pass locally to avoid CI failures.
@@ -31,4 +35,3 @@ GitHub Actions enforces pre-commit on PRs and pushes to `main`. Ensure hooks pas
 ## Updating Hooks
 
 - Run `pre-commit autoupdate` locally and open a PR.
-
