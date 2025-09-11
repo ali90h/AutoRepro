@@ -127,6 +127,9 @@ def _handle_plugin_loading_error(plugin_name: str, error: Exception) -> None:
     debug = os.environ.get("AUTOREPRO_PLUGINS_DEBUG") == "1"
     logger = logging.getLogger("autorepro.rules")
     if debug:
+        # Preserve stderr output for debug mode for backward compatibility
+        print(f"Plugin loading failed for {plugin_name}: {error}", file=sys.stderr)
+        # Also emit a structured log for observability
         logger.error(
             "Plugin loading failed",
             extra={"plugin": plugin_name, "error": str(error)},

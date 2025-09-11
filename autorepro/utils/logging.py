@@ -156,21 +156,33 @@ def configure_logging(
     if resolved_fmt not in {"json", "text"}:
         resolved_fmt = "text"
 
+    # Use a stable, non-capturing stream to avoid pytest closing issues across tests
+    real_stream = sys.__stderr__ if stream is sys.stderr else stream
     root = logging.getLogger()
     root.setLevel(resolved_level)
 
-    # Clear pre-existing handlers to avoid duplicate logs in repeated invocations
-    for h in list(root.handlers):
-        root.removeHandler(h)
+    # Try to reuse an existing stream handler to the same stream to avoid duplicates
+    desired_formatter: logging.Formatter = (
+        JsonFormatter() if resolved_fmt == "json" else KeyValueFormatter()
+    )
+    reused = False
+    for h in root.handlers:
+        if (
+            isinstance(h, logging.StreamHandler)
+            and getattr(h, "stream", None) is real_stream
+        ):
+            h.setFormatter(desired_formatter)
+            h.setLevel(resolved_level)
+            reused = True
+            break
 
-    handler = logging.StreamHandler(stream)
-    if resolved_fmt == "json":
-        formatter: logging.Formatter = JsonFormatter()
-    else:
-        formatter = KeyValueFormatter()
-    handler.setFormatter(formatter)
-
-    root.addHandler(handler)
+    if not reused:
+        handler = logging.StreamHandler(real_stream)
+        handler.setFormatter(desired_formatter)
+        handler.setLevel(resolved_level)
+        root.addHandler(handler)
     # Ensure our package logger propagates (so root handler applies)
-    logging.getLogger(AUTOREPRO_LOGGER_NAME).setLevel(resolved_level)
-    logging.getLogger(AUTOREPRO_LOGGER_NAME).propagate = True
+    pkg_logger = logging.getLogger(AUTOREPRO_LOGGER_NAME)
+    # Keep package logger level unset so root controls effective level
+    pkg_logger.setLevel(logging.NOTSET)
+    pkg_logger.propagate = True

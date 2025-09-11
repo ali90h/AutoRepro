@@ -27,6 +27,13 @@ __all__ = [
     "format_output",
 ]
 
+# Ensure package logger doesn't suppress INFO during tests or default usage.
+# Keep level NOTSET so effective level is controlled by the root/logger hierarchy
+# (e.g., pytest's caplog or CLI configuration).
+_pkg_logger = logging.getLogger("autorepro")
+if _pkg_logger.level != logging.NOTSET:
+    _pkg_logger.setLevel(logging.NOTSET)
+
 
 def dry_run_aware(
     message_template: str = "Would {operation}",
@@ -66,11 +73,8 @@ def dry_run_aware(
                         pass
 
             if dry_run:
-                log = logging.getLogger("autorepro")
-                log.info(
-                    message_template.format(operation=operation),
-                    extra={"operation": operation, "dry_run": True},
-                )
+                # Maintain CLI-facing print for dry-run messaging per tests
+                print(message_template.format(operation=operation))
                 return return_code
 
             return func(*args, **kwargs)
@@ -234,7 +238,7 @@ def log_operation(
                 }
                 log_func(
                     f"{operation_name} arguments: {safe_args}",
-                    extra={"operation": operation_name, "args": safe_args},
+                    extra={"operation": operation_name, "arguments": safe_args},
                 )
 
             try:
