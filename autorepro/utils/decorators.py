@@ -27,12 +27,30 @@ __all__ = [
     "format_output",
 ]
 
-# Ensure package logger doesn't suppress INFO during tests or default usage.
-# Keep level NOTSET so effective level is controlled by the root/logger hierarchy
-# (e.g., pytest's caplog or CLI configuration).
-_pkg_logger = logging.getLogger("autorepro")
-if _pkg_logger.level != logging.NOTSET:
-    _pkg_logger.setLevel(logging.NOTSET)
+
+# Configure logging for the autorepro package to ensure proper test capturing
+def _setup_logger():
+    """Setup logger with appropriate handlers and propagation for testing."""
+    logger = logging.getLogger("autorepro")
+
+    # Set level to DEBUG to capture all log messages
+    logger.setLevel(logging.DEBUG)
+
+    # Ensure propagation is enabled for pytest's caplog
+    logger.propagate = True
+
+    # Only add handler if none exists to avoid duplicates
+    if not logger.handlers:
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter("%(levelname)s %(name)s: %(message)s")
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+
+    return logger
+
+
+# Initialize the logger
+_pkg_logger = _setup_logger()
 
 
 def dry_run_aware(

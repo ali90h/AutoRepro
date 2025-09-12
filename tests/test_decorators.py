@@ -112,13 +112,13 @@ class TestHandleErrors:
 
     def test_error_logging(self, caplog):
         """Test error logging functionality."""
-        with caplog.at_level(logging.ERROR):
+        caplog.set_level(logging.ERROR, logger="autorepro")
 
-            @handle_errors(log_errors=True)
-            def sample_function():
-                raise ValueError("Test error message")
+        @handle_errors(log_errors=True)
+        def sample_function():
+            raise ValueError("Test error message")
 
-            result = sample_function()
+        result = sample_function()
 
         assert result == 2  # Default mapping for ValueError
         assert "Error in sample_function" in caplog.text
@@ -126,13 +126,13 @@ class TestHandleErrors:
 
     def test_no_error_logging(self, caplog):
         """Test disabling error logging."""
-        with caplog.at_level(logging.ERROR):
+        caplog.set_level(logging.ERROR, logger="autorepro")
 
-            @handle_errors(log_errors=False)
-            def sample_function():
-                raise ValueError("Test error")
+        @handle_errors(log_errors=False)
+        def sample_function():
+            raise ValueError("Test error")
 
-            result = sample_function()
+        result = sample_function()
 
         assert result == 2
         assert not caplog.records
@@ -153,26 +153,26 @@ class TestValidateArgs:
 
     def test_missing_required_argument(self, caplog):
         """Test handling of missing required arguments."""
-        with caplog.at_level(logging.ERROR):
+        caplog.set_level(logging.ERROR, logger="autorepro")
 
-            @validate_args(required=["name"])
-            def sample_function(name: str = None):
-                return f"Hello {name}"
+        @validate_args(required=["name"])
+        def sample_function(name: str = None):
+            return f"Hello {name}"
 
-            result = sample_function()
+        result = sample_function()
 
         assert result == 2
         assert "Required argument 'name' is empty" in caplog.text
 
     def test_empty_string_argument(self, caplog):
         """Test handling of empty string arguments."""
-        with caplog.at_level(logging.ERROR):
+        caplog.set_level(logging.ERROR, logger="autorepro")
 
-            @validate_args(required=["name"])
-            def sample_function(name: str):
-                return f"Hello {name}"
+        @validate_args(required=["name"])
+        def sample_function(name: str):
+            return f"Hello {name}"
 
-            result = sample_function("")
+        result = sample_function("")
 
         assert result == 2
         assert "Required argument 'name' is empty" in caplog.text
@@ -185,13 +185,13 @@ class TestValidateArgs:
                 return False, "Age cannot be negative"
             return True, ""
 
-        with caplog.at_level(logging.ERROR):
+        caplog.set_level(logging.ERROR, logger="autorepro")
 
-            @validate_args(custom_validator=custom_validator)
-            def sample_function(age: int = 0):
-                return f"Age: {age}"
+        @validate_args(custom_validator=custom_validator)
+        def sample_function(age: int = 0):
+            return f"Age: {age}"
 
-            result = sample_function(age=-5)
+        result = sample_function(age=-5)
 
         assert result == 2
         assert "Age cannot be negative" in caplog.text
@@ -202,13 +202,13 @@ class TestLogOperation:
 
     def test_basic_logging(self, caplog):
         """Test basic operation logging."""
-        with caplog.at_level(logging.INFO):
+        caplog.set_level(logging.INFO, logger="autorepro")
 
-            @log_operation("test operation")
-            def sample_function():
-                return 42
+        @log_operation("test operation")
+        def sample_function():
+            return 42
 
-            result = sample_function()
+        result = sample_function()
 
         assert result == 42
         assert "Starting test operation" in caplog.text
@@ -216,27 +216,27 @@ class TestLogOperation:
 
     def test_logging_with_exception(self, caplog):
         """Test logging when function raises exception."""
-        with caplog.at_level(logging.INFO):  # Capture both INFO and ERROR
+        caplog.set_level(logging.INFO, logger="autorepro")
 
-            @log_operation("test operation")
-            def sample_function():
-                raise ValueError("Test error")
+        @log_operation("test operation")
+        def sample_function():
+            raise ValueError("Test error")
 
-            with pytest.raises(ValueError):
-                sample_function()
+        with pytest.raises(ValueError):
+            sample_function()
 
         assert "Starting test operation" in caplog.text
         assert "Failed test operation" in caplog.text
 
     def test_argument_logging(self, caplog):
         """Test logging of function arguments."""
-        with caplog.at_level(logging.INFO):
+        caplog.set_level(logging.INFO, logger="autorepro")
 
-            @log_operation("test operation", log_args=True)
-            def sample_function(arg1, arg2="default"):
-                return "result"
+        @log_operation("test operation", log_args=True)
+        def sample_function(arg1, arg2="default"):
+            return "result"
 
-            result = sample_function("value1", arg2="value2")
+        result = sample_function("value1", arg2="value2")
 
         assert result == "result"
         assert "test operation arguments" in caplog.text
@@ -244,26 +244,26 @@ class TestLogOperation:
 
     def test_result_logging(self, caplog):
         """Test logging of function results."""
-        with caplog.at_level(logging.INFO):
+        caplog.set_level(logging.INFO, logger="autorepro")
 
-            @log_operation("test operation", log_result=True)
-            def sample_function():
-                return "test result"
+        @log_operation("test operation", log_result=True)
+        def sample_function():
+            return "test result"
 
-            result = sample_function()
+        result = sample_function()
 
         assert result == "test result"
         assert "test operation result: test result" in caplog.text
 
     def test_sensitive_argument_filtering(self, caplog):
         """Test that sensitive arguments are not logged."""
-        with caplog.at_level(logging.INFO):
+        caplog.set_level(logging.INFO, logger="autorepro")
 
-            @log_operation("test operation", log_args=True)
-            def sample_function(username, password, token):
-                return "authenticated"
+        @log_operation("test operation", log_args=True)
+        def sample_function(username, password, token):
+            return "authenticated"
 
-            result = sample_function("user", "secret", "abc123")
+        result = sample_function("user", "secret", "abc123")
 
         assert result == "authenticated"
         # Sensitive arguments should not be logged
@@ -277,13 +277,13 @@ class TestTimeExecution:
 
     def test_timing_below_threshold(self, caplog):
         """Test that fast operations are not logged."""
-        with caplog.at_level(logging.INFO):
+        caplog.set_level(logging.INFO, logger="autorepro")
 
-            @time_execution(log_threshold=1.0)
-            def fast_function():
-                return "done"
+        @time_execution(log_threshold=1.0)
+        def fast_function():
+            return "done"
 
-            result = fast_function()
+        result = fast_function()
 
         assert result == "done"
         # Should not log timing info for fast operations
@@ -291,14 +291,14 @@ class TestTimeExecution:
 
     def test_timing_above_threshold(self, caplog):
         """Test that slow operations are logged."""
-        with caplog.at_level(logging.INFO):
+        caplog.set_level(logging.INFO, logger="autorepro")
 
-            @time_execution(log_threshold=0.001)  # Very low threshold
-            def slow_function():
-                time.sleep(0.01)  # 10ms delay
-                return "done"
+        @time_execution(log_threshold=0.001)  # Very low threshold
+        def slow_function():
+            time.sleep(0.01)  # 10ms delay
+            return "done"
 
-            result = slow_function()
+        result = slow_function()
 
         assert result == "done"
         # Should log timing info for operations above threshold
@@ -306,29 +306,29 @@ class TestTimeExecution:
 
     def test_custom_operation_name(self, caplog):
         """Test custom operation name in timing logs."""
-        with caplog.at_level(logging.INFO):
+        caplog.set_level(logging.INFO, logger="autorepro")
 
-            @time_execution(log_threshold=0.001, operation_name="custom operation")
-            def sample_function():
-                time.sleep(0.01)
-                return "done"
+        @time_execution(log_threshold=0.001, operation_name="custom operation")
+        def sample_function():
+            time.sleep(0.01)
+            return "done"
 
-            result = sample_function()
+        result = sample_function()
 
         assert result == "done"
         assert "custom operation completed in" in caplog.text
 
     def test_timing_with_exception(self, caplog):
         """Test that timing works even when function raises exception."""
-        with caplog.at_level(logging.INFO):
+        caplog.set_level(logging.INFO, logger="autorepro")
 
-            @time_execution(log_threshold=0.001)
-            def failing_function():
-                time.sleep(0.01)
-                raise ValueError("Test error")
+        @time_execution(log_threshold=0.001)
+        def failing_function():
+            time.sleep(0.01)
+            raise ValueError("Test error")
 
-            with pytest.raises(ValueError):
-                failing_function()
+        with pytest.raises(ValueError):
+            failing_function()
 
         # Should still log timing even when exception occurs
         assert "failing_function completed in" in caplog.text
@@ -353,26 +353,26 @@ class TestDecoratorStacking:
 
     def test_multiple_decorators(self, caplog):
         """Test stacking multiple decorators."""
-        with caplog.at_level(logging.INFO):
+        caplog.set_level(logging.INFO, logger="autorepro")
 
-            @time_execution(log_threshold=0.001)
-            @handle_errors({ValueError: 3})
-            @log_operation("complex operation")
-            def complex_function(should_fail: bool = False):
-                time.sleep(0.01)
-                if should_fail:
-                    raise ValueError("Intentional failure")
-                return "success"
+        @time_execution(log_threshold=0.001)
+        @handle_errors({ValueError: 3})
+        @log_operation("complex operation")
+        def complex_function(should_fail: bool = False):
+            time.sleep(0.01)
+            if should_fail:
+                raise ValueError("Intentional failure")
+            return "success"
 
-            # Test successful execution
-            result = complex_function()
-            assert result == "success"
-            assert "Starting complex operation" in caplog.text
-            assert "Completed complex operation successfully" in caplog.text
-            assert "complex_function completed in" in caplog.text
+        # Test successful execution
+        result = complex_function()
+        assert result == "success"
+        assert "Starting complex operation" in caplog.text
+        assert "Completed complex operation successfully" in caplog.text
+        assert "complex_function completed in" in caplog.text
 
-            # Test error handling
-            caplog.clear()
-            result = complex_function(should_fail=True)
-            assert result == 3  # Error return code
-            assert "Failed complex operation" in caplog.text
+        # Test error handling
+        caplog.clear()
+        result = complex_function(should_fail=True)
+        assert result == 3  # Error return code
+        assert "Failed complex operation" in caplog.text
