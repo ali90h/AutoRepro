@@ -15,13 +15,28 @@ from pathlib import Path
 
 from .file_ops import FileOperations
 from .process import SubprocessConfig
-من . تسجيل  استيراد  configure_logging
 
-# تأكد من تطبيق تكوين التسجيل المركزي
-تكوين التسجيل ()
 
-# احصل على مسجل الوحدة النمطية (يتم التعامل مع التكوين مركزيًا)
-_error_logger  =  logging . getLogger ( "autorepro.utils.error_handling" )
+# Configure logging for error handling module
+def _setup_error_handling_logger():
+    """Setup logger for error handling module."""
+    logger = logging.getLogger("autorepro.utils.error_handling")
+    logger.setLevel(logging.DEBUG)
+    logger.propagate = True
+
+    if not logger.handlers:
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter("%(levelname)s %(name)s: %(message)s")
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+
+    return logger
+
+
+# Initialize the logger
+_error_logger = _setup_error_handling_logger()
+
+
 @dataclass
 class ErrorContext:
     """Context information for error reporting."""
