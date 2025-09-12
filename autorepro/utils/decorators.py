@@ -91,8 +91,8 @@ def dry_run_aware(
                         pass
 
             if dry_run:
-                # Log dry-run message for CLI and test capture
-                _pkg_logger.info(message_template.format(operation=operation))
+                # Maintain CLI-facing print for dry-run messaging per tests
+                print(message_template.format(operation=operation))
                 return return_code
 
             return func(*args, **kwargs)
