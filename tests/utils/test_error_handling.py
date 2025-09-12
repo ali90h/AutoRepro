@@ -134,10 +134,10 @@ class TestSafeSubprocessRun:
 
     def test_operation_logging(self, caplog):
         """Test operation logging when enabled."""
-        with caplog.at_level(logging.DEBUG):
-            safe_subprocess_run(
-                ["echo", "test"], operation="test_op", log_command=True, check=False
-            )
+        caplog.set_level(logging.DEBUG, logger="autorepro.utils.error_handling")
+        safe_subprocess_run(
+            ["echo", "test"], operation="test_op", log_command=True, check=False
+        )
 
         assert "Running test_op: echo test" in caplog.text
 
@@ -230,9 +230,9 @@ class TestSafeFileOperation:
 
     def test_operation_logging(self, caplog):
         """Test operation logging when enabled."""
-        with caplog.at_level(logging.DEBUG):
-            with safe_file_operation("test operation", log_operations=True):
-                pass
+        caplog.set_level(logging.DEBUG, logger="autorepro.utils.error_handling")
+        with safe_file_operation("test operation", log_operations=True):
+            pass
 
         assert "Starting test operation" in caplog.text
         assert "Completed test operation" in caplog.text
@@ -316,9 +316,9 @@ class TestSafeFileWrappers:
         with tempfile.TemporaryDirectory() as temp_dir:
             test_path = Path(temp_dir) / "test.txt"
 
-            with caplog.at_level(logging.DEBUG):
-                safe_write_file(test_path, "test", log_operations=True)
-                safe_read_file(test_path, log_operations=True)
+            caplog.set_level(logging.DEBUG, logger="autorepro.utils.error_handling")
+            safe_write_file(test_path, "test", log_operations=True)
+            safe_read_file(test_path, log_operations=True)
 
             assert "Starting write file" in caplog.text
             assert "Completed write file" in caplog.text

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import contextlib
+import logging
 import os
 import tempfile
 
@@ -51,7 +52,10 @@ def update_comment(
         ]
 
         if dry_run:
-            print(f"Would run: {' '.join(cmd)}")
+            logging.getLogger("autorepro.github_api").info(
+                "Would run",
+                extra={"cmd": cmd, "dry_run": True, "context": context},
+            )
             return 0
 
         safe_subprocess_run(

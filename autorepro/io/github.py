@@ -296,7 +296,10 @@ def create_pr_comment(
         ]
 
         if dry_run:
-            print(f"Would run: {' '.join(cmd)}")
+            logging.getLogger("autorepro.github").info(
+                "Would run",
+                extra={"cmd": cmd, "dry_run": True, "op": "create_pr_comment"},
+            )
             return 0
 
         subprocess.run(cmd, check=True, capture_output=True)
@@ -347,7 +350,10 @@ def update_pr_body(
         ]
 
         if dry_run:
-            print(f"Would run: {' '.join(cmd)}")
+            logging.getLogger("autorepro.github").info(
+                "Would run",
+                extra={"cmd": cmd, "dry_run": True, "op": "update_pr_body"},
+            )
             return 0
 
         subprocess.run(cmd, check=True, capture_output=True)
@@ -389,7 +395,10 @@ def add_pr_labels(
         cmd = [gh_path, "pr", "edit", str(pr_number), "--add-label", ",".join(labels)]
 
         if dry_run:
-            print(f"Would run: {' '.join(cmd)}")
+            logging.getLogger("autorepro.github").info(
+                "Would run",
+                extra={"cmd": cmd, "dry_run": True, "op": "add_pr_labels"},
+            )
             return 0
 
         subprocess.run(cmd, check=True, capture_output=True)
@@ -457,7 +466,10 @@ def _update_existing_pr(
     ]
 
     if config.dry_run:
-        print(f"Would run: {' '.join(cmd)}")
+        logging.getLogger("autorepro.github").info(
+            "Would run",
+            extra={"cmd": cmd, "dry_run": True, "op": "_update_existing_pr"},
+        )
         return 0, False
 
     log.info(f"Updating existing draft PR #{existing_pr}")
@@ -523,7 +535,10 @@ def _create_new_pr(config: GitHubPRConfig, body_file: str) -> tuple[int, bool]:
     cmd = _build_create_pr_command(config, body_file)
 
     if config.dry_run:
-        print(f"Would run: {' '.join(cmd)}")
+        logging.getLogger("autorepro.github").info(
+            "Would run",
+            extra={"cmd": cmd, "dry_run": True, "op": "_create_new_pr"},
+        )
         return 0, True
 
     log.info("Creating new draft PR")
@@ -703,7 +718,10 @@ def create_issue_comment(
         ]
 
         if dry_run:
-            print(f"Would run: {' '.join(cmd)}")
+            logging.getLogger("autorepro.github").info(
+                "Would run",
+                extra={"cmd": cmd, "dry_run": True, "op": "create_issue_comment"},
+            )
             return 0
 
         subprocess.run(cmd, check=True, capture_output=True)
@@ -755,7 +773,10 @@ def create_issue(config: IssueConfig) -> int:
             cmd.extend(["--assignee", ",".join(config.assignees)])
 
         if config.dry_run:
-            print(f"Would run: {' '.join(cmd)}")
+            logging.getLogger("autorepro.github").info(
+                "Would run",
+                extra={"cmd": cmd, "dry_run": True, "op": "create_issue"},
+            )
             return 0
 
         result = subprocess.run(cmd, check=True, capture_output=True, text=True)
@@ -807,7 +828,10 @@ def add_issue_labels(
     ]
 
     if dry_run:
-        print(f"Would run: {' '.join(cmd)}")
+        logging.getLogger("autorepro.github").info(
+            "Would run",
+            extra={"cmd": cmd, "dry_run": True, "op": "add_issue_labels"},
+        )
         return 0
 
     try:
@@ -848,7 +872,10 @@ def add_issue_assignees(
     ]
 
     if dry_run:
-        print(f"Would run: {' '.join(cmd)}")
+        logging.getLogger("autorepro.github").info(
+            "Would run",
+            extra={"cmd": cmd, "dry_run": True, "op": "add_issue_assignees"},
+        )
         return 0
 
     try:

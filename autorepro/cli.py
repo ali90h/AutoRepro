@@ -43,6 +43,7 @@ from autorepro.project_config import load_config as load_project_config
 from autorepro.project_config import resolve_profile as resolve_project_profile
 from autorepro.utils.decorators import handle_errors, log_operation, time_execution
 from autorepro.utils.file_ops import FileOperations
+from autorepro.utils.logging import configure_logging
 from autorepro.utils.validation_helpers import (
     has_ci_keywords,
     has_installation_keywords,
@@ -2031,7 +2032,9 @@ def _setup_logging(args, project_verbosity: str | None = None) -> None:
         else:
             level = logging.WARNING
 
-    logging.basicConfig(level=level, format="%(message)s", stream=sys.stderr)
+    # Use centralized logging configuration (JSON/text), defaults to key=value text.
+    # Users can set AUTOREPRO_LOG_FORMAT=json for structured logs.
+    configure_logging(level=level, fmt=None, stream=sys.stderr)
 
 
 def _dispatch_command(args, parser) -> int:

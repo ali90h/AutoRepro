@@ -28,6 +28,31 @@ __all__ = [
 ]
 
 
+# Configure logging for the autorepro package to ensure proper test capturing
+def _setup_logger():
+    """Setup logger with appropriate handlers and propagation for testing."""
+    logger = logging.getLogger("autorepro")
+
+    # Set level to DEBUG to capture all log messages
+    logger.setLevel(logging.DEBUG)
+
+    # Ensure propagation is enabled for pytest's caplog
+    logger.propagate = True
+
+    # Only add handler if none exists to avoid duplicates
+    if not logger.handlers:
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter("%(levelname)s %(name)s: %(message)s")
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+
+    return logger
+
+
+# Initialize the logger
+_pkg_logger = _setup_logger()
+
+
 def dry_run_aware(
     message_template: str = "Would {operation}",
     operation: str = "execute command",
@@ -66,6 +91,7 @@ def dry_run_aware(
                         pass
 
             if dry_run:
+                # Maintain CLI-facing print for dry-run messaging per tests
                 print(message_template.format(operation=operation))
                 return return_code
 
@@ -213,7 +239,8 @@ def log_operation(
             log = logging.getLogger("autorepro")
             log_func = getattr(log, log_level.lower())
 
-            log_func(f"Starting {operation_name}")
+            # Include operation name as structured context
+            log_func(f"Starting {operation_name}", extra={"operation": operation_name})
 
             if log_args:
                 # Sanitize arguments (don't log sensitive data)
@@ -227,18 +254,30 @@ def log_operation(
                     for k, v in bound_args.arguments.items()
                     if k not in ["password", "token", "secret"]
                 }
-                log_func(f"{operation_name} arguments: {safe_args}")
+                log_func(
+                    f"{operation_name} arguments: {safe_args}",
+                    extra={"operation": operation_name, "arguments": safe_args},
+                )
 
             try:
                 result = func(*args, **kwargs)
-                log_func(f"Completed {operation_name} successfully")
+                log_func(
+                    f"Completed {operation_name} successfully",
+                    extra={"operation": operation_name},
+                )
 
                 if log_result and result is not None:
-                    log_func(f"{operation_name} result: {result}")
+                    log_func(
+                        f"{operation_name} result: {result}",
+                        extra={"operation": operation_name, "result": result},
+                    )
 
                 return result
             except Exception as e:
-                log.error(f"Failed {operation_name}: {e}")
+                log.error(
+                    f"Failed {operation_name}: {e}",
+                    extra={"operation": operation_name, "error": str(e)},
+                )
                 raise
 
         return wrapper
@@ -277,7 +316,13 @@ def time_execution(
                 if execution_time >= log_threshold:
                     log = logging.getLogger("autorepro")
                     op_name = operation_name or func.__name__
-                    log.info(f"{op_name} completed in {execution_time:.2f}s")
+                    log.info(
+                        f"{op_name} completed in {execution_time:.2f}s",
+                        extra={
+                            "operation": op_name,
+                            "duration_s": round(execution_time, 3),
+                        },
+                    )
 
         return wrapper
 

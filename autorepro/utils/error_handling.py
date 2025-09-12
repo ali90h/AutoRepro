@@ -17,6 +17,26 @@ from .file_ops import FileOperations
 from .process import SubprocessConfig
 
 
+# Configure logging for error handling module
+def _setup_error_handling_logger():
+    """Setup logger for error handling module."""
+    logger = logging.getLogger("autorepro.utils.error_handling")
+    logger.setLevel(logging.DEBUG)
+    logger.propagate = True
+
+    if not logger.handlers:
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter("%(levelname)s %(name)s: %(message)s")
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+
+    return logger
+
+
+# Initialize the logger
+_error_logger = _setup_error_handling_logger()
+
+
 @dataclass
 class ErrorContext:
     """Context information for error reporting."""
@@ -179,7 +199,7 @@ def _safe_subprocess_run_impl(
     Raises:
         SubprocessError: If command fails and check=True, or on execution errors
     """
-    logger = logging.getLogger("autorepro")
+    logger = logging.getLogger("autorepro.utils.error_handling")
 
     # Use provided config or create default
     if config is None:
@@ -322,7 +342,7 @@ def safe_file_operation(
     Raises:
         FileOperationError: If any file operation error occurs within the context
     """
-    logger = logging.getLogger("autorepro")
+    logger = logging.getLogger("autorepro.utils.error_handling")
     path_str = str(path) if path else "unknown"
 
     if log_operations:
