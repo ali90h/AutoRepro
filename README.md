@@ -291,6 +291,69 @@ $ autorepro scan --json --show 3
 - **Python**: `pyproject.toml`, `setup.py`, `requirements.txt`, `*.py`
 - **Rust**: `Cargo.toml`, `Cargo.lock`, `*.rs`
 
+### Exec Command (Multi-execution Support)
+
+Executes commands from a reproduction plan with support for single or multiple command execution, early stopping, and structured logging.
+
+```bash
+# Execute single command (default behavior)
+$ autorepro exec --desc "pytest failing"
+# Executes the top-ranked command
+
+# Execute all candidate commands in order
+$ autorepro exec --desc "pytest failing" --all
+# Runs all suggested commands sequentially
+
+# Execute specific commands by index
+$ autorepro exec --desc "test issues" --indexes "0,2-4"
+# Runs commands at indices 0, 2, 3, and 4
+
+# Stop at first successful command
+$ autorepro exec --desc "build problems" --until-success
+# Stops execution after first command with exit code 0
+
+# Multi-execution with JSONL logging
+$ autorepro exec --desc "CI tests" --all --jsonl runs.jsonl --summary summary.json
+
+# Dry-run to preview selected commands
+$ autorepro exec --desc "npm test" --indexes "1,3" --dry-run
+[1] npm test --verbose
+[3] npm run test:unit
+```
+
+**Multi-execution Features:**
+
+- **`--all`**: Execute all candidate commands in their original order
+- **`--indexes "N,M-P"`**: Execute specific commands by indices/ranges (comma-separated)
+- **`--until-success`**: Stop after the first command that exits with code 0
+- **`--summary FILE.json`**: Write final execution summary to JSON file
+- **Command precedence**: `--indexes` takes precedence over `--all`, both override single `--index`
+
+**JSONL Output Format:**
+
+When using `--jsonl`, each execution produces a run record followed by a final summary:
+
+```jsonl
+{"type": "run", "index": 0, "cmd": "pytest", "start_ts": "2025-09-13T12:00:00Z", "end_ts": "2025-09-13T12:00:05Z", "exit_code": 1, "duration_ms": 5000}
+{"type": "run", "index": 1, "cmd": "pytest -v", "start_ts": "2025-09-13T12:00:05Z", "end_ts": "2025-09-13T12:00:08Z", "exit_code": 0, "duration_ms": 3000}
+{"type": "summary", "schema_version": 1, "tool": "autorepro", "runs": 2, "successes": 1, "first_success_index": 1}
+```
+
+**Execution Options:**
+
+- `--timeout N`: Command timeout in seconds (default: 120)
+- `--env KEY=VAL`: Set environment variable (repeatable)
+- `--env-file PATH`: Load environment variables from file
+- `--tee PATH`: Append full stdout/stderr to log file
+- `--jsonl PATH`: Stream JSONL records for each run and summary
+- `--dry-run`: Print selected commands without executing
+
+**Exit Behavior:**
+
+- **Single execution**: Returns the command's exit code
+- **Multi-execution**: Returns 0 if any command succeeded, otherwise the last exit code
+- **`--until-success`**: Returns 0 when a command succeeds, otherwise the last failure code
+
 ### Init Command
 
 Creates a devcontainer.json file with default configuration (Python 3.11, Node 20, Go 1.22). The command is idempotent and provides atomic file writes.
