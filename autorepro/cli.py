@@ -248,6 +248,27 @@ def _setup_scan_parser(subparsers) -> argparse.ArgumentParser:
         help="Show scores in text output (only effective without --json)",
     )
     scan_parser.add_argument(
+        "--depth",
+        type=int,
+        help="Maximum depth to scan (0 for root only, default: unlimited)",
+    )
+    scan_parser.add_argument(
+        "--ignore",
+        action="append",
+        default=[],
+        help="Ignore files/directories matching pattern (can be specified multiple times)",
+    )
+    scan_parser.add_argument(
+        "--respect-gitignore",
+        action="store_true",
+        help="Respect .gitignore rules when scanning",
+    )
+    scan_parser.add_argument(
+        "--show",
+        type=int,
+        help="Number of sample files per language to include in JSON output (default: 5)",
+    )
+    scan_parser.add_argument(
         "-q",
         "--quiet",
         action="store_true",
@@ -489,12 +510,28 @@ For more information, visit: https://github.com/ali90h/AutoRepro
 @time_execution(log_threshold=0.5)
 @handle_errors({}, default_return=1, log_errors=True)
 @log_operation("language detection scan")
-def cmd_scan(json_output: bool = False, show_scores: bool = False) -> int:
+def cmd_scan(  # noqa: PLR0913
+    json_output: bool = False,
+    show_scores: bool = False,
+    depth: int | None = None,
+    ignore_patterns: list[str] | None = None,
+    respect_gitignore: bool = False,
+    show_files_sample: int | None = None,
+) -> int:
     """Handle the scan command."""
+    if ignore_patterns is None:
+        ignore_patterns = []
+
     if json_output:
         # Use new weighted evidence collection for JSON output
         try:
-            evidence = collect_evidence(Path("."))
+            evidence = collect_evidence(
+                Path("."),
+                depth=depth,
+                ignore_patterns=ignore_patterns,
+                respect_gitignore=respect_gitignore,
+                show_files_sample=show_files_sample,
+            )
             detected_languages = sorted(evidence.keys())
         except (OSError, PermissionError):
             # Handle I/O errors gracefully for JSON output - return empty results
@@ -516,31 +553,48 @@ def cmd_scan(json_output: bool = False, show_scores: bool = False) -> int:
         print(json.dumps(json_result, indent=2))
         return 0
     else:
-        # Use legacy text output
-        detected = detect_languages(".")
-
-        if not detected:
+        # Use enhanced evidence collection for text output too
+        try:
+            evidence = collect_evidence(
+                Path("."),
+                depth=depth,
+                ignore_patterns=ignore_patterns,
+                respect_gitignore=respect_gitignore,
+            )
+        except (OSError, PermissionError):
             print("No known languages detected.")
             return 0
 
-        # Extract language names for header
-        languages = [lang for lang, _ in detected]
+        if not evidence:
+            print("No known languages detected.")
+            return 0
+
+        # Extract language names for header (sorted)
+        languages = sorted(evidence.keys())
         print(f"Detected: {', '.join(languages)}")
 
         # Print details for each language
-        for lang, reasons in detected:
-            reasons_str = ", ".join(reasons)
+        for lang in languages:
+            lang_data = evidence[lang]
+            reasons = lang_data.get("reasons", [])
+
+            # Extract unique patterns for display (with type check)
+            if isinstance(reasons, list):
+                patterns = list(
+                    dict.fromkeys(
+                        reason["pattern"]
+                        for reason in reasons
+                        if isinstance(reason, dict)
+                    )
+                )
+                reasons_str = ", ".join(patterns)
+            else:
+                reasons_str = "unknown"
             print(f"- {lang} -> {reasons_str}")
 
             # Add score if --show-scores is enabled
             if show_scores:
-                try:
-                    evidence = collect_evidence(Path("."))
-                    if lang in evidence:
-                        print(f"  Score: {evidence[lang]['score']}")
-                except (OSError, PermissionError):
-                    # Skip scores if evidence collection fails
-                    pass
+                print(f"  Score: {lang_data['score']}")
 
         return 0
 
@@ -1911,9 +1965,21 @@ def _dispatch_scan_command(args) -> int:
     # Load settings and apply plugins before any rule usage
     settings = _get_project_settings(args)
     _apply_plugins_env(settings)
+
+    # Determine show_files_sample value
+    show_value = getattr(args, "show", None)
+    json_output = getattr(args, "json", False)
+    show_files_sample = (
+        show_value if show_value is not None else (5 if json_output else None)
+    )
+
     return cmd_scan(
-        json_output=getattr(args, "json", False),
+        json_output=json_output,
         show_scores=getattr(args, "show_scores", False),
+        depth=getattr(args, "depth", None),
+        ignore_patterns=getattr(args, "ignore", []),
+        respect_gitignore=getattr(args, "respect_gitignore", False),
+        show_files_sample=show_files_sample,
     )
 
 

@@ -218,13 +218,57 @@ $ autorepro scan --json
   "detected": [],
   "languages": {}
 }
+
+# Enhanced scanning with depth control
+$ autorepro scan --depth 0
+Detected: python
+- python -> pyproject.toml
+
+$ autorepro scan --depth 2
+Detected: node, python
+- node -> package.json
+- python -> pyproject.toml
+
+# Filtering with ignore patterns
+$ autorepro scan --depth 2 --ignore 'node_modules/**' --ignore 'dist/**'
+Detected: python
+- python -> pyproject.toml
+
+# Respecting .gitignore rules
+$ autorepro scan --respect-gitignore
+Detected: python
+- python -> pyproject.toml
+
+# JSON with file samples
+$ autorepro scan --json --show 3
+{
+  "detected": ["python"],
+  "languages": {
+    "python": {
+      "score": 4,
+      "reasons": [...],
+      "files_sample": ["./pyproject.toml", "./main.py", "./utils.py"]
+    }
+  }
+}
 ```
 
-**Status:** `scan` is implemented with weighted scoring system and dual output formats (text/JSON).
+**Status:** `scan` is implemented with weighted scoring system, dual output formats (text/JSON), and enhanced hierarchical scanning capabilities.
 
 **Scan Options:**
 - `--json`: Output in JSON format with scores and detailed reasons
 - `--show-scores`: Add score lines to text output (ignored with --json)
+- `--depth N`: Maximum depth to scan (0 for root only, default: unlimited)
+- `--ignore PATTERN`: Ignore files/directories matching pattern (repeatable)
+- `--respect-gitignore`: Respect .gitignore rules when scanning
+- `--show N`: Number of sample files per language to include in JSON output (default: 5)
+
+**Enhanced Scanning Features:**
+- **Hierarchical scanning**: Control scan depth with `--depth` parameter
+- **Pattern-based filtering**: Use `--ignore` to exclude files/directories by glob patterns
+- **Gitignore integration**: `--respect-gitignore` honors .gitignore rules including negation patterns (`!pattern`)
+- **File sampling**: JSON output includes `files_sample` array with up to N sample files per language
+- **Stable ordering**: Sample files are sorted deterministically for consistent results
 
 **Weighted Scoring System:**
 - **Lock files (weight 4)**: `pnpm-lock.yaml`, `yarn.lock`, `npm-shrinkwrap.json`, `package-lock.json`, `go.sum`, `Cargo.lock`
@@ -233,9 +277,10 @@ $ autorepro scan --json
 - **Source files (weight 1)**: `*.py`, `*.go`, `*.rs`, `*.java`, `*.cs`, `*.js`, `*.ts`, etc.
 
 **Scan Behavior:**
-- **Root-only**: Scans only the current directory (non-recursive)
-- **Deterministic ordering**: Languages and reasons are sorted alphabetically
+- **Configurable depth**: `--depth 0` scans root only, `--depth N` scans N levels deep, no flag scans unlimited depth
+- **Deterministic ordering**: Languages, reasons, and file samples are sorted alphabetically
 - **Score accumulation**: Multiple indicators for same language add their weights together
+- **Filtering integration**: Ignored files don't contribute to detection scores or language presence
 - **Exit code 0**: Always succeeds, even with no detections
 
 **Supported Languages:**
