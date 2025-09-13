@@ -1528,7 +1528,7 @@ def _resolve_command_selection(  # noqa: PLR0911
                 log.error(
                     f"Invalid indices {invalid_indices}: only {len(suggestions)} commands available (0-{max_index})"
                 )
-                return None, 1
+                return None, 2
             return requested_indices, None
         except ValueError as e:
             log = logging.getLogger("autorepro")
@@ -1544,7 +1544,7 @@ def _resolve_command_selection(  # noqa: PLR0911
             log.error(
                 f"Index {config.index} out of range: only {len(suggestions)} commands available"
             )
-            return None, 1
+            return None, 2
         return [config.index], None
 
 
@@ -1865,7 +1865,7 @@ def _create_summary_record(
     }
 
 
-def _execute_multiple_commands(  # noqa: C901
+def _execute_multiple_commands(  # noqa: C901, PLR0912
     suggestions: list,
     selected_indices: list[int],
     repo_path: Path | None,
@@ -1928,8 +1928,9 @@ def _execute_multiple_commands(  # noqa: C901
             )
             _write_jsonl_record(config.jsonl_path, run_record)
 
-        # Handle output logging (for --tee)
-        _handle_exec_output_logging(results, config)
+        # Handle output logging (for --tee only, not JSONL in multi-execution mode)
+        if config.tee_path:
+            _handle_exec_output_logging(results, config)
 
         # Print output to console (unless quiet)
         if results["stdout_full"]:

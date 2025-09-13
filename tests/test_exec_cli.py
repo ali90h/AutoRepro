@@ -113,18 +113,28 @@ requires = ["setuptools", "wheel"]
             # Should have created JSONL log
             assert jsonl_path.exists()
 
-            # Parse JSONL record
+            # Parse JSONL records (multi-execution format)
             with open(jsonl_path) as f:
-                record = json.loads(f.read().strip())
+                lines = f.read().strip().split("\n")
 
-            assert record["schema_version"] == 1
-            assert record["tool"] == "autorepro"
-            assert "cmd" in record
-            assert "index" in record
-            assert "cwd" in record
-            assert "start" in record
-            assert "duration_ms" in record
-            assert "exit_code" in record
+            # Should have at least a run record and summary record
+            assert len(lines) >= 2
+
+            # Parse the first line (run record)
+            run_record = json.loads(lines[0])
+            assert run_record["type"] == "run"
+            assert "cmd" in run_record
+            assert "index" in run_record
+            assert "start_ts" in run_record
+            assert "end_ts" in run_record
+            assert "duration_ms" in run_record
+            assert "exit_code" in run_record
+
+            # Parse the last line (summary record)
+            summary_record = json.loads(lines[-1])
+            assert summary_record["type"] == "summary"
+            assert summary_record["schema_version"] == 1
+            assert summary_record["tool"] == "autorepro"
 
     def test_exec_index_selects_command(self):
         """Test --index selects the N-th command."""
@@ -166,8 +176,11 @@ requires = ["setuptools", "wheel"]
             # Check JSONL record has correct index
             if jsonl_path.exists():
                 with open(jsonl_path) as f:
-                    record = json.loads(f.read().strip())
-                assert record["index"] == 1
+                    lines = f.read().strip().split("\n")
+                # Parse the first line (run record)
+                run_record = json.loads(lines[0])
+                assert run_record["type"] == "run"
+                assert run_record["index"] == 1
 
     def test_exec_strict_empty_exits_with_error(self):
         """Test --strict with no commands exits 1."""

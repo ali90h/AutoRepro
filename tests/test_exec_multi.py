@@ -147,7 +147,7 @@ class TestCommandSelection:
 
         selected_indices, error = _resolve_command_selection(suggestions, config)
 
-        assert error == 1
+        assert error == 2
         assert selected_indices is None
 
     def test_resolve_command_selection_indexes_out_of_range(self):
@@ -157,7 +157,7 @@ class TestCommandSelection:
 
         selected_indices, error = _resolve_command_selection(suggestions, config)
 
-        assert error == 1
+        assert error == 2
         assert selected_indices is None
 
     def test_resolve_command_selection_empty_suggestions(self):
