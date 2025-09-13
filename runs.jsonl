@@ -1,1 +1,0 @@
-{"schema_version": 1, "tool": "autorepro", "tool_version": "0.0.1", "cmd": "python -c \"import time, sys; time.sleep(3); sys.exit(0)\"", "index": 0, "cwd": "/Users/ali/autorepro", "start": "2025-09-01T10:35:50Z", "duration_ms": 1004, "exit_code": 124, "timed_out": true, "stdout_preview": "", "stderr_preview": "Command timed out after 1 seconds"}

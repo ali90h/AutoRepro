@@ -52,7 +52,7 @@ jobs:
         run: python -m ruff check .
 
       - name: Mypy (type check)
-        run: mypy || true
+        run: mypy autorepro tests || true
 
       - name: Export PYTHON_BIN
         run: echo "PYTHON_BIN=$(which python)" >> $GITHUB_ENV

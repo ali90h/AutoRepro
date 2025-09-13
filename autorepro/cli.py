@@ -450,6 +450,27 @@ def _setup_exec_parser(subparsers) -> argparse.ArgumentParser:
         action="store_true",
         help="Exit with code 1 if no commands make the cut after filtering",
     )
+
+    # Multi-execution arguments
+    exec_parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Execute all candidate commands in order",
+    )
+    exec_parser.add_argument(
+        "--indexes",
+        help="Execute specific commands by indices/ranges (e.g., '0,2-3')",
+    )
+    exec_parser.add_argument(
+        "--until-success",
+        action="store_true",
+        help="Stop after the first command that exits with code 0",
+    )
+    exec_parser.add_argument(
+        "--summary",
+        help="Write final summary JSON to file",
+    )
+
     exec_parser.add_argument(
         "--profile",
         help="Named profile from .autorepro.toml to apply",
@@ -755,6 +776,12 @@ class ExecConfig:
     min_score: int = field(default_factory=lambda: config.limits.min_score_threshold)
     strict: bool = False
 
+    # Multi-execution fields
+    all: bool = False
+    indexes: str | None = None
+    until_success: bool = False
+    summary_path: str | None = None
+
     def validate(self) -> None:
         """Validate exec configuration and raise descriptive errors."""
         # Mutual exclusivity validation
@@ -768,6 +795,25 @@ class ExecConfig:
                 "Must specify either --desc or --file", field="desc,file"
             )
 
+        # Multi-execution validation
+        multi_exec_flags = sum(
+            [bool(self.all), bool(self.indexes), bool(self.until_success)]
+        )
+        if multi_exec_flags > 0:
+            # If using multi-execution, validate combinations
+            if self.all and self.indexes:
+                # indexes takes precedence, just warn
+                pass
+
+            # Validate indexes format if provided
+            if self.indexes:
+                try:
+                    self._parse_indexes(self.indexes)
+                except ValueError as e:
+                    raise FieldValidationError(
+                        f"invalid indexes format: {e}", field="indexes"
+                    ) from e
+
         # Field validation
         if self.timeout <= 0:
             raise FieldValidationError(
@@ -780,6 +826,45 @@ class ExecConfig:
             )
 
         # File path validation is done later for proper I/O error handling
+
+    def _parse_indexes(self, indexes_str: str) -> list[int]:  # noqa: C901
+        """Parse indexes string like '0,2-3' into list of integers."""
+        if not indexes_str.strip():
+            raise ValueError("indexes string cannot be empty")
+
+        result: list[int] = []
+        for part in indexes_str.split(","):
+            part = part.strip()
+            if not part:
+                continue
+
+            if "-" in part:
+                # Range like "2-5"
+                try:
+                    start, end = part.split("-", 1)
+                    start_idx = int(start.strip())
+                    end_idx = int(end.strip())
+                    if start_idx < 0 or end_idx < 0:
+                        raise ValueError("indexes must be non-negative")
+                    if start_idx > end_idx:
+                        raise ValueError(f"invalid range {part}: start > end")
+                    result.extend(range(start_idx, end_idx + 1))
+                except ValueError as e:
+                    if "invalid range" in str(e):
+                        raise
+                    raise ValueError(f"invalid range format: {part}") from e
+            else:
+                # Single index
+                try:
+                    idx = int(part)
+                    if idx < 0:
+                        raise ValueError("indexes must be non-negative")
+                    result.append(idx)
+                except ValueError:
+                    raise ValueError(f"invalid index: {part}") from None
+
+        # Remove duplicates and sort
+        return sorted(set(result))
 
 
 @dataclass
@@ -1418,6 +1503,51 @@ def _generate_exec_suggestions(
     return suggestions, None
 
 
+def _resolve_command_selection(  # noqa: PLR0911
+    suggestions: list, config: ExecConfig
+) -> tuple[list[int] | None, int | None]:
+    """
+    Resolve which command indices to execute based on config.
+
+    Returns:
+        Tuple of (selected_indices, error_code). If error_code is not None, should return it.
+    """
+    if not suggestions:
+        return [], None
+
+    # Determine selection mode
+    if config.indexes:
+        # --indexes takes precedence
+        try:
+            requested_indices = config._parse_indexes(config.indexes)
+            # Validate indices are within range
+            max_index = len(suggestions) - 1
+            invalid_indices = [i for i in requested_indices if i > max_index]
+            if invalid_indices:
+                log = logging.getLogger("autorepro")
+                log.error(
+                    f"Invalid indices {invalid_indices}: only {len(suggestions)} commands available (0-{max_index})"
+                )
+                return None, 2
+            return requested_indices, None
+        except ValueError as e:
+            log = logging.getLogger("autorepro")
+            log.error(f"Invalid indexes format: {e}")
+            return None, 1
+    elif config.all:
+        # --all executes all commands
+        return list(range(len(suggestions))), None
+    else:
+        # Single command execution (original behavior)
+        if config.index >= len(suggestions):
+            log = logging.getLogger("autorepro")
+            log.error(
+                f"Index {config.index} out of range: only {len(suggestions)} commands available"
+            )
+            return None, 2
+        return [config.index], None
+
+
 def _select_exec_command(
     suggestions: list, config: ExecConfig
 ) -> tuple[tuple | None, int | None]:
@@ -1599,7 +1729,7 @@ def _handle_exec_output_logging(results: dict, config: ExecConfig) -> None:
             log.error(f"Failed to write JSONL log: {e}")
 
 
-def _execute_exec_pipeline(config: ExecConfig) -> int:
+def _execute_exec_pipeline(config: ExecConfig) -> int:  # noqa: PLR0911
     """Execute the complete exec command pipeline."""
     # Validate configuration
     config.validate()
@@ -1620,22 +1750,35 @@ def _execute_exec_pipeline(config: ExecConfig) -> int:
     if error is not None:
         return error
 
-    # Select command by index
-    selected_command, error = _select_exec_command(suggestions, config)
+    # Resolve which commands to execute
+    selected_indices, error = _resolve_command_selection(suggestions, config)
     if error is not None:
         return error
-    assert (
-        selected_command is not None
-    )  # Type assertion - we know command is valid if no error
+    assert selected_indices is not None
 
-    command_str, score, rationale = selected_command
+    # Handle empty selection
+    if not selected_indices:
+        log = logging.getLogger("autorepro")
+        log.error("No commands to execute")
+        return 1
 
     # Handle dry-run
     if config.dry_run:
-        print(command_str)
+        for index in selected_indices:
+            command_str, score, rationale = suggestions[index]
+            print(f"[{index}] {command_str}")
         return 0
 
-    return _execute_exec_command_real(command_str, repo_path, config)
+    # Execute commands (single or multiple)
+    if len(selected_indices) == 1 and not (config.jsonl_path or config.summary_path):
+        # Single command execution (backward compatible)
+        command_str, score, rationale = suggestions[selected_indices[0]]
+        return _execute_exec_command_real(command_str, repo_path, config)
+    else:
+        # Multi-command execution with JSONL support
+        return _execute_multiple_commands(
+            suggestions, selected_indices, repo_path, config
+        )
 
 
 def _execute_exec_command_real(
@@ -1668,6 +1811,156 @@ def _execute_exec_command_real(
     return results["exit_code"]
 
 
+def _write_jsonl_record(file_path: str, record: dict) -> None:
+    """Write a single JSONL record to file."""
+    try:
+        with open(file_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(record) + "\n")
+    except OSError as e:
+        log = logging.getLogger("autorepro")
+        log.error(f"Failed to write JSONL record: {e}")
+
+
+def _create_run_record(
+    index: int,
+    command_str: str,
+    results: dict,
+    start_time: datetime,
+    end_time: datetime,
+) -> dict:
+    """Create a run record for JSONL output."""
+    return {
+        "type": "run",
+        "index": index,
+        "cmd": command_str,
+        "start_ts": start_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "end_ts": end_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "exit_code": results["exit_code"],
+        "duration_ms": results["duration_ms"],
+        # Optional fields for output paths if they exist
+        **(
+            {}
+            if not results.get("stdout_path")
+            else {"stdout_path": str(results["stdout_path"])}
+        ),
+        **(
+            {}
+            if not results.get("stderr_path")
+            else {"stderr_path": str(results["stderr_path"])}
+        ),
+    }
+
+
+def _create_summary_record(
+    runs: int, successes: int, first_success_index: int | None
+) -> dict:
+    """Create a summary record for JSONL output."""
+    return {
+        "type": "summary",
+        "schema_version": 1,
+        "tool": "autorepro",
+        "runs": runs,
+        "successes": successes,
+        "first_success_index": first_success_index,
+    }
+
+
+def _execute_multiple_commands(  # noqa: C901, PLR0912
+    suggestions: list,
+    selected_indices: list[int],
+    repo_path: Path | None,
+    config: ExecConfig,
+) -> int:
+    """
+    Execute multiple commands and handle JSONL output.
+
+    Returns:
+        Final exit code (0 if any command succeeded, otherwise last exit code)
+    """
+    log = logging.getLogger("autorepro")
+
+    # Prepare environment variables
+    env, error = _prepare_exec_environment(config)
+    if error is not None:
+        return error
+    assert env is not None
+
+    # Determine execution directory
+    exec_dir = repo_path if repo_path else Path.cwd()
+
+    # Track execution results
+    runs = 0
+    successes = 0
+    first_success_index = None
+    last_exit_code = 0
+
+    # Execute selected commands
+    for _i, suggestion_index in enumerate(selected_indices):
+        command_str, score, rationale = suggestions[suggestion_index]
+
+        log.info(f"Executing command {suggestion_index}: {command_str}")
+
+        # Record start time
+        start_time = datetime.now()
+
+        # Execute the command
+        results, error = _execute_command(command_str, env, exec_dir, config)
+        if error is not None:
+            return error
+
+        # Record end time
+        end_time = datetime.now()
+
+        runs += 1
+        exit_code = results["exit_code"]
+        last_exit_code = exit_code
+
+        # Track success
+        if exit_code == 0:
+            successes += 1
+            if first_success_index is None:
+                first_success_index = suggestion_index
+
+        # Write JSONL record if requested
+        if config.jsonl_path:
+            run_record = _create_run_record(
+                suggestion_index, command_str, results, start_time, end_time
+            )
+            _write_jsonl_record(config.jsonl_path, run_record)
+
+        # Handle output logging (for --tee only, not JSONL in multi-execution mode)
+        if config.tee_path:
+            _handle_exec_output_logging(results, config)
+
+        # Print output to console (unless quiet)
+        if results["stdout_full"]:
+            print(results["stdout_full"], end="")
+        if results["stderr_full"]:
+            print(results["stderr_full"], file=sys.stderr, end="")
+
+        # Check for early stopping
+        if config.until_success and exit_code == 0:
+            log.info(f"Stopping after first success (command {suggestion_index})")
+            break
+
+    # Write summary record
+    summary_record = _create_summary_record(runs, successes, first_success_index)
+
+    if config.jsonl_path:
+        _write_jsonl_record(config.jsonl_path, summary_record)
+
+    if config.summary_path:
+        try:
+            with open(config.summary_path, "w", encoding="utf-8") as f:
+                json.dump(summary_record, f, indent=2)
+        except OSError as e:
+            log.error(f"Failed to write summary file: {e}")
+            return 1
+
+    # Return 0 if any command succeeded, otherwise last exit code
+    return 0 if successes > 0 else last_exit_code
+
+
 def cmd_exec(config: ExecConfig | None = None, **kwargs) -> int:
     """Handle the exec command."""
     # Support backward compatibility with individual parameters
@@ -1686,6 +1979,10 @@ def cmd_exec(config: ExecConfig | None = None, **kwargs) -> int:
             dry_run=kwargs.get("dry_run", False),
             min_score=kwargs.get("min_score", global_config.limits.min_score_threshold),
             strict=kwargs.get("strict", False),
+            all=kwargs.get("all", False),
+            indexes=kwargs.get("indexes"),
+            until_success=kwargs.get("until_success", False),
+            summary_path=kwargs.get("summary_path"),
         )
 
     try:
@@ -2032,6 +2329,10 @@ def _dispatch_exec_command(args) -> int:
         dry_run=args.dry_run,
         min_score=effective_min,
         strict=effective_strict,
+        all=getattr(args, "all", False),
+        indexes=getattr(args, "indexes", None),
+        until_success=getattr(args, "until_success", False),
+        summary_path=getattr(args, "summary", None),
     )
 
 
