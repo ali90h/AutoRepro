@@ -12,8 +12,8 @@ class TestScanCLI:
     def test_scan_empty_directory(self, capsys):
         """Test scan command in empty directory."""
         with tempfile.TemporaryDirectory():
-            with patch("autorepro.cli.detect_languages") as mock_detect:
-                mock_detect.return_value = []
+            with patch("autorepro.cli.collect_evidence") as mock_collect:
+                mock_collect.return_value = {}
 
                 with patch("sys.argv", ["autorepro", "scan"]):
                     exit_code = main()
@@ -21,12 +21,24 @@ class TestScanCLI:
                 captured = capsys.readouterr()
                 assert exit_code == 0
                 assert captured.out.strip() == "No known languages detected."
-                mock_detect.assert_called_once_with(".")
+                mock_collect.assert_called_once()
 
     def test_scan_single_language(self, capsys):
         """Test scan command with single language detected."""
-        with patch("autorepro.cli.detect_languages") as mock_detect:
-            mock_detect.return_value = [("python", ["pyproject.toml"])]
+        with patch("autorepro.cli.collect_evidence") as mock_collect:
+            mock_collect.return_value = {
+                "python": {
+                    "score": 3,
+                    "reasons": [
+                        {
+                            "pattern": "pyproject.toml",
+                            "path": "./pyproject.toml",
+                            "kind": "config",
+                            "weight": 3,
+                        }
+                    ],
+                }
+            }
 
             with patch("sys.argv", ["autorepro", "scan"]):
                 exit_code = main()
@@ -40,12 +52,48 @@ class TestScanCLI:
 
     def test_scan_multiple_languages(self, capsys):
         """Test scan command with multiple languages detected."""
-        with patch("autorepro.cli.detect_languages") as mock_detect:
-            mock_detect.return_value = [
-                ("go", ["go.mod"]),
-                ("node", ["package.json", "pnpm-lock.yaml"]),
-                ("python", ["pyproject.toml"]),
-            ]
+        with patch("autorepro.cli.collect_evidence") as mock_collect:
+            mock_collect.return_value = {
+                "go": {
+                    "score": 3,
+                    "reasons": [
+                        {
+                            "pattern": "go.mod",
+                            "path": "./go.mod",
+                            "kind": "config",
+                            "weight": 3,
+                        }
+                    ],
+                },
+                "node": {
+                    "score": 7,
+                    "reasons": [
+                        {
+                            "pattern": "package.json",
+                            "path": "./package.json",
+                            "kind": "config",
+                            "weight": 3,
+                        },
+                        {
+                            "pattern": "pnpm-lock.yaml",
+                            "path": "./pnpm-lock.yaml",
+                            "kind": "lock",
+                            "weight": 4,
+                        },
+                    ],
+                },
+                "python": {
+                    "score": 3,
+                    "reasons": [
+                        {
+                            "pattern": "pyproject.toml",
+                            "path": "./pyproject.toml",
+                            "kind": "config",
+                            "weight": 3,
+                        }
+                    ],
+                },
+            }
 
             with patch("sys.argv", ["autorepro", "scan"]):
                 exit_code = main()
@@ -61,10 +109,32 @@ class TestScanCLI:
 
     def test_scan_with_multiple_reasons(self, capsys):
         """Test scan command with multiple reasons for a language."""
-        with patch("autorepro.cli.detect_languages") as mock_detect:
-            mock_detect.return_value = [
-                ("python", ["pyproject.toml", "requirements.txt", "setup.py"])
-            ]
+        with patch("autorepro.cli.collect_evidence") as mock_collect:
+            mock_collect.return_value = {
+                "python": {
+                    "score": 7,
+                    "reasons": [
+                        {
+                            "pattern": "pyproject.toml",
+                            "path": "./pyproject.toml",
+                            "kind": "config",
+                            "weight": 3,
+                        },
+                        {
+                            "pattern": "requirements.txt",
+                            "path": "./requirements.txt",
+                            "kind": "setup",
+                            "weight": 2,
+                        },
+                        {
+                            "pattern": "setup.py",
+                            "path": "./setup.py",
+                            "kind": "setup",
+                            "weight": 2,
+                        },
+                    ],
+                }
+            }
 
             with patch("sys.argv", ["autorepro", "scan"]):
                 exit_code = main()
