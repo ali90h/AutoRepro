@@ -4,11 +4,14 @@
   "tool_version": "0.0.1",
   "root": "/Users/ali/autorepro",
   "detected": [
-    "python"
+    "go",
+    "node",
+    "python",
+    "rust"
   ],
   "languages": {
     "python": {
-      "score": 4,
+      "score": 6,
       "reasons": [
         {
           "pattern": "pyproject.toml",
@@ -17,11 +20,69 @@
           "weight": 3
         },
         {
+          "pattern": "setup.py",
+          "path": "./.venv/lib/python3.11/site-packages/pkg_resources/tests/data/my-test-package-source/setup.py",
+          "kind": "setup",
+          "weight": 2
+        },
+        {
           "pattern": "*.py",
-          "path": "./demo_plugin.py",
+          "path": "./test_env_and_node.py",
           "kind": "source",
           "weight": 1
         }
+      ],
+      "files_sample": [
+        "./.venv/lib/python3.11/site-packages/__editable___autorepro_0_0_1_finder.py",
+        "./.venv/lib/python3.11/site-packages/_black_version.py",
+        "./.venv/lib/python3.11/site-packages/_distutils_hack/__init__.py",
+        "./.venv/lib/python3.11/site-packages/_distutils_hack/override.py",
+        "./.venv/lib/python3.11/site-packages/_pytest/__init__.py"
+      ]
+    },
+    "go": {
+      "score": 1,
+      "reasons": [
+        {
+          "pattern": "*.go",
+          "path": "./.venv/lib/python3.11/site-packages/pre_commit/resources/empty_template_main.go",
+          "kind": "source",
+          "weight": 1
+        }
+      ],
+      "files_sample": [
+        "./.venv/lib/python3.11/site-packages/pre_commit/resources/empty_template_main.go"
+      ]
+    },
+    "rust": {
+      "score": 1,
+      "reasons": [
+        {
+          "pattern": "*.rs",
+          "path": "./.venv/lib/python3.11/site-packages/pre_commit/resources/empty_template_main.rs",
+          "kind": "source",
+          "weight": 1
+        }
+      ],
+      "files_sample": [
+        "./.venv/lib/python3.11/site-packages/pre_commit/resources/empty_template_main.rs"
+      ]
+    },
+    "node": {
+      "score": 1,
+      "reasons": [
+        {
+          "pattern": "*.js",
+          "path": "./htmlcov/coverage_html_cb_6fb7b396.js",
+          "kind": "source",
+          "weight": 1
+        }
+      ],
+      "files_sample": [
+        "./.venv/lib/python3.11/site-packages/coverage/htmlfiles/coverage_html.js",
+        "./.venv/lib/python3.11/site-packages/sourcery/coding-assistant-app/dist/assets/index.js",
+        "./.venv/lib/python3.11/site-packages/sourcery/hub/static/static/js/main.555ddc19.js",
+        "./htmlcov/coverage_html_cb_6fb7b396.js"
       ]
     }
   }
