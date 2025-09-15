@@ -570,6 +570,73 @@ def _setup_report_parser(subparsers) -> argparse.ArgumentParser:
     return report_parser
 
 
+def _setup_replay_parser(subparsers) -> argparse.ArgumentParser:
+    """Setup replay subcommand parser."""
+    replay_parser = subparsers.add_parser(
+        "replay",
+        help="Re-execute JSONL runs from previous exec sessions",
+        description="Re-run a previous execution log (runs.jsonl) to reproduce execution results, compare outcomes, and emit a new replay.jsonl plus REPLAY_SUMMARY.json",
+    )
+
+    # Required input file
+    replay_parser.add_argument(
+        "--from",
+        dest="from_path",
+        required=True,
+        help="Path to input JSONL file containing 'type:run' records",
+    )
+
+    # Selection and filtering options
+    replay_parser.add_argument(
+        "--until-success",
+        action="store_true",
+        help="Stop after the first successful replay (exit_code == 0)",
+    )
+    replay_parser.add_argument(
+        "--indexes",
+        help="Filter the selected set before replay (single indices and ranges, comma-separated, e.g., '0,2-3')",
+    )
+
+    # Execution options
+    replay_parser.add_argument(
+        "--timeout",
+        type=int,
+        help="Per-run timeout in seconds (applied to each command)",
+    )
+
+    # Output options
+    replay_parser.add_argument(
+        "--jsonl",
+        help="Write per-run replay records and final summary to JSONL file (default: replay.jsonl)",
+    )
+    replay_parser.add_argument(
+        "--summary",
+        help="Write a standalone JSON summary file (default: replay_summary.json)",
+    )
+
+    # Common options
+    replay_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print actions without executing",
+    )
+    replay_parser.add_argument(
+        "-q",
+        "--quiet",
+        action="store_true",
+        help="Show errors only",
+    )
+    replay_parser.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        default=0,
+        help="Increase verbosity (-v, -vv)",
+    )
+
+    return replay_parser
+
+
 def create_parser() -> argparse.ArgumentParser:
     """Create and configure the argument parser."""
     parser = argparse.ArgumentParser(
@@ -604,6 +671,7 @@ For more information, visit: https://github.com/ali90h/AutoRepro
     _setup_plan_parser(subparsers)
     _setup_exec_parser(subparsers)
     _setup_report_parser(subparsers)
+    _setup_replay_parser(subparsers)
 
     return parser
 
@@ -906,6 +974,88 @@ class ExecConfig:
             )
 
         # File path validation is done later for proper I/O error handling
+
+    def _parse_indexes(self, indexes_str: str) -> list[int]:  # noqa: C901
+        """Parse indexes string like '0,2-3' into list of integers."""
+        if not indexes_str.strip():
+            raise ValueError("indexes string cannot be empty")
+
+        result: list[int] = []
+        for part in indexes_str.split(","):
+            part = part.strip()
+            if not part:
+                continue
+
+            if "-" in part:
+                # Range like "2-5"
+                try:
+                    start, end = part.split("-", 1)
+                    start_idx = int(start.strip())
+                    end_idx = int(end.strip())
+                    if start_idx < 0 or end_idx < 0:
+                        raise ValueError("indexes must be non-negative")
+                    if start_idx > end_idx:
+                        raise ValueError(f"invalid range {part}: start > end")
+                    result.extend(range(start_idx, end_idx + 1))
+                except ValueError as e:
+                    if "invalid range" in str(e):
+                        raise
+                    raise ValueError(f"invalid range format: {part}") from e
+            else:
+                # Single index
+                try:
+                    idx = int(part)
+                    if idx < 0:
+                        raise ValueError("indexes must be non-negative")
+                    result.append(idx)
+                except ValueError:
+                    raise ValueError(f"invalid index: {part}") from None
+
+        # Remove duplicates and sort
+        return sorted(set(result))
+
+
+@dataclass
+class ReplayConfig:
+    """Configuration for replay command operations."""
+
+    from_path: str
+    until_success: bool = False
+    indexes: str | None = None
+    timeout: int = field(default_factory=lambda: config.timeouts.default_seconds)
+    jsonl_path: str | None = None
+    summary_path: str | None = None
+    dry_run: bool = False
+
+    def validate(self) -> None:
+        """Validate replay configuration and raise descriptive errors."""
+        # Required field validation
+        if not self.from_path:
+            raise FieldValidationError(
+                "from_path is required", field="from_path"
+            )
+
+        # File existence validation
+        from pathlib import Path
+        if not Path(self.from_path).exists():
+            raise FieldValidationError(
+                f"input file does not exist: {self.from_path}", field="from_path"
+            )
+
+        # Validate indexes format if provided
+        if self.indexes:
+            try:
+                self._parse_indexes(self.indexes)
+            except ValueError as e:
+                raise FieldValidationError(
+                    f"invalid indexes format: {e}", field="indexes"
+                ) from e
+
+        # Field validation
+        if self.timeout <= 0:
+            raise FieldValidationError(
+                f"timeout must be positive, got: {self.timeout}", field="timeout"
+            )
 
     def _parse_indexes(self, indexes_str: str) -> list[int]:  # noqa: C901
         """Parse indexes string like '0,2-3' into list of integers."""
@@ -2071,6 +2221,308 @@ def cmd_exec(config: ExecConfig | None = None, **kwargs) -> int:
         return 1  # Generic error for unexpected failures
 
 
+def _parse_jsonl_file(file_path: str) -> list[dict]:
+    """Parse JSONL file and return list of run records."""
+    import json
+
+    log = logging.getLogger("autorepro")
+    run_records = []
+
+    try:
+        with open(file_path, encoding="utf-8") as f:
+            for line_num, line in enumerate(f, 1):
+                line = line.strip()
+                if not line:
+                    continue
+
+                try:
+                    record = json.loads(line)
+                    if record.get("type") == "run":
+                        run_records.append(record)
+                except json.JSONDecodeError as e:
+                    log.warning(f"Skipping invalid JSON on line {line_num}: {e}")
+                    continue
+
+    except OSError as e:
+        log.error(f"Failed to read JSONL file {file_path}: {e}")
+        raise
+
+    return run_records
+
+
+def _filter_records_by_indexes(records: list[dict], indexes_str: str | None) -> list[dict]:
+    """Filter records by index string like '0,2-3'."""
+    if not indexes_str:
+        return records
+
+    config = ReplayConfig(from_path="")  # Temporary instance for parsing
+    try:
+        selected_indexes = config._parse_indexes(indexes_str)
+    except ValueError as e:
+        raise ValueError(f"Invalid indexes format: {e}") from e
+
+    # Filter records that match the selected indexes
+    filtered = []
+    for record in records:
+        record_index = record.get("index")
+        if record_index is not None and record_index in selected_indexes:
+            filtered.append(record)
+
+    return filtered
+
+
+def _execute_replay_command(
+    cmd: str, timeout: int, repo_path: Path | None = None
+) -> dict:
+    """Execute a command for replay and return results."""
+    import subprocess
+    import time
+    from datetime import datetime
+
+    log = logging.getLogger("autorepro")
+
+    # Determine execution directory
+    exec_dir = repo_path if repo_path else Path.cwd()
+
+    # Record start time
+    start_time = time.time()
+    start_dt = datetime.now()
+
+    # Execute command with timeout
+    try:
+        result = subprocess.run(
+            cmd,
+            shell=True,
+            cwd=exec_dir,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+
+        end_time = time.time()
+        end_dt = datetime.now()
+        duration_ms = int((end_time - start_time) * 1000)
+
+        # Prepare output previews (first 1KB for human inspection)
+        stdout_preview = result.stdout[:1024] if result.stdout else ""
+        stderr_preview = result.stderr[:1024] if result.stderr else ""
+
+        return {
+            "exit_code": result.returncode,
+            "duration_ms": duration_ms,
+            "start_time": start_dt,
+            "end_time": end_dt,
+            "stdout_full": result.stdout,
+            "stderr_full": result.stderr,
+            "stdout_preview": stdout_preview,
+            "stderr_preview": stderr_preview,
+        }
+
+    except subprocess.TimeoutExpired:
+        end_time = time.time()
+        end_dt = datetime.now()
+        duration_ms = int((end_time - start_time) * 1000)
+
+        log.warning(f"Command timed out after {timeout}s: {cmd}")
+        return {
+            "exit_code": 124,  # Standard timeout exit code
+            "duration_ms": duration_ms,
+            "start_time": start_dt,
+            "end_time": end_dt,
+            "stdout_full": "",
+            "stderr_full": f"Command timed out after {timeout}s",
+            "stdout_preview": "",
+            "stderr_preview": f"Command timed out after {timeout}s",
+        }
+
+    except Exception as e:
+        end_time = time.time()
+        end_dt = datetime.now()
+        duration_ms = int((end_time - start_time) * 1000)
+
+        log.error(f"Command execution failed: {e}")
+        return {
+            "exit_code": 1,
+            "duration_ms": duration_ms,
+            "start_time": start_dt,
+            "end_time": end_dt,
+            "stdout_full": "",
+            "stderr_full": f"Execution failed: {e}",
+            "stdout_preview": "",
+            "stderr_preview": f"Execution failed: {e}",
+        }
+
+
+def _create_replay_run_record(
+    index: int,
+    cmd: str,
+    original_exit_code: int,
+    results: dict,
+) -> dict:
+    """Create a replay run record for JSONL output."""
+    return {
+        "type": "run",
+        "index": index,
+        "cmd": cmd,
+        "start_ts": results["start_time"].strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "end_ts": results["end_time"].strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "exit_code_original": original_exit_code,
+        "exit_code_replay": results["exit_code"],
+        "matched": original_exit_code == results["exit_code"],
+        "duration_ms": results["duration_ms"],
+        "stdout_preview": results["stdout_preview"],
+        "stderr_preview": results["stderr_preview"],
+    }
+
+
+def _create_replay_summary_record(  # noqa: PLR0913
+    runs: int, successes: int, failures: int, matches: int, mismatches: int, first_success_index: int | None
+) -> dict:
+    """Create a replay summary record for JSONL output."""
+    return {
+        "type": "summary",
+        "schema_version": 1,
+        "tool": "autorepro",
+        "mode": "replay",
+        "runs": runs,
+        "successes": successes,
+        "failures": failures,
+        "matches": matches,
+        "mismatches": mismatches,
+        "first_success_index": first_success_index,
+    }
+
+
+def cmd_replay(config: ReplayConfig) -> int:  # noqa: PLR0915, C901, PLR0911, PLR0912
+    """Handle the replay command."""
+    log = logging.getLogger("autorepro")
+
+    try:
+        # Validate configuration
+        config.validate()
+
+        # Parse JSONL file to get run records
+        try:
+            run_records = _parse_jsonl_file(config.from_path)
+        except Exception as e:
+            log.error(f"Failed to parse JSONL file: {e}")
+            return 1
+
+        if not run_records:
+            log.error("No 'type:run' records found in JSONL file")
+            return 1
+
+        # Filter records by indexes if specified
+        if config.indexes:
+            try:
+                run_records = _filter_records_by_indexes(run_records, config.indexes)
+            except ValueError as e:
+                log.error(f"Index filtering failed: {e}")
+                return 1
+
+            if not run_records:
+                log.error("No records match the specified indexes")
+                return 1
+
+        # Sort records by index to ensure consistent execution order
+        run_records.sort(key=lambda x: x.get("index", 0))
+
+        if config.dry_run:
+            log.info(f"Would replay {len(run_records)} commands:")
+            for record in run_records:
+                index = record.get("index", "?")
+                cmd = record.get("cmd", "")
+                log.info(f"  [{index}] {cmd}")
+            return 0
+
+        # Set default output paths if not specified
+        jsonl_path = config.jsonl_path or "replay.jsonl"
+        summary_path = config.summary_path or "replay_summary.json"
+
+        # Execute replay
+        runs = 0
+        successes = 0
+        failures = 0
+        matches = 0
+        mismatches = 0
+        first_success_index = None
+
+        log.info(f"Starting replay of {len(run_records)} commands")
+
+        for record in run_records:
+            index = record.get("index", runs)
+            cmd = record.get("cmd", "")
+            original_exit_code = record.get("exit_code", 0)
+
+            if not cmd:
+                log.warning(f"Skipping record {index}: no command found")
+                continue
+
+            log.info(f"Replaying [{index}]: {cmd}")
+
+            # Execute the command
+            results = _execute_replay_command(cmd, config.timeout)
+            replay_exit_code = results["exit_code"]
+
+            # Track statistics
+            runs += 1
+            if replay_exit_code == 0:
+                successes += 1
+                if first_success_index is None:
+                    first_success_index = index
+            else:
+                failures += 1
+
+            if original_exit_code == replay_exit_code:
+                matches += 1
+            else:
+                mismatches += 1
+
+            # Create and write replay run record
+            replay_record = _create_replay_run_record(
+                index, cmd, original_exit_code, results
+            )
+
+            if config.jsonl_path:
+                _write_jsonl_record(jsonl_path, replay_record)
+
+            # Print output to console unless quiet
+            if results["stdout_full"]:
+                print(results["stdout_full"], end="")
+            if results["stderr_full"]:
+                print(results["stderr_full"], file=sys.stderr, end="")
+
+            # Check for early stopping
+            if config.until_success and replay_exit_code == 0:
+                log.info(f"Stopping after first success (command {index})")
+                break
+
+        # Create and write summary
+        summary_record = _create_replay_summary_record(
+            runs, successes, failures, matches, mismatches, first_success_index
+        )
+
+        if config.jsonl_path:
+            _write_jsonl_record(jsonl_path, summary_record)
+
+        if config.summary_path:
+            try:
+                with open(summary_path, "w", encoding="utf-8") as f:
+                    json.dump(summary_record, f, indent=2)
+            except OSError as e:
+                log.error(f"Failed to write summary file: {e}")
+                return 1
+
+        # Log final results
+        log.info(f"Replay completed: {runs} runs, {successes} successes, {matches} matches")
+
+        return 0
+
+    except Exception as e:
+        log.error(f"Replay failed: {e}")
+        return 1
+
+
 def _prepare_pr_config(config: PrConfig) -> PrConfig:
     """Validate and process PR configuration."""
     log = logging.getLogger("autorepro")
@@ -2506,6 +2958,25 @@ def _setup_logging(args, project_verbosity: str | None = None) -> None:
     configure_logging(level=level, fmt=None, stream=sys.stderr)
 
 
+def _dispatch_replay_command(args) -> int:
+    """Dispatch replay command with parsed arguments."""
+    global_config = get_config()
+    timeout_value = getattr(args, "timeout", None)
+    if timeout_value is None:
+        timeout_value = global_config.timeouts.default_seconds
+
+    config = ReplayConfig(
+        from_path=args.from_path,
+        until_success=getattr(args, "until_success", False),
+        indexes=getattr(args, "indexes", None),
+        timeout=timeout_value,
+        jsonl_path=getattr(args, "jsonl", None),
+        summary_path=getattr(args, "summary", None),
+        dry_run=getattr(args, "dry_run", False),
+    )
+    return cmd_replay(config)
+
+
 def _dispatch_command(args, parser) -> int:  # noqa: PLR0911
     """Dispatch command based on parsed arguments."""
     if args.command == "scan":
@@ -2520,6 +2991,8 @@ def _dispatch_command(args, parser) -> int:  # noqa: PLR0911
         return _dispatch_pr_command(args)
     elif args.command == "report":
         return _dispatch_report_command(args)
+    elif args.command == "replay":
+        return _dispatch_replay_command(args)
 
     return _dispatch_help_command(parser)
 
