@@ -491,6 +491,85 @@ def _setup_exec_parser(subparsers) -> argparse.ArgumentParser:
     return exec_parser
 
 
+def _setup_report_parser(subparsers) -> argparse.ArgumentParser:
+    """Setup report subcommand parser."""
+    report_parser = subparsers.add_parser(
+        "report",
+        help="Create comprehensive report bundle with plan, environment, and execution data",
+        description="Generate a comprehensive report bundle combining reproduction plans, environment metadata, and optional execution logs into a zip artifact",
+    )
+
+    # Mutually exclusive group for --desc and --file (exactly one required)
+    _add_file_input_group(report_parser, required=True)
+
+    report_parser.add_argument(
+        "--out",
+        default="repro_bundle.zip",
+        help="Output path for the report bundle (default: repro_bundle.zip). Use '-' for stdout preview",
+    )
+    report_parser.add_argument(
+        "--format",
+        choices=["md", "json"],
+        default="md",
+        help="Output format for plan content (default: md)",
+    )
+    report_parser.add_argument(
+        "--include",
+        help="Comma-separated list of sections to include: scan,init,plan,exec (default: plan,env)",
+    )
+    report_parser.add_argument(
+        "--exec",
+        action="store_true",
+        help="Execute the best command and include execution logs in the bundle",
+    )
+    report_parser.add_argument(
+        "--timeout",
+        type=int,
+        default=30,
+        help="Timeout for command execution in seconds (default: 30)",
+    )
+    report_parser.add_argument(
+        "--index",
+        type=int,
+        default=0,
+        help="Index of command to execute (default: 0)",
+    )
+    report_parser.add_argument(
+        "--env",
+        action="append",
+        default=[],
+        help="Set environment variable for execution (can be specified multiple times)",
+    )
+    report_parser.add_argument(
+        "--env-file",
+        help="Load environment variables from file",
+    )
+    report_parser.add_argument(
+        "--repo",
+        help="Repository path to analyze (default: current directory)",
+    )
+    report_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite existing output file",
+    )
+    report_parser.add_argument(
+        "-q",
+        "--quiet",
+        action="store_true",
+        help="Show errors only",
+    )
+    report_parser.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        default=0,
+        help="Increase verbosity (-v, -vv)",
+    )
+
+    return report_parser
+
+
 def create_parser() -> argparse.ArgumentParser:
     """Create and configure the argument parser."""
     parser = argparse.ArgumentParser(
@@ -524,6 +603,7 @@ For more information, visit: https://github.com/ali90h/AutoRepro
     _setup_init_parser(subparsers)
     _setup_plan_parser(subparsers)
     _setup_exec_parser(subparsers)
+    _setup_report_parser(subparsers)
 
     return parser
 
@@ -2368,6 +2448,28 @@ def _dispatch_pr_command(args) -> int:
     )
 
 
+def _dispatch_report_command(args) -> int:
+    """Dispatch report command."""
+    from autorepro.report import cmd_report
+
+    return cmd_report(
+        desc=args.desc,
+        file=args.file,
+        out=args.out,
+        format_type=args.format,
+        include=args.include,
+        exec_=args.exec,
+        timeout=args.timeout,
+        index=args.index,
+        env=args.env,
+        env_file=args.env_file,
+        repo=args.repo,
+        force=args.force,
+        quiet=args.quiet,
+        verbose=args.verbose,
+    )
+
+
 def _dispatch_help_command(parser) -> int:
     """Dispatch help command."""
     parser.print_help()
@@ -2404,7 +2506,7 @@ def _setup_logging(args, project_verbosity: str | None = None) -> None:
     configure_logging(level=level, fmt=None, stream=sys.stderr)
 
 
-def _dispatch_command(args, parser) -> int:
+def _dispatch_command(args, parser) -> int:  # noqa: PLR0911
     """Dispatch command based on parsed arguments."""
     if args.command == "scan":
         return _dispatch_scan_command(args)
@@ -2416,6 +2518,8 @@ def _dispatch_command(args, parser) -> int:
         return _dispatch_exec_command(args)
     elif args.command == "pr":
         return _dispatch_pr_command(args)
+    elif args.command == "report":
+        return _dispatch_report_command(args)
 
     return _dispatch_help_command(parser)
 

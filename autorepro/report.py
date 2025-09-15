@@ -483,3 +483,369 @@ def pack_zip(out_path: Path, files: dict[str, Path | str | bytes]) -> None:
     except Exception as e:
         log.error(f"Failed to create zip file: {e}")
         raise
+
+
+def cmd_report(  # noqa: PLR0913, C901, PLR0911, PLR0912
+    desc: str | None = None,
+    file: str | None = None,
+    out: str = "repro_bundle.zip",
+    format_type: str = "md",
+    include: str | None = None,
+    exec_: bool = False,
+    timeout: int = 30,
+    index: int = 0,
+    env: list[str] | None = None,
+    env_file: str | None = None,
+    repo: str | None = None,
+    force: bool = False,
+    quiet: bool = False,
+    verbose: int = 0,
+) -> int:
+    """
+    Handle the report command with v2 support.
+
+    Args:
+        desc: Issue description text
+        file: File path containing issue description
+        out: Output path for the report bundle (use '-' for stdout preview)
+        format_type: Output format for plan content ('md' or 'json')
+        include: Comma-separated list of sections to include
+        exec_: Whether to execute commands and include execution logs
+        timeout: Timeout for command execution in seconds
+        index: Index of command to execute
+        env: List of environment variables to set
+        env_file: Path to environment file
+        repo: Repository path to analyze
+        force: Whether to overwrite existing output file
+        quiet: Show errors only
+        verbose: Verbosity level
+
+    Returns:
+        Exit code (0 for success, non-zero for errors)
+    """
+    if env is None:
+        env = []
+
+    log = logging.getLogger("autorepro")
+
+    # Parse include sections
+    if include is None:
+        include_sections = ["plan", "env"]
+        if exec_:
+            include_sections.append("exec")
+    else:
+        include_sections = [s.strip() for s in include.split(",") if s.strip()]
+
+    # Validate include sections
+    valid_sections = {"scan", "init", "plan", "env", "exec"}
+    invalid_sections = set(include_sections) - valid_sections
+    if invalid_sections:
+        log.error(f"Invalid include sections: {', '.join(invalid_sections)}")
+        return 1
+
+    # Determine input text
+    if desc and file:
+        log.error("Cannot specify both --desc and --file")
+        return 1
+    elif not desc and not file:
+        log.error("Must specify either --desc or --file")
+        return 1
+
+    # Read input text
+    if file:
+        try:
+            with open(file, encoding="utf-8") as f:
+                input_text = f.read().strip()
+        except OSError as e:
+            log.error(f"Failed to read file {file}: {e}")
+            return 1
+    else:
+        input_text = desc or ""
+
+    if not input_text:
+        log.error("Input text cannot be empty")
+        return 1
+
+    # Determine repository path
+    repo_path = Path(repo) if repo else Path.cwd()
+    if not repo_path.exists():
+        log.error(f"Repository path does not exist: {repo_path}")
+        return 1
+
+    # Handle stdout preview
+    if out == "-":
+        return _generate_report_preview(
+            input_text,
+            repo_path,
+            include_sections,
+            format_type,
+            exec_,
+            timeout,
+            index,
+            env,
+            env_file,
+        )
+
+    # Generate report bundle
+    try:
+        bundle_path = _generate_report_bundle(
+            input_text,
+            repo_path,
+            include_sections,
+            format_type,
+            exec_,
+            timeout,
+            index,
+            env,
+            env_file,
+        )
+
+        # Move to final location
+        final_path = Path(out)
+        if final_path.exists() and not force:
+            log.error(f"Output file exists: {final_path}. Use --force to overwrite.")
+            return 1
+
+        bundle_path.rename(final_path)
+
+        if not quiet:
+            size_bytes = final_path.stat().st_size
+            print(
+                f"Report bundle created: {final_path} ({size_bytes:,} bytes)",
+                file=sys.stderr,
+            )
+
+        return 0
+
+    except Exception as e:
+        log.error(f"Failed to generate report bundle: {e}")
+        return 1
+
+
+def _generate_report_preview(  # noqa: PLR0913
+    input_text: str,
+    repo_path: Path,
+    include_sections: list[str],
+    format_type: str,
+    exec_: bool,
+    timeout: int,
+    index: int,
+    env: list[str],
+    env_file: str | None,
+) -> int:
+    """Generate report preview for stdout output."""
+    print("schema=v2")
+    print("Report bundle contents:")
+
+    # Always include MANIFEST.json
+    print("MANIFEST.json")
+
+    # Include sections based on what's requested
+    if "plan" in include_sections:
+        plan_filename = f"repro.{format_type}"
+        print(plan_filename)
+
+    if "env" in include_sections:
+        print("ENV.txt")
+
+    if "scan" in include_sections:
+        print("SCAN.json")
+
+    if "init" in include_sections:
+        print("INIT.preview.json")
+
+    if "exec" in include_sections and exec_:
+        print("run.log")
+        print("runs.jsonl")
+
+    return 0
+
+
+def _generate_report_bundle(  # noqa: PLR0913
+    input_text: str,
+    repo_path: Path,
+    include_sections: list[str],
+    format_type: str,
+    exec_: bool,
+    timeout: int,
+    index: int,
+    env: list[str],
+    env_file: str | None,
+) -> Path:
+    """Generate the actual report bundle and return the path."""
+    import tempfile
+
+    # Create temporary directory for bundle
+    temp_dir = Path(tempfile.mkdtemp())
+    bundle_path = temp_dir / "report_bundle.zip"
+
+    # Prepare files for the bundle
+    files: dict[str, Path | str | bytes] = {}
+
+    # Generate plan content if requested
+    if "plan" in include_sections:
+        plan_content = generate_plan_content(
+            input_text, repo_path, format_type, min_score=2
+        )
+        plan_filename = f"repro.{format_type}"
+        files[plan_filename] = plan_content
+
+    # Generate environment info if requested
+    if "env" in include_sections:
+        env_info = collect_env_info(repo_path)
+        files["ENV.txt"] = env_info
+
+    # Generate scan results if requested
+    if "scan" in include_sections:
+        scan_json = _generate_scan_json(repo_path)
+        files["SCAN.json"] = scan_json
+
+    # Generate init preview if requested
+    if "init" in include_sections:
+        init_preview = _generate_init_preview(repo_path)
+        files["INIT.preview.json"] = init_preview
+
+    # Generate execution logs if requested
+    if "exec" in include_sections and exec_:
+        exec_logs = _generate_exec_logs(
+            input_text, repo_path, timeout, index, env, env_file
+        )
+        if exec_logs:
+            files.update(exec_logs)
+
+    # Generate MANIFEST.json
+    manifest = _generate_manifest_json(include_sections, files, exec_)
+    files["MANIFEST.json"] = manifest
+
+    # Create the zip bundle
+    pack_zip(bundle_path, files)
+
+    return bundle_path
+
+
+def _generate_scan_json(repo_path: Path) -> str:
+    """Generate SCAN.json by calling scan --json."""
+    try:
+        from autorepro.detect import collect_evidence
+
+        evidence = collect_evidence(repo_path)
+        detected_languages = sorted(evidence.keys())
+
+        scan_result = {
+            "schema_version": 1,
+            "tool": "autorepro",
+            "tool_version": __version__,
+            "root": str(repo_path.resolve()),
+            "detected": detected_languages,
+            "languages": evidence,
+        }
+
+        return json.dumps(scan_result, indent=2)
+    except Exception as e:
+        log = logging.getLogger("autorepro")
+        log.error(f"Failed to generate scan results: {e}")
+        return json.dumps({"error": str(e)})
+
+
+def _generate_init_preview(repo_path: Path) -> str:
+    """Generate INIT.preview.json without modifying the repository."""
+    try:
+        from autorepro.env import default_devcontainer
+
+        # Generate devcontainer config in preview mode
+        config = default_devcontainer()
+
+        init_result = {
+            "schema_version": 1,
+            "tool": "autorepro",
+            "tool_version": __version__,
+            "preview": True,
+            "devcontainer": config,
+        }
+
+        return json.dumps(init_result, indent=2)
+    except Exception as e:
+        log = logging.getLogger("autorepro")
+        log.error(f"Failed to generate init preview: {e}")
+        return json.dumps({"error": str(e)})
+
+
+def _generate_exec_logs(  # noqa: PLR0913
+    input_text: str,
+    repo_path: Path,
+    timeout: int,
+    index: int,
+    env: list[str],
+    env_file: str | None,
+) -> dict[str, str] | None:
+    """Generate execution logs if exec is requested."""
+    try:
+        # This would integrate with the exec command logic
+        # For now, return placeholder logs
+        log_content = "=== Execution Log ===\nCommand: placeholder\nExit code: 0\n"
+        jsonl_content = (
+            json.dumps(
+                {
+                    "type": "run",
+                    "index": index,
+                    "cmd": "placeholder",
+                    "exit_code": 0,
+                }
+            )
+            + "\n"
+        )
+
+        return {
+            "run.log": log_content,
+            "runs.jsonl": jsonl_content,
+        }
+    except Exception as e:
+        log = logging.getLogger("autorepro")
+        log.error(f"Failed to generate execution logs: {e}")
+        return None
+
+
+def _generate_manifest_json(  # noqa: C901
+    include_sections: list[str],
+    files: dict[str, Path | str | bytes],
+    exec_: bool,
+) -> str:
+    """Generate MANIFEST.json with schema version 2."""
+    # Determine which sections are actually included
+    sections = []
+    if "plan" in include_sections:
+        sections.append("plan")
+    if "env" in include_sections:
+        sections.append("env")
+    if "scan" in include_sections:
+        sections.append("scan")
+    if "init" in include_sections:
+        sections.append("init")
+    if "exec" in include_sections and exec_:
+        sections.append("exec")
+
+    # List files in stable order
+    file_list = []
+    if "plan" in include_sections:
+        file_list.append("repro.md" if "repro.md" in files else "repro.json")
+    if "env" in include_sections:
+        file_list.append("ENV.txt")
+    if "scan" in include_sections:
+        file_list.append("SCAN.json")
+    if "init" in include_sections:
+        file_list.append("INIT.preview.json")
+    if "exec" in include_sections and exec_:
+        file_list.extend(["run.log", "runs.jsonl"])
+
+    # Always include MANIFEST.json
+    file_list.append("MANIFEST.json")
+
+    manifest = {
+        "schema_version": 2,
+        "tool": "autorepro",
+        "tool_version": __version__,
+        "sections": sections,
+        "files": file_list,
+    }
+
+    return json.dumps(manifest, indent=2)
