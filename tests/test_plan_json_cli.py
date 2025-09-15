@@ -442,9 +442,9 @@ class TestPlanJSONValidation:
 
         # Check scores are in descending order or tied
         for i in range(1, len(scores)):
-            assert scores[i] <= scores[i - 1], (
-                f"Scores not in descending order: {scores}"
-            )
+            assert (
+                scores[i] <= scores[i - 1]
+            ), f"Scores not in descending order: {scores}"
 
         # Within same score, should be alphabetical
         score_groups = {}
@@ -455,6 +455,6 @@ class TestPlanJSONValidation:
             score_groups[score].append(cmd["cmd"])
 
         for score, cmds in score_groups.items():
-            assert cmds == sorted(cmds), (
-                f"Commands with score {score} not alphabetical: {cmds}"
-            )
+            assert cmds == sorted(
+                cmds
+            ), f"Commands with score {score} not alphabetical: {cmds}"

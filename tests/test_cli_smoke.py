@@ -407,9 +407,9 @@ class TestCLISmokePerformance:
                 check=False,
                 timeout=10,
             )
-            assert result.returncode == 0, (
-                f"Command '{cmd}' failed with exit code {result.returncode}"
-            )
+            assert (
+                result.returncode == 0
+            ), f"Command '{cmd}' failed with exit code {result.returncode}"
 
     @pytest.mark.timeout(30)
     def test_dry_run_commands_fast(self, python_cmd):
@@ -428,6 +428,6 @@ class TestCLISmokePerformance:
                 check=False,
                 timeout=15,
             )
-            assert result.returncode == 0, (
-                f"Command {cmd_args} failed with exit code {result.returncode}"
-            )
+            assert (
+                result.returncode == 0
+            ), f"Command {cmd_args} failed with exit code {result.returncode}"

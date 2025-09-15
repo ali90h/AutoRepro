@@ -204,9 +204,9 @@ class TestSuggestCommands:
 
         # Check each score group is alphabetically ordered
         for score, commands in score_groups.items():
-            assert commands == sorted(commands), (
-                f"Commands with score {score} not alphabetically ordered"
-            )
+            assert commands == sorted(
+                commands
+            ), f"Commands with score {score} not alphabetically ordered"
 
     def test_detailed_rationales(self):
         """Test that rationales show matched keywords and detected langs."""
@@ -270,9 +270,9 @@ class TestSuggestCommands:
         vitest_index = next(
             i for i, (cmd, _, _) in enumerate(suggestions) if cmd == "npx vitest run"
         )
-        assert pytest_index < vitest_index, (
-            "pytest -q should appear before npx vitest run in sorted results"
-        )
+        assert (
+            pytest_index < vitest_index
+        ), "pytest -q should appear before npx vitest run in sorted results"
 
 
 class TestSafeTruncate60:
@@ -507,19 +507,19 @@ class TestBuildReproMd:
         # Assert sections are in correct order
         expected_order = ["title", "assumptions", "commands", "needs", "next_steps"]
         actual_order = sorted(section_indices.keys(), key=lambda k: section_indices[k])
-        assert actual_order == expected_order, (
-            f"Sections not in correct order. Expected {expected_order}, got {actual_order}"
-        )
+        assert (
+            actual_order == expected_order
+        ), f"Sections not in correct order. Expected {expected_order}, got {actual_order}"
 
         # Verify section content makes sense
         assert "Test Issue Title" in lines[section_indices["title"]]
-        assert any("Test assumption" in line for line in lines), (
-            "Assumption content not found"
-        )
+        assert any(
+            "Test assumption" in line for line in lines
+        ), "Assumption content not found"
         assert any("test-cmd" in line for line in lines), "Command content not found"
-        assert any("Test requirement" in line for line in lines), (
-            "Need content not found"
-        )
+        assert any(
+            "Test requirement" in line for line in lines
+        ), "Need content not found"
         assert any("Test step" in line for line in lines), "Next step content not found"
 
 
