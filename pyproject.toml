@@ -82,15 +82,35 @@ select = [
     "B",  # flake8-bugbear
     "C4", # flake8-comprehensions
     "UP", # pyupgrade
-    "PLR0915", # too-many-statements
-    "PLR0913", # too-many-arguments
-    "C901",    # complex-structure
-    "PLR0912", # too-many-branches
-    "PLR0911", # too-many-return-statements
+    "PLR", # pylint refactor
+    "C901", # complex-structure
+    "N",   # pep8-naming
+    "S",   # flake8-bandit (security)
+    "T20", # flake8-print (no print statements)
+    "RET", # flake8-return
+    "SIM", # flake8-simplify
+    "TCH", # flake8-type-checking
 ]
-# Black controls line length; avoid duplicate enforcement in lint
-ignore = ["E501"]
-# All quality rules are now enforced as errors - no violations allowed
+# Black controls line length; ruff will enforce other quality rules
+ignore = [
+    "E501",   # line-too-long (handled by black)
+    "S101",   # assert (allow in tests)
+    "T201",   # print (allow for CLI output)
+    "S603",   # subprocess-without-shell-equals-true
+    "S607",   # start-process-with-partial-path
+]
+# CI BARRIER: All other quality rules are enforced as errors - no violations allowed
+
+[tool.ruff.lint.pylint]
+# Size and complexity limits to prevent regression - CI BARRIERS
+max-args = 8            # PLR0913: too-many-arguments (stricter limit)
+max-branches = 12       # PLR0912: too-many-branches (stricter limit)
+max-returns = 6         # PLR0911: too-many-return-statements (stricter limit)
+max-statements = 50     # PLR0915: too-many-statements (stricter limit)
+
+[tool.ruff.lint.mccabe]
+# Cyclomatic complexity limit - CI BARRIER
+max-complexity = 12     # C901: complex-structure (stricter limit for CI)
 
 [tool.ruff.format]
 quote-style = "double"

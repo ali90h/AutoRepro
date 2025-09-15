@@ -92,7 +92,7 @@ class TestHandleErrors:
         def sample_function(error_type):
             if error_type == "value":
                 raise ValueError("Test error")
-            elif error_type == "type":
+            if error_type == "type":
                 raise TypeError("Test error")
             return 42
 

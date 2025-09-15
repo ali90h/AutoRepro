@@ -92,12 +92,11 @@ def _build_pr_content_section(plan_content: str, format_type: str) -> list[str]:
             "</details>",
             "<!-- autorepro:end plan -->",
         ]
-    else:
-        return [
-            "<!-- autorepro:begin plan schema=1 -->",
-            plan_content.rstrip(),
-            "<!-- autorepro:end plan -->",
-        ]
+    return [
+        "<!-- autorepro:begin plan schema=1 -->",
+        plan_content.rstrip(),
+        "<!-- autorepro:end plan -->",
+    ]
 
 
 def _build_pr_footer_section() -> list[str]:
@@ -249,16 +248,15 @@ def upsert_pr_comment(  # noqa: PLR0913 # Backward compatibility requires extra 
                 comment_id, request.body, request.config.gh_path, request.config.dry_run
             )
             return exit_code, True
-        else:
-            # Create new comment
-            log.info(f"Creating new autorepro comment on PR #{request.target_id}")
-            exit_code = create_pr_comment(
-                request.target_id,
-                request.body,
-                request.config.gh_path,
-                request.config.dry_run,
-            )
-            return exit_code, False
+        # Create new comment
+        log.info(f"Creating new autorepro comment on PR #{request.target_id}")
+        exit_code = create_pr_comment(
+            request.target_id,
+            request.body,
+            request.config.gh_path,
+            request.config.dry_run,
+        )
+        return exit_code, False
 
     except Exception as e:
         log.error(f"Failed to upsert PR comment: {e}")

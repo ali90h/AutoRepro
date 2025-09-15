@@ -721,51 +721,48 @@ def cmd_scan(  # noqa: PLR0913
 
         print(json.dumps(json_result, indent=2))
         return 0
-    else:
-        # Use enhanced evidence collection for text output too
-        try:
-            evidence = collect_evidence(
-                Path("."),
-                depth=depth,
-                ignore_patterns=ignore_patterns,
-                respect_gitignore=respect_gitignore,
-            )
-        except (OSError, PermissionError):
-            print("No known languages detected.")
-            return 0
-
-        if not evidence:
-            print("No known languages detected.")
-            return 0
-
-        # Extract language names for header (sorted)
-        languages = sorted(evidence.keys())
-        print(f"Detected: {', '.join(languages)}")
-
-        # Print details for each language
-        for lang in languages:
-            lang_data = evidence[lang]
-            reasons = lang_data.get("reasons", [])
-
-            # Extract unique patterns for display (with type check)
-            if isinstance(reasons, list):
-                patterns = list(
-                    dict.fromkeys(
-                        reason["pattern"]
-                        for reason in reasons
-                        if isinstance(reason, dict)
-                    )
-                )
-                reasons_str = ", ".join(patterns)
-            else:
-                reasons_str = "unknown"
-            print(f"- {lang} -> {reasons_str}")
-
-            # Add score if --show-scores is enabled
-            if show_scores:
-                print(f"  Score: {lang_data['score']}")
-
+    # Use enhanced evidence collection for text output too
+    try:
+        evidence = collect_evidence(
+            Path("."),
+            depth=depth,
+            ignore_patterns=ignore_patterns,
+            respect_gitignore=respect_gitignore,
+        )
+    except (OSError, PermissionError):
+        print("No known languages detected.")
         return 0
+
+    if not evidence:
+        print("No known languages detected.")
+        return 0
+
+    # Extract language names for header (sorted)
+    languages = sorted(evidence.keys())
+    print(f"Detected: {', '.join(languages)}")
+
+    # Print details for each language
+    for lang in languages:
+        lang_data = evidence[lang]
+        reasons = lang_data.get("reasons", [])
+
+        # Extract unique patterns for display (with type check)
+        if isinstance(reasons, list):
+            patterns = list(
+                dict.fromkeys(
+                    reason["pattern"] for reason in reasons if isinstance(reason, dict)
+                )
+            )
+            reasons_str = ", ".join(patterns)
+        else:
+            reasons_str = "unknown"
+        print(f"- {lang} -> {reasons_str}")
+
+        # Add score if --show-scores is enabled
+        if show_scores:
+            print(f"  Score: {lang_data['score']}")
+
+    return 0
 
 
 @dataclass
@@ -1173,7 +1170,7 @@ def _read_plan_input_text(config: PlanConfig) -> str:
     try:
         if config.desc is not None:
             return config.desc
-        elif config.file is not None:
+        if config.file is not None:
             # File path resolution: try CWD first, then repo-relative as fallback
             file_path = Path(config.file)
 
@@ -1430,17 +1427,16 @@ def _output_plan_result(plan_data: PlanData, config: PlanConfig) -> int:
     if config.print_to_stdout:
         print(content, end="")
         return 0
-    else:
-        # Write output file
-        try:
-            out_path = Path(config.out).resolve()
-            FileOperations.atomic_write(out_path, content)
-            print(f"Wrote repro to {out_path}")
-            return 0
-        except OSError as e:
-            log = logging.getLogger("autorepro")
-            log.error(f"Error writing file {config.out}: {e}")
-            return 1
+    # Write output file
+    try:
+        out_path = Path(config.out).resolve()
+        FileOperations.atomic_write(out_path, content)
+        print(f"Wrote repro to {out_path}")
+        return 0
+    except OSError as e:
+        log = logging.getLogger("autorepro")
+        log.error(f"Error writing file {config.out}: {e}")
+        return 1
 
 
 def cmd_plan(config: PlanConfig | None = None, **kwargs) -> int:
@@ -1668,7 +1664,7 @@ def _read_exec_input_text(
     try:
         if config.desc is not None:
             return config.desc, None
-        elif config.file is not None:
+        if config.file is not None:
             file_path = Path(config.file)
             if file_path.is_absolute():
                 with open(file_path, encoding="utf-8") as f:
@@ -2003,11 +1999,8 @@ def _execute_exec_pipeline(config: ExecConfig) -> int:  # noqa: PLR0911
         # Single command execution (backward compatible)
         command_str, score, rationale = suggestions[selected_indices[0]]
         return _execute_exec_command_real(command_str, repo_path, config)
-    else:
-        # Multi-command execution with JSONL support
-        return _execute_multiple_commands(
-            suggestions, selected_indices, repo_path, config
-        )
+    # Multi-command execution with JSONL support
+    return _execute_multiple_commands(suggestions, selected_indices, repo_path, config)
 
 
 def _execute_exec_command_real(
@@ -2945,21 +2938,19 @@ def _setup_logging(args, project_verbosity: str | None = None) -> None:
             level = logging.DEBUG
         elif args.verbose == 1:
             level = logging.INFO
-        else:
-            # Use project-level verbosity if provided
-            if project_verbosity == "quiet":
-                level = logging.ERROR
-            elif project_verbosity == "verbose":
-                level = logging.INFO
-            else:
-                level = logging.WARNING
-    else:
-        if project_verbosity == "quiet":
+        # Use project-level verbosity if provided
+        elif project_verbosity == "quiet":
             level = logging.ERROR
         elif project_verbosity == "verbose":
             level = logging.INFO
         else:
             level = logging.WARNING
+    elif project_verbosity == "quiet":
+        level = logging.ERROR
+    elif project_verbosity == "verbose":
+        level = logging.INFO
+    else:
+        level = logging.WARNING
 
     # Use centralized logging configuration (JSON/text), defaults to key=value text.
     # Users can set AUTOREPRO_LOG_FORMAT=json for structured logs.
@@ -2989,17 +2980,17 @@ def _dispatch_command(args, parser) -> int:  # noqa: PLR0911
     """Dispatch command based on parsed arguments."""
     if args.command == "scan":
         return _dispatch_scan_command(args)
-    elif args.command == "init":
+    if args.command == "init":
         return _dispatch_init_command(args)
-    elif args.command == "plan":
+    if args.command == "plan":
         return _dispatch_plan_command(args)
-    elif args.command == "exec":
+    if args.command == "exec":
         return _dispatch_exec_command(args)
-    elif args.command == "pr":
+    if args.command == "pr":
         return _dispatch_pr_command(args)
-    elif args.command == "report":
+    if args.command == "report":
         return _dispatch_report_command(args)
-    elif args.command == "replay":
+    if args.command == "replay":
         return _dispatch_replay_command(args)
 
     return _dispatch_help_command(parser)

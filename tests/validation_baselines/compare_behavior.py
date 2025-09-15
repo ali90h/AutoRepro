@@ -50,11 +50,10 @@ def compare_json_outputs(
         if baseline_json == current_json:
             print(f"✅ {test_name}: JSON outputs match")
             return True
-        else:
-            print(f"❌ {test_name}: JSON outputs differ")
-            print("Baseline:", json.dumps(baseline_json, indent=2)[:200] + "...")
-            print("Current:", json.dumps(current_json, indent=2)[:200] + "...")
-            return False
+        print(f"❌ {test_name}: JSON outputs differ")
+        print("Baseline:", json.dumps(baseline_json, indent=2)[:200] + "...")
+        print("Current:", json.dumps(current_json, indent=2)[:200] + "...")
+        return False
 
     except json.JSONDecodeError as e:
         print(f"❌ {test_name}: JSON decode error - {e}")
@@ -79,20 +78,19 @@ def compare_text_outputs(
     if baseline_lines == current_lines:
         print(f"✅ {test_name}: Text outputs match")
         return True
-    else:
-        print(f"❌ {test_name}: Text outputs differ")
-        diff = difflib.unified_diff(
-            baseline_lines,
-            current_lines,
-            fromfile="baseline",
-            tofile="current",
-            lineterm="",
-        )
-        for line in list(diff)[:10]:  # Show first 10 diff lines
-            print(line)
-        if len(list(difflib.unified_diff(baseline_lines, current_lines))) > 10:
-            print("... (diff truncated)")
-        return False
+    print(f"❌ {test_name}: Text outputs differ")
+    diff = difflib.unified_diff(
+        baseline_lines,
+        current_lines,
+        fromfile="baseline",
+        tofile="current",
+        lineterm="",
+    )
+    for line in list(diff)[:10]:  # Show first 10 diff lines
+        print(line)
+    if len(list(difflib.unified_diff(baseline_lines, current_lines))) > 10:
+        print("... (diff truncated)")
+    return False
 
 
 def test_scan_json():

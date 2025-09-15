@@ -70,13 +70,12 @@ def _process_plan_markdown(case, temp_desc, tmp_path, plan_dir, write):
     if write:
         expected_md.write_text(md_content)
         print(f"  Updated {expected_md}")
+    elif expected_md.exists():
+        existing = expected_md.read_text()
+        if existing != md_content:
+            print(f"  MD differs for {case}")
     else:
-        if expected_md.exists():
-            existing = expected_md.read_text()
-            if existing != md_content:
-                print(f"  MD differs for {case}")
-        else:
-            print(f"  MD missing for {case}")
+        print(f"  MD missing for {case}")
 
     return True
 
@@ -97,15 +96,12 @@ def _process_plan_json(case, temp_desc, tmp_path, plan_dir, write):
     if write:
         expected_json.write_text(json_content)
         print(f"  Updated {expected_json}")
+    elif expected_json.exists():
+        existing = canon_json_bytes(expected_json.read_text().encode("utf-8")) + "\n"
+        if existing != json_content:
+            print(f"  JSON differs for {case}")
     else:
-        if expected_json.exists():
-            existing = (
-                canon_json_bytes(expected_json.read_text().encode("utf-8")) + "\n"
-            )
-            if existing != json_content:
-                print(f"  JSON differs for {case}")
-        else:
-            print(f"  JSON missing for {case}")
+        print(f"  JSON missing for {case}")
 
     return True
 
@@ -161,13 +157,12 @@ def _process_scan_text(case, tmp_path, scan_dir, write):
     if write:
         expected_txt.write_text(text_content)
         print(f"  Updated {expected_txt}")
+    elif expected_txt.exists():
+        existing = expected_txt.read_text()
+        if existing != text_content:
+            print(f"  Text differs for {case}")
     else:
-        if expected_txt.exists():
-            existing = expected_txt.read_text()
-            if existing != text_content:
-                print(f"  Text differs for {case}")
-        else:
-            print(f"  Text missing for {case}")
+        print(f"  Text missing for {case}")
 
     return True
 
@@ -186,13 +181,12 @@ def _process_scan_json(case, tmp_path, scan_dir, write):
     if write:
         expected_json.write_text(json_content)
         print(f"  Updated {expected_json}")
+    elif expected_json.exists():
+        existing = normalize_scan_json(expected_json.read_text(), tmp_path) + "\n"
+        if existing != json_content:
+            print(f"  JSON differs for {case}")
     else:
-        if expected_json.exists():
-            existing = normalize_scan_json(expected_json.read_text(), tmp_path) + "\n"
-            if existing != json_content:
-                print(f"  JSON differs for {case}")
-        else:
-            print(f"  JSON missing for {case}")
+        print(f"  JSON missing for {case}")
 
     return True
 

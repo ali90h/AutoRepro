@@ -353,39 +353,35 @@ def _should_ignore_path(  # noqa: C901, PLR0912
                                         rel_path_str, dir_pattern + "/**/*"
                                     ):
                                         ignored = False  # Un-ignore this file
-                                else:
-                                    # Regular negation pattern
-                                    if fnmatch.fnmatch(
-                                        rel_path_str, negation_pattern
-                                    ) or fnmatch.fnmatch(
-                                        rel_path_str, "**/" + negation_pattern
-                                    ):
-                                        ignored = False  # Un-ignore this file
-                            else:
-                                # Regular ignore patterns
-                                # Handle directory patterns (ending with /)
-                                if line.endswith("/"):
-                                    dir_pattern = line.rstrip("/")
-                                    # Check if file is in ignored directory
-                                    path_parts = rel_path_str.split("/")
-                                    if (
+                                # Regular negation pattern
+                                elif fnmatch.fnmatch(
+                                    rel_path_str, negation_pattern
+                                ) or fnmatch.fnmatch(
+                                    rel_path_str, "**/" + negation_pattern
+                                ):
+                                    ignored = False  # Un-ignore this file
+                            # Regular ignore patterns
+                            # Handle directory patterns (ending with /)
+                            elif line.endswith("/"):
+                                dir_pattern = line.rstrip("/")
+                                # Check if file is in ignored directory
+                                path_parts = rel_path_str.split("/")
+                                if (
+                                    (
                                         len(path_parts) > 1
                                         and path_parts[0] == dir_pattern
-                                    ):
-                                        ignored = True
-                                    # Also check full directory path matching
-                                    elif fnmatch.fnmatch(
-                                        rel_path_str, dir_pattern + "/*"
-                                    ) or fnmatch.fnmatch(
+                                    )
+                                    or fnmatch.fnmatch(rel_path_str, dir_pattern + "/*")
+                                    or fnmatch.fnmatch(
                                         rel_path_str, dir_pattern + "/**/*"
-                                    ):
-                                        ignored = True
-                                else:
-                                    # Regular file pattern
-                                    if fnmatch.fnmatch(
-                                        rel_path_str, line
-                                    ) or fnmatch.fnmatch(rel_path_str, "**/" + line):
-                                        ignored = True
+                                    )
+                                ):
+                                    ignored = True
+                            # Regular file pattern
+                            elif fnmatch.fnmatch(rel_path_str, line) or fnmatch.fnmatch(
+                                rel_path_str, "**/" + line
+                            ):
+                                ignored = True
 
                 return ignored
             except (OSError, UnicodeDecodeError):
@@ -428,7 +424,7 @@ def _collect_files_with_depth(  # noqa: C901, PLR0912
         all_patterns[pattern] = info
 
     # Organize results by pattern
-    results: dict[str, list[Path]] = {pattern: [] for pattern in all_patterns.keys()}
+    results: dict[str, list[Path]] = {pattern: [] for pattern in all_patterns}
 
     # Use rglob to find all files
     if depth == 0:

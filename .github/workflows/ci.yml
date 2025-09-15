@@ -46,10 +46,53 @@ jobs:
       - name: Pre-commit (repo policy)
         uses: pre-commit/action@v3.0.1
 
+      # === PASS B: CI BARRIERS TO PREVENT REGRESSION ===
 
+      - name: "BARRIER: File size limit (max 500 LOC)"
+        run: |
+          echo "🛡️ Enforcing file size limits to prevent regression..."
+          chmod +x scripts/check-file-size.sh
+          scripts/check-file-size.sh
 
-      - name: Ruff (lint)
-        run: python -m ruff check .
+      - name: "BARRIER: Ruff complexity and quality rules (strict)"
+        run: |
+          echo "🛡️ Enforcing strict complexity and quality rules..."
+          # Complexity rules (C901) and pylint refactor rules (PLR)
+          python -m ruff check . --select PLR0913,PLR0912,PLR0911,PLR0915,C901 --no-cache
+          # All configured quality rules as errors
+          python -m ruff check . --no-cache
+
+      - name: "BARRIER: No magic numbers in tests"
+        run: |
+          echo "🛡️ Checking for magic numbers in tests..."
+          # Allow some magic numbers but fail on excessive use
+          VIOLATIONS=$(python -m ruff check . --select PLR2004 --format=json | jq 'length')
+          echo "Magic number violations: $VIOLATIONS"
+          if [ "$VIOLATIONS" -gt 350 ]; then
+            echo "::error::Too many magic numbers ($VIOLATIONS > 350). Refactor to use constants."
+            exit 1
+          fi
+
+      - name: "BARRIER: Code duplication limit (max 1%)"
+        run: |
+          echo "🛡️ Enforcing code duplication limits..."
+          npx --yes jscpd@4.0.4 --min-lines 9 --pattern "autorepro/**/*.py" --reporters json --output /tmp/jscpd || true
+          RATE=$(jq -r '.statistics.total.duplicatedRate // 0' /tmp/jscpd/jscpd-report.json 2>/dev/null || echo 0)
+          echo "Duplicated rate: $RATE"
+          RATE="$RATE" python - <<'PY'
+          import os, sys
+          try:
+              rate = float(os.environ.get("RATE", "0") or 0)
+          except Exception:
+              rate = 0.0
+          if rate > 0.01:
+              print(f"::error::Code duplication {rate:.4f} > 0.01 (1%) - refactor duplicated code")
+              sys.exit(1)
+          PY
+
+      # === PASS C: COMPREHENSIVE TESTING ===
+
+      # === PASS C: COMPREHENSIVE TESTING ===
 
       - name: Mypy (type check)
         run: mypy autorepro tests || true
@@ -66,46 +109,45 @@ jobs:
           echo "---- Coverage summary ----"
           grep -E "^TOTAL" /tmp/cov.txt || true
 
-      - name: Duplication budget (jscpd <= 1%)
+      - name: Pytest quiet + goldens validation
         run: |
-          npx --yes jscpd@4.0.4 --min-lines 9 --pattern "autorepro/**/*.py" --reporters json --output /tmp/jscpd || true
-          RATE=$(jq -r '.statistics.total.duplicatedRate // 0' /tmp/jscpd/jscpd-report.json 2>/dev/null || echo 0)
-          echo "Duplicated rate: $RATE"
-          RATE="$RATE" python - <<'PY'
-          import os, sys
-          try:
-              rate = float(os.environ.get("RATE", "0") or 0)
-          except Exception:
-              rate = 0.0
-          if rate > 0.01:
-              print(f"::error::Duplicated rate {rate:.4f} > 0.01 (1%)")
-              sys.exit(1)
-          PY
+          pytest -q
+          python scripts/regold.py --write
+          git diff --exit-code || (echo "::error::Golden tests have drifted. Run 'python scripts/regold.py --write' to update." && exit 1)
 
-      - name: Coverage floor (>= 50%)
+      - name: "BARRIER: Coverage floor (>= 50%)"
         run: |
+          echo "🛡️ Enforcing minimum coverage requirements..."
           PCT=$(grep -E "^TOTAL" /tmp/cov.txt | awk '{print $4}' | tr -d '%')
           echo "Coverage: ${PCT:-0}%"
           if [ "${PCT:-0}" -lt "50" ]; then
-            echo "::error::Coverage ${PCT:-0}% < 50%"; exit 1; fi
+            echo "::error::Coverage ${PCT:-0}% < 50% - add more tests"; exit 1; fi
 
       - name: Enforce module boundaries (import-linter)
         run: lint-imports
 
-      - name: LOC per PR (<= 300 added)
+      - name: "BARRIER: LOC per PR (<= 300 added)"
         if: ${{ github.event_name == 'pull_request' }}
         run: |
+          echo "🛡️ Enforcing PR size limits to prevent large changes..."
           git fetch --no-tags --prune --depth=1 origin +refs/heads/${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}
           # Calculate added lines, excluding deletions and modifications
           ADDED=$(git diff --diff-filter=A --numstat origin/${{ github.base_ref }}... | awk '{s+=$1} END {print s+0}')
           echo "Added lines: $ADDED"
           if [ "${ADDED:-0}" -gt "300" ]; then
-            echo "::error::PR adds $ADDED LOC (>300). Split it."; exit 1; fi
+            echo "::error::PR adds $ADDED LOC (>300). Split into smaller PRs to maintain reviewability."; exit 1; fi
 
-      - name: Golden drift check
+      - name: "BARRIER: Critical function complexity check"
         run: |
-          python scripts/regold.py --write
-          git diff --exit-code
+          echo "🛡️ Checking for overly complex functions that need refactoring..."
+          # Find functions with very high complexity using radon
+          COMPLEX_FUNCS=$(python -m radon cc autorepro/ -a -nc -s | grep -E "^F|^C" | wc -l || echo 0)
+          echo "Functions with F/C complexity: $COMPLEX_FUNCS"
+          if [ "$COMPLEX_FUNCS" -gt "3" ]; then
+            echo "::error::Too many complex functions ($COMPLEX_FUNCS > 3). Refactor high complexity code."
+            python -m radon cc autorepro/ -a -nc -s | grep -E "^F|^C" || true
+            exit 1
+          fi
 
       - name: Verify CLI functionality
         run: |

@@ -547,7 +547,7 @@ def cmd_report(  # noqa: PLR0913, C901, PLR0911, PLR0912
     if desc and file:
         log.error("Cannot specify both --desc and --file")
         return 1
-    elif not desc and not file:
+    if not desc and not file:
         log.error("Must specify either --desc or --file")
         return 1
 

@@ -408,10 +408,10 @@ class TestBuildReproMd:
             if line == "## Candidate Commands":
                 in_commands_section = True
                 continue
-            elif line.startswith("##"):  # Next section
+            if line.startswith("##"):  # Next section
                 in_commands_section = False
                 continue
-            elif in_commands_section and " — " in line and line.strip():
+            if in_commands_section and " — " in line and line.strip():
                 command_lines.append(line)
 
         assert len(command_lines) == 3

@@ -91,10 +91,8 @@ def _load_plugin_module(plugin_name: str) -> object:
             sys.modules["plugin"] = plugin_module
             spec.loader.exec_module(plugin_module)
             return plugin_module
-        else:
-            raise ImportError(f"Could not load spec from {plugin_name}")
-    else:
-        return importlib.import_module(plugin_name)
+        raise ImportError(f"Could not load spec from {plugin_name}")
+    return importlib.import_module(plugin_name)
 
 
 def _extract_rules_from_module(
