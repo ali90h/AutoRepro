@@ -69,7 +69,11 @@ class JsonFormatter(logging.Formatter):
             s = time.strftime(datefmt, ct)
         else:
             s = time.strftime(self.default_time_format, ct)
-        return self.default_msec_format % (s, record.msecs)
+        # Safe access to msecs with fallback calculation for compatibility
+        msecs = getattr(
+            record, "msecs", int((record.created - int(record.created)) * 1000)
+        )
+        return self.default_msec_format % (s, msecs)
 
     def converter(self, timestamp: float | None):
         # Use UTC timestamps for easier aggregation in logs
@@ -91,7 +95,7 @@ class KeyValueFormatter(logging.Formatter):
         for key, value in record.__dict__.items():
             if key not in reserved and key not in {"message", "asctime"}:
                 try:
-                    extras.append(f"{key}={json.dumps(value, separators=(',',':'))}")
+                    extras.append(f"{key}={json.dumps(value, separators=(',', ':'))}")
                 except Exception:
                     extras.append(f'{key}="{value}"')
         if record.exc_info:
@@ -104,9 +108,13 @@ class KeyValueFormatter(logging.Formatter):
         return base + (" " + " ".join(extras) if extras else "")
 
     def formatTime(self, record: logging.LogRecord, datefmt: str | None = None) -> str:  # noqa: N802
-        # ISO8601-ish UTC time
+        # ISO8601-ish UTC time with robust msecs handling
         ct = time.gmtime(record.created)
-        return time.strftime("%Y-%m-%dT%H:%M:%S", ct) + f".{int(record.msecs):03d}Z"
+        # Safe access to msecs with fallback calculation for compatibility
+        msecs = getattr(
+            record, "msecs", int((record.created - int(record.created)) * 1000)
+        )
+        return time.strftime("%Y-%m-%dT%H:%M:%S", ct) + f".{int(msecs):03d}Z"
 
 
 class ContextAdapter(logging.LoggerAdapter):

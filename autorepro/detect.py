@@ -225,9 +225,11 @@ def _process_weighted_patterns(
                     pattern=filename,
                     path=f"./{filename}",
                     kind=str(info["kind"]),
-                    weight=int(info["weight"])
-                    if isinstance(info["weight"], int | str)
-                    else 0,
+                    weight=(
+                        int(info["weight"])
+                        if isinstance(info["weight"], int | str)
+                        else 0
+                    ),
                 ),
             )
 
@@ -265,9 +267,11 @@ def _process_glob_pattern(
                         pattern=pattern,
                         path=f"./{basename}",
                         kind=str(info["kind"]),
-                        weight=int(info["weight"])
-                        if isinstance(info["weight"], int | str)
-                        else 0,
+                        weight=(
+                            int(info["weight"])
+                            if isinstance(info["weight"], int | str)
+                            else 0
+                        ),
                     ),
                 )
 
@@ -289,9 +293,9 @@ def _process_exact_filename(
                 pattern=pattern,
                 path=f"./{pattern}",
                 kind=str(info["kind"]),
-                weight=int(info["weight"])
-                if isinstance(info["weight"], int | str)
-                else 0,
+                weight=(
+                    int(info["weight"]) if isinstance(info["weight"], int | str) else 0
+                ),
             ),
         )
 
@@ -569,9 +573,11 @@ def collect_evidence(  # noqa: C901
                     pattern=filename,
                     path=rel_path,
                     kind=str(info["kind"]),
-                    weight=int(info["weight"])
-                    if isinstance(info["weight"], int | str)
-                    else 0,
+                    weight=(
+                        int(info["weight"])
+                        if isinstance(info["weight"], int | str)
+                        else 0
+                    ),
                 ),
             )
 
@@ -595,9 +601,11 @@ def collect_evidence(  # noqa: C901
                             pattern=pattern,
                             path=rel_path,
                             kind=str(info["kind"]),
-                            weight=int(info["weight"])
-                            if isinstance(info["weight"], int | str)
-                            else 0,
+                            weight=(
+                                int(info["weight"])
+                                if isinstance(info["weight"], int | str)
+                                else 0
+                            ),
                         ),
                     )
         else:
