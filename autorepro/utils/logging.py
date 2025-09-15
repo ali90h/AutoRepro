@@ -110,7 +110,10 @@ class KeyValueFormatter(logging.Formatter):
     ) -> str:  # noqa: N802
         # ISO8601-ish UTC time
         ct = time.gmtime(record.created)
-        return time.strftime("%Y-%m-%dT%H:%M:%S", ct) + f".{int(record.msecs):03d}Z"
+        msecs = getattr(
+            record, "msecs", int((record.created - int(record.created)) * 1000)
+        )
+        return time.strftime("%Y-%m-%dT%H:%M:%S", ct) + f".{int(msecs):03d}Z"
 
 
 class ContextAdapter(logging.LoggerAdapter):
