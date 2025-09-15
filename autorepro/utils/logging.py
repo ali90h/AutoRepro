@@ -63,9 +63,7 @@ class JsonFormatter(logging.Formatter):
 
         return json.dumps(payload, separators=(",", ":"))
 
-    def formatTime(
-        self, record: logging.LogRecord, datefmt: str | None = None
-    ) -> str:  # noqa: N802
+    def formatTime(self, record: logging.LogRecord, datefmt: str | None = None) -> str:  # noqa: N802
         ct = self.converter(record.created)
         if datefmt:
             s = time.strftime(datefmt, ct)
@@ -97,7 +95,7 @@ class KeyValueFormatter(logging.Formatter):
         for key, value in record.__dict__.items():
             if key not in reserved and key not in {"message", "asctime"}:
                 try:
-                    extras.append(f"{key}={json.dumps(value, separators=(',',':'))}")
+                    extras.append(f"{key}={json.dumps(value, separators=(',', ':'))}")
                 except Exception:
                     extras.append(f'{key}="{value}"')
         if record.exc_info:
@@ -109,9 +107,7 @@ class KeyValueFormatter(logging.Formatter):
                 pass
         return base + (" " + " ".join(extras) if extras else "")
 
-    def formatTime(
-        self, record: logging.LogRecord, datefmt: str | None = None
-    ) -> str:  # noqa: N802
+    def formatTime(self, record: logging.LogRecord, datefmt: str | None = None) -> str:  # noqa: N802
         # ISO8601-ish UTC time with robust msecs handling
         ct = time.gmtime(record.created)
         # Safe access to msecs with fallback calculation for compatibility

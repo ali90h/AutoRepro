@@ -150,9 +150,9 @@ class TestDetectionBehavior:
         for pattern, info in WEIGHTED_PATTERNS.items():
             kind = info["kind"]
             expected_weight = config.detection.weights[kind]
-            assert (
-                info["weight"] == expected_weight
-            ), f"Pattern {pattern} has wrong weight"
+            assert info["weight"] == expected_weight, (
+                f"Pattern {pattern} has wrong weight"
+            )
 
         for _pattern, info in SOURCE_PATTERNS.items():
             if info["kind"] == "source":
@@ -260,9 +260,9 @@ class TestPerformance:
 
         # Should be very fast (< 0.1 seconds for 1000 accesses)
         duration = end_time - start_time
-        assert (
-            duration < 0.1
-        ), f"Config access too slow: {duration} seconds for 1000 accesses"
+        assert duration < 0.1, (
+            f"Config access too slow: {duration} seconds for 1000 accesses"
+        )
 
     def test_scan_performance_not_regressed(self):
         """Test that scan performance is not significantly worse."""

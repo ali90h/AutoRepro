@@ -188,9 +188,9 @@ if [[ "$ARGS" == *"pr view"* ]]; then
         )
 
         # Verify success
-        assert (
-            result.returncode == 0
-        ), f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        assert result.returncode == 0, (
+            f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        )
         # Should create PR comment with sync block
         assert "Created autorepro comment" in result.stderr
 
@@ -232,9 +232,9 @@ if [[ "$ARGS" == *"pr view"* ]]; then
         )
 
         # Verify success and that existing comment was updated
-        assert (
-            result.returncode == 0
-        ), f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        assert result.returncode == 0, (
+            f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        )
         assert (
             "Updated autorepro comment" in result.stderr
             or "Created autorepro comment" in result.stderr
@@ -278,9 +278,9 @@ if [[ "$ARGS" == *"pr view"* ]]; then
         )
 
         # Verify success
-        assert (
-            result.returncode == 0
-        ), f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        assert result.returncode == 0, (
+            f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        )
         # Should update PR body with sync block
         assert (
             "Updated sync block" in result.stderr
@@ -325,9 +325,9 @@ if [[ "$ARGS" == *"pr view"* ]]; then
         )
 
         # Verify success and existing sync block was replaced
-        assert (
-            result.returncode == 0
-        ), f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        assert result.returncode == 0, (
+            f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        )
         assert (
             "Updated sync block" in result.stderr
             or "Replacing existing sync block" in result.stderr
@@ -372,9 +372,9 @@ if [[ "$ARGS" == *"pr view"* ]]; then
         )
 
         # Verify success
-        assert (
-            result.returncode == 0
-        ), f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        assert result.returncode == 0, (
+            f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        )
         # Should add labels to PR
         assert (
             "Added labels" in result.stderr or "Updated PR with labels" in result.stderr
@@ -419,9 +419,9 @@ if [[ "$ARGS" == *"pr view"* ]]; then
         )
 
         # Verify success
-        assert (
-            result.returncode == 0
-        ), f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        assert result.returncode == 0, (
+            f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        )
         # Should create cross-reference link
         assert (
             "Cross-linked to issue" in result.stderr
@@ -467,9 +467,9 @@ if [[ "$ARGS" == *"pr view"* ]]; then
         )
 
         # Verify success
-        assert (
-            result.returncode == 0
-        ), f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        assert result.returncode == 0, (
+            f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        )
         # Comment should include report metadata
         assert (
             "Created autorepro comment" in result.stderr
@@ -516,9 +516,9 @@ if [[ "$ARGS" == *"pr view"* ]]; then
         )
 
         # Verify success
-        assert (
-            result.returncode == 0
-        ), f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        assert result.returncode == 0, (
+            f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        )
         # Comment should include summary context
         assert (
             "Created autorepro comment" in result.stderr
@@ -564,9 +564,9 @@ if [[ "$ARGS" == *"pr view"* ]]; then
         )
 
         # Verify success
-        assert (
-            result.returncode == 0
-        ), f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        assert result.returncode == 0, (
+            f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        )
         # Comment should be created without details wrapper
         assert (
             "Created autorepro comment" in result.stderr
@@ -620,9 +620,9 @@ if [[ "$ARGS" == *"pr view"* ]]; then
         )
 
         # Verify success with all features
-        assert (
-            result.returncode == 0
-        ), f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        assert result.returncode == 0, (
+            f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        )
         # Should create/update PR comment, update body, add labels, create cross-links
         stderr_text = result.stderr
         assert any(
@@ -677,9 +677,9 @@ if [[ "$ARGS" == *"pr view"* ]]; then
         )
 
         # Verify dry-run success
-        assert (
-            result.returncode == 0
-        ), f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        assert result.returncode == 0, (
+            f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        )
         # Should show what would be done without actually doing it
         stdout_text = result.stdout
         assert "Would run: gh pr create" in stdout_text
@@ -729,9 +729,9 @@ if [[ "$ARGS" == *"pr view"* ]]; then
         )
 
         # Verify success with JSON format
-        assert (
-            result.returncode == 0
-        ), f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        assert result.returncode == 0, (
+            f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        )
         # Comment should be created with JSON format
         assert (
             "Created autorepro comment" in result.stderr
@@ -847,7 +847,7 @@ fi
         )
 
         # This combination should work (both comment and body updates)
-        assert (
-            result.returncode == 0
-        ), f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        assert result.returncode == 0, (
+            f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        )
         assert "Would run: gh pr create" in result.stdout

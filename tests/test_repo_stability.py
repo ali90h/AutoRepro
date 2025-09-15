@@ -97,12 +97,12 @@ class TestRepoPathStability:
         # Both should create devcontainer files in their respective repo directories
         devcontainer1 = repo_dir1 / ".devcontainer" / "devcontainer.json"
         devcontainer2 = repo_dir2 / ".devcontainer" / "devcontainer.json"
-        assert (
-            devcontainer1.exists()
-        ), "devcontainer.json should be created in repo_dir1"
-        assert (
-            devcontainer2.exists()
-        ), "devcontainer.json should be created in repo_dir2"
+        assert devcontainer1.exists(), (
+            "devcontainer.json should be created in repo_dir1"
+        )
+        assert devcontainer2.exists(), (
+            "devcontainer.json should be created in repo_dir2"
+        )
 
     def test_repo_nonexistent_path_exit_2(self, tmp_path):
         """Test that nonexistent --repo path returns exit code 2."""
@@ -142,9 +142,9 @@ class TestRepoPathStability:
         repo_plan_file = repo_dir / "repro.md"
         current_plan_file = tmp_path / "repro.md"
         assert repo_plan_file.exists(), "Plan should be created in repo directory"
-        assert (
-            not current_plan_file.exists()
-        ), "Plan should NOT be created in current directory"
+        assert not current_plan_file.exists(), (
+            "Plan should NOT be created in current directory"
+        )
 
         # Run init command with --repo
         result2 = run_cli_subprocess(["init", "--repo", str(repo_dir)], cwd=tmp_path)
@@ -156,9 +156,9 @@ class TestRepoPathStability:
         # Devcontainer should be created in repo directory
         repo_devcontainer = repo_dir / ".devcontainer" / "devcontainer.json"
         current_devcontainer = tmp_path / ".devcontainer" / "devcontainer.json"
-        assert (
-            repo_devcontainer.exists()
-        ), "Devcontainer should be created in repo directory"
-        assert (
-            not current_devcontainer.exists()
-        ), "Devcontainer should NOT be created in current directory"
+        assert repo_devcontainer.exists(), (
+            "Devcontainer should be created in repo directory"
+        )
+        assert not current_devcontainer.exists(), (
+            "Devcontainer should NOT be created in current directory"
+        )

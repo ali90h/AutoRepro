@@ -117,9 +117,9 @@ def test_plan_jest_watch_assertions():
         has_relevant = any(
             word in first_cmd.lower() for word in ["jest", "npm test", "vitest"]
         )
-        assert (
-            has_relevant
-        ), f"First command should reference jest/npm test/vitest: {first_cmd}"
+        assert has_relevant, (
+            f"First command should reference jest/npm test/vitest: {first_cmd}"
+        )
 
 
 def test_plan_ambiguous_assertions():
@@ -135,9 +135,9 @@ def test_plan_ambiguous_assertions():
         for line in expected_md.split("\n")
         if " — " in line and not line.startswith("#")
     ]
-    assert (
-        len(command_lines) <= 3
-    ), f"Should have ≤ 3 commands, got {len(command_lines)}"
+    assert len(command_lines) <= 3, (
+        f"Should have ≤ 3 commands, got {len(command_lines)}"
+    )
 
     # Test JSON structure
     expected_json_str = read(GOLDEN_DIR / "plan" / "ambiguous.expected.json")

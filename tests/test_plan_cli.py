@@ -135,9 +135,9 @@ class TestPlanCLIArgumentValidation:
 
         # Check that error message mentions one of --desc/--file is required
         error_output = result.stderr
-        assert (
-            "one of the arguments --desc --file is required" in error_output
-        ), f"Expected missing argument error, got: {error_output}"
+        assert "one of the arguments --desc --file is required" in error_output, (
+            f"Expected missing argument error, got: {error_output}"
+        )
 
     def test_plan_writes_md_default_path(self, tmp_path):
         """Test that plan writes to repro.md by default and contains expected
@@ -149,9 +149,9 @@ class TestPlanCLIArgumentValidation:
         result = run_cli(tmp_path, "--desc", "pytest failing")
 
         # Should succeed
-        assert (
-            result.returncode == 0
-        ), f"Expected success, got {result.returncode}. STDERR: {result.stderr}"
+        assert result.returncode == 0, (
+            f"Expected success, got {result.returncode}. STDERR: {result.stderr}"
+        )
 
         # Assert repro.md exists
         repro_file = tmp_path / "repro.md"
@@ -159,9 +159,9 @@ class TestPlanCLIArgumentValidation:
 
         # Assert content contains pytest -q in Candidate Commands
         content = repro_file.read_text()
-        assert (
-            "## Candidate Commands" in content
-        ), "Should have Candidate Commands section"
+        assert "## Candidate Commands" in content, (
+            "Should have Candidate Commands section"
+        )
         assert "pytest -q" in content, "Should contain pytest -q command"
 
     def test_plan_respects_out_and_force(self, tmp_path):
@@ -177,9 +177,9 @@ class TestPlanCLIArgumentValidation:
         result = run_cli(tmp_path, "--desc", "pytest failing", "--out", str(out_path))
 
         # Should succeed and write to docs/ directory
-        assert (
-            result.returncode == 0
-        ), f"Expected success, got {result.returncode}. STDERR: {result.stderr}"
+        assert result.returncode == 0, (
+            f"Expected success, got {result.returncode}. STDERR: {result.stderr}"
+        )
         assert docs_dir.exists(), "docs/ directory should exist"
         assert out_path.exists(), "repro.md should be created in docs/"
 
@@ -194,9 +194,9 @@ class TestPlanCLIArgumentValidation:
 
         # Should succeed but not overwrite
         assert result2.returncode == 0, f"Expected success, got {result2.returncode}"
-        assert (
-            "exists; use --force to overwrite" in result2.stdout
-        ), "Should warn about existing file"
+        assert "exists; use --force to overwrite" in result2.stdout, (
+            "Should warn about existing file"
+        )
 
         # mtime should be unchanged
         mtime_unchanged = os.path.getmtime(out_path)
@@ -211,15 +211,15 @@ class TestPlanCLIArgumentValidation:
         )
 
         # Should succeed and overwrite
-        assert (
-            result3.returncode == 0
-        ), f"Expected success, got {result3.returncode}. STDERR: {result3.stderr}"
+        assert result3.returncode == 0, (
+            f"Expected success, got {result3.returncode}. STDERR: {result3.stderr}"
+        )
 
         # mtime2 should be greater than mtime1
         mtime2 = os.path.getmtime(out_path)
-        assert (
-            mtime2 > mtime1
-        ), f"File should be modified with --force. mtime1={mtime1}, mtime2={mtime2}"
+        assert mtime2 > mtime1, (
+            f"File should be modified with --force. mtime1={mtime1}, mtime2={mtime2}"
+        )
 
     def test_plan_infers_env_presence(self, tmp_path):
         """Test that plan includes Needed Files/Env section and environment
@@ -233,9 +233,9 @@ class TestPlanCLIArgumentValidation:
         result = run_cli(tmp_path, "--desc", "anything")
 
         # Should succeed
-        assert (
-            result.returncode == 0
-        ), f"Expected success, got {result.returncode}. STDERR: {result.stderr}"
+        assert result.returncode == 0, (
+            f"Expected success, got {result.returncode}. STDERR: {result.stderr}"
+        )
 
         # Assert repro.md contains Needed Files/Env section
         repro_file = tmp_path / "repro.md"
@@ -254,9 +254,9 @@ class TestPlanCLIArgumentValidation:
             elif env_section_found and line.strip().startswith("- "):
                 has_env_content = True
                 break
-        assert (
-            has_env_content
-        ), "Should have environment content in Needed Files/Env section"
+        assert has_env_content, (
+            "Should have environment content in Needed Files/Env section"
+        )
 
     def test_plan_node_keywords(self, tmp_path):
         """Test that plan detects Node keywords and suggests appropriate commands."""
@@ -268,25 +268,25 @@ class TestPlanCLIArgumentValidation:
         result = run_cli(tmp_path, "--desc", "tests failing on jest")
 
         # Should succeed
-        assert (
-            result.returncode == 0
-        ), f"Expected success, got {result.returncode}. STDERR: {result.stderr}"
+        assert result.returncode == 0, (
+            f"Expected success, got {result.returncode}. STDERR: {result.stderr}"
+        )
 
         # Assert output contains either npm test -s or npx jest -w=1
         repro_file = tmp_path / "repro.md"
         assert repro_file.exists(), "repro.md should be created"
 
         content = repro_file.read_text()
-        assert (
-            "## Candidate Commands" in content
-        ), "Should have Candidate Commands section"
+        assert "## Candidate Commands" in content, (
+            "Should have Candidate Commands section"
+        )
 
         # Should contain either npm test -s or npx jest -w=1
         has_npm_test = "npm test -s" in content
         has_npx_jest = "npx jest -w=1" in content
-        assert (
-            has_npm_test or has_npx_jest
-        ), f"Should contain either 'npm test -s' or 'npx jest -w=1' in content: {content}"
+        assert has_npm_test or has_npx_jest, (
+            f"Should contain either 'npm test -s' or 'npx jest -w=1' in content: {content}"
+        )
 
 
 class TestPlanCLIBasicFunctionality:
@@ -648,14 +648,14 @@ class TestPlanCLIMaxCommands:
         ]
 
         # Verify command count is limited to 3
-        assert (
-            len(limited_commands) == 3
-        ), f"Expected 3 commands, got {len(limited_commands)}: {limited_commands}"
+        assert len(limited_commands) == 3, (
+            f"Expected 3 commands, got {len(limited_commands)}: {limited_commands}"
+        )
 
         # Verify that limited commands are the first 3 from the full list (proper ordering)
-        assert (
-            len(full_commands) >= 3
-        ), f"Need at least 3 commands in full list, got {len(full_commands)}"
+        assert len(full_commands) >= 3, (
+            f"Need at least 3 commands in full list, got {len(full_commands)}"
+        )
         assert limited_commands == full_commands[:3], (
             f"Limited should be first 3 of full list.\n"
             f"Limited: {limited_commands}\nFull[:3]: {full_commands[:3]}"
@@ -727,9 +727,9 @@ class TestPlanCLIFormatFlag:
         # Should contain pytest command due to Python detection and keyword
         commands = [cmd["cmd"] for cmd in data["commands"]]
         pytest_commands = [cmd for cmd in commands if "pytest" in cmd]
-        assert (
-            len(pytest_commands) > 0
-        ), f"Should include pytest commands. Commands: {commands}"
+        assert len(pytest_commands) > 0, (
+            f"Should include pytest commands. Commands: {commands}"
+        )
 
     def test_json_format_stdout(self, tmp_path):
         """Test --format json --out - produces JSON to stdout."""
@@ -918,9 +918,9 @@ class TestPlanCLICommandFiltering:
             for line in command_lines
         ]
         python_commands = [cmd for cmd in commands if "pytest" in cmd]
-        assert (
-            len(python_commands) > 0
-        ), f"Should include pytest commands for Python project. Commands: {commands}"
+        assert len(python_commands) > 0, (
+            f"Should include pytest commands for Python project. Commands: {commands}"
+        )
 
     def test_keyword_match_without_language_detection(self, tmp_path):
         """Test that specific keywords show relevant commands even without language
@@ -950,9 +950,9 @@ class TestPlanCLICommandFiltering:
         ]
         # Should include npm test or jest commands
         node_commands = [cmd for cmd in commands if "npm test" in cmd or "jest" in cmd]
-        assert (
-            len(node_commands) > 0
-        ), f"Should include npm/jest commands based on keywords. Commands: {commands}"
+        assert len(node_commands) > 0, (
+            f"Should include npm/jest commands based on keywords. Commands: {commands}"
+        )
 
     def test_no_matches_shows_no_commands(self, tmp_path):
         """Test that when no keywords or languages match, no commands are shown."""
@@ -973,9 +973,9 @@ class TestPlanCLICommandFiltering:
         ]
 
         # Should show NO commands when no keyword or language matches
-        assert (
-            not command_lines
-        ), f"Should show no commands when no matches. Got: {command_lines}"
+        assert not command_lines, (
+            f"Should show no commands when no matches. Got: {command_lines}"
+        )
 
     def test_plan_dry_run_ignores_force_flag(self, tmp_path):
         """Test that --dry-run ignores --force flag and outputs to stdout."""
@@ -1029,9 +1029,9 @@ class TestPlanCLICommandFilteringAlt:
             for line in command_lines
         ]
         python_commands = [cmd for cmd in commands if "pytest" in cmd]
-        assert (
-            len(python_commands) > 0
-        ), f"Should include pytest commands for Python project. Commands: {commands}"
+        assert len(python_commands) > 0, (
+            f"Should include pytest commands for Python project. Commands: {commands}"
+        )
 
     def test_keyword_match_without_language_detection(self, tmp_path):
         """Test that specific keywords show relevant commands even without language
@@ -1061,9 +1061,9 @@ class TestPlanCLICommandFilteringAlt:
         ]
         # Should include npm test or jest commands
         node_commands = [cmd for cmd in commands if "npm test" in cmd or "jest" in cmd]
-        assert (
-            len(node_commands) > 0
-        ), f"Should include npm/jest commands based on keywords. Commands: {commands}"
+        assert len(node_commands) > 0, (
+            f"Should include npm/jest commands based on keywords. Commands: {commands}"
+        )
 
     def test_no_matches_shows_no_commands(self, tmp_path):
         """Test that when no keywords or languages match, no commands are shown."""
@@ -1084,6 +1084,6 @@ class TestPlanCLICommandFilteringAlt:
         ]
 
         # Should show NO commands when no keyword or language matches
-        assert (
-            not command_lines
-        ), f"Should show no commands when no matches. Got: {command_lines}"
+        assert not command_lines, (
+            f"Should show no commands when no matches. Got: {command_lines}"
+        )

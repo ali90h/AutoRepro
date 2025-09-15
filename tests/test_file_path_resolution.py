@@ -36,9 +36,9 @@ class TestFilePathResolution:
             ["--file", "issue.txt", "--repo", str(repo_dir), "--dry-run"], cwd=tmp_path
         )
 
-        assert (
-            result.returncode == 0
-        ), f"Expected success, got {result.returncode}. stderr: {result.stderr}"
+        assert result.returncode == 0, (
+            f"Expected success, got {result.returncode}. stderr: {result.stderr}"
+        )
         assert "# Pytest Failing On Ci" in result.stdout
         assert "pytest" in result.stdout  # Should suggest pytest commands
 
@@ -62,9 +62,9 @@ class TestFilePathResolution:
             ["--file", "issue.txt", "--repo", str(repo_dir), "--dry-run"], cwd=work_dir
         )
 
-        assert (
-            result.returncode == 0
-        ), f"Expected success, got {result.returncode}. stderr: {result.stderr}"
+        assert result.returncode == 0, (
+            f"Expected success, got {result.returncode}. stderr: {result.stderr}"
+        )
         assert "# Go Test Timeout" in result.stdout
         assert "go test" in result.stdout  # Should suggest go test commands
 
@@ -90,9 +90,9 @@ class TestFilePathResolution:
             ["--file", "issue.txt", "--repo", str(repo_dir), "--dry-run"], cwd=work_dir
         )
 
-        assert (
-            result.returncode == 0
-        ), f"Expected success, got {result.returncode}. stderr: {result.stderr}"
+        assert result.returncode == 0, (
+            f"Expected success, got {result.returncode}. stderr: {result.stderr}"
+        )
         assert "# Cwd File Content - Pytest Failing" in result.stdout
         assert "pytest" in result.stdout  # Should suggest pytest (from CWD file)
         assert "go test" not in result.stdout  # Should NOT suggest go (from repo file)
@@ -118,9 +118,9 @@ class TestFilePathResolution:
             cwd=repo_dir,
         )
 
-        assert (
-            result.returncode == 0
-        ), f"Expected success, got {result.returncode}. stderr: {result.stderr}"
+        assert result.returncode == 0, (
+            f"Expected success, got {result.returncode}. stderr: {result.stderr}"
+        )
         assert "# Npm Test Failing" in result.stdout
 
     def test_file_not_found_anywhere_returns_error(self, tmp_path):
@@ -141,9 +141,9 @@ class TestFilePathResolution:
             ["--file", "nonexistent.txt", "--repo", str(repo_dir)], cwd=work_dir
         )
 
-        assert (
-            result.returncode == 1
-        ), f"Expected I/O error (1), got {result.returncode}. stdout: {result.stdout}"
+        assert result.returncode == 1, (
+            f"Expected I/O error (1), got {result.returncode}. stdout: {result.stdout}"
+        )
         assert "Error reading file" in result.stderr
         assert "nonexistent.txt" in result.stderr
 
@@ -156,9 +156,9 @@ class TestFilePathResolution:
         # Run without --repo - should find file in CWD
         result = run_plan_subprocess(["--file", "issue.txt", "--dry-run"], cwd=tmp_path)
 
-        assert (
-            result.returncode == 0
-        ), f"Expected success, got {result.returncode}. stderr: {result.stderr}"
+        assert result.returncode == 0, (
+            f"Expected success, got {result.returncode}. stderr: {result.stderr}"
+        )
         assert "# Jest Failing" in result.stdout
 
     def test_subdir_file_path_with_repo_fallback(self, tmp_path):
@@ -185,7 +185,7 @@ class TestFilePathResolution:
             cwd=work_dir,
         )
 
-        assert (
-            result.returncode == 0
-        ), f"Expected success, got {result.returncode}. stderr: {result.stderr}"
+        assert result.returncode == 0, (
+            f"Expected success, got {result.returncode}. stderr: {result.stderr}"
+        )
         assert "# Docker Build Failing" in result.stdout
