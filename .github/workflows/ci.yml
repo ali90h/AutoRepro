@@ -48,8 +48,13 @@ jobs:
 
 
 
-      - name: Ruff (lint)
-        run: python -m ruff check .
+      - name: File size limit check (max 500 LOC)
+        run: |
+          chmod +x scripts/check-file-size.sh
+          scripts/check-file-size.sh
+
+      - name: Ruff (lint + size/complexity rules as errors)
+        run: python -m ruff check . --select PLR,C901
 
       - name: Mypy (type check)
         run: mypy autorepro tests || true
@@ -65,6 +70,12 @@ jobs:
           coverage report -m | tee /tmp/cov.txt
           echo "---- Coverage summary ----"
           grep -E "^TOTAL" /tmp/cov.txt || true
+
+      - name: Pytest quiet + goldens validation
+        run: |
+          pytest -q
+          python scripts/regold.py --write
+          git diff --exit-code || (echo "::error::Golden tests have drifted. Run 'python scripts/regold.py --write' to update." && exit 1)
 
       - name: Duplication budget (jscpd <= 1%)
         run: |
@@ -101,11 +112,6 @@ jobs:
           echo "Added lines: $ADDED"
           if [ "${ADDED:-0}" -gt "300" ]; then
             echo "::error::PR adds $ADDED LOC (>300). Split it."; exit 1; fi
-
-      - name: Golden drift check
-        run: |
-          python scripts/regold.py --write
-          git diff --exit-code
 
       - name: Verify CLI functionality
         run: |

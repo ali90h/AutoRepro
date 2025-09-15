@@ -82,15 +82,23 @@ select = [
     "B",  # flake8-bugbear
     "C4", # flake8-comprehensions
     "UP", # pyupgrade
-    "PLR0915", # too-many-statements
-    "PLR0913", # too-many-arguments
-    "C901",    # complex-structure
-    "PLR0912", # too-many-branches
-    "PLR0911", # too-many-return-statements
+    "PLR", # pylint refactor
+    "C901", # complex-structure
 ]
 # Black controls line length; avoid duplicate enforcement in lint
 ignore = ["E501"]
 # All quality rules are now enforced as errors - no violations allowed
+
+[tool.ruff.lint.pylint]
+# Size and complexity limits to prevent regression
+max-args = 10           # PLR0913: too-many-arguments
+max-branches = 15       # PLR0912: too-many-branches
+max-returns = 8         # PLR0911: too-many-return-statements
+max-statements = 60     # PLR0915: too-many-statements
+
+[tool.ruff.lint.mccabe]
+# Cyclomatic complexity limit
+max-complexity = 15     # C901: complex-structure
 
 [tool.ruff.format]
 quote-style = "double"
