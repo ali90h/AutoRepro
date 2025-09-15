@@ -583,8 +583,7 @@ def create_or_update_pr(
 
         if existing_pr:
             return _update_existing_pr(config, existing_pr, body_file)
-        else:
-            return _create_new_pr(config, body_file)
+        return _create_new_pr(config, body_file)
 
     except subprocess.CalledProcessError as e:
         log.error(f"GitHub CLI error: {e}")

@@ -328,8 +328,7 @@ class PlanOutputHandler:
         """Generate content in the requested format."""
         if config.format_type == "json":
             return PlanOutputHandler._generate_json_content(plan_data)
-        else:
-            return PlanOutputHandler._generate_markdown_content(plan_data)
+        return PlanOutputHandler._generate_markdown_content(plan_data)
 
     @staticmethod
     def _generate_json_content(plan_data: PlanData) -> str:
@@ -408,8 +407,7 @@ class PlanService:
         except ValueError as e:
             if "min-score" in str(e):
                 return 1  # Strict mode failure
-            else:
-                return 2  # Configuration error
+            return 2  # Configuration error
         except OSError:
             return 1  # File I/O error
 

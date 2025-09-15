@@ -242,12 +242,11 @@ def analyze_performance_regression(
                 status = f"🚀 FASTER ({change_pct:+.1f}%)"
             else:
                 status = f"✅ STABLE ({change_pct:+.1f}%)"
-        else:
-            # Without baselines, use absolute thresholds
-            if mean_time > 0.5:
-                status = "⚠️  SLOW (>0.5s)"
-            elif mean_time > 0.2:
-                status = "⚡ MODERATE"
+        # Without baselines, use absolute thresholds
+        elif mean_time > 0.5:
+            status = "⚠️  SLOW (>0.5s)"
+        elif mean_time > 0.2:
+            status = "⚡ MODERATE"
 
         analysis[command_name] = status
 

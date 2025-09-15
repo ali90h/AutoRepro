@@ -314,11 +314,10 @@ def create_config_from_args(command: str, **kwargs: Any) -> Any:
     """Factory function to create appropriate config based on command."""
     if command == "plan":
         return EnhancedPlanConfig.from_args(**kwargs)
-    elif command == "exec":
+    if command == "exec":
         return EnhancedExecConfig.from_args(**kwargs)
-    elif command == "pr":
+    if command == "pr":
         return EnhancedPrConfig.from_args(**kwargs)
-    elif command == "init":
+    if command == "init":
         return EnhancedInitConfig.from_args(**kwargs)
-    else:
-        raise ValueError(f"Unknown command: {command}")
+    raise ValueError(f"Unknown command: {command}")

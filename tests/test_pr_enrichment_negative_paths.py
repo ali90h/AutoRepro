@@ -179,14 +179,13 @@ class TestPREnrichmentJSONFormat:
                     raise subprocess.TimeoutExpired(
                         cmd=["gh", "pr", "view"], timeout=30
                     )
-                elif call_count == 2:
+                if call_count == 2:
                     raise subprocess.CalledProcessError(
                         returncode=1, cmd=["gh", "pr", "comment"]
                     )
-                else:
-                    raise subprocess.CalledProcessError(
-                        returncode=22, cmd=["gh", "pr", "edit"]
-                    )
+                raise subprocess.CalledProcessError(
+                    returncode=22, cmd=["gh", "pr", "edit"]
+                )
 
             mock_run.side_effect = side_effect
 

@@ -86,9 +86,8 @@ def _extract_plugin_keywords(text: str, plugin_keywords: set[str]) -> set[str]:
         if " " in keyword:
             if keyword.lower() in text.lower():
                 matched_keywords.add(keyword)
-        else:
-            if keyword.lower() in text_words:
-                matched_keywords.add(keyword)
+        elif keyword.lower() in text_words:
+            matched_keywords.add(keyword)
 
     return matched_keywords
 

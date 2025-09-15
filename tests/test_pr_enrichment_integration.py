@@ -126,11 +126,11 @@ class TestPREnrichmentCommand:
                 'cat << \'EOF\'\n{\n  "number": 123,\n  "title": "test: Jest failing in CI",\n  '
                 '"body": "PR\\n\\n<!-- autorepro:begin plan schema=1 -->\\n# Plan\\n<!-- autorepro:end plan -->",\n  "comments": []\n}\nEOF'
             )
-        elif scenario == "labels_add":
-            view_json = 'cat << \'EOF\'\n{\n  "number": 123,\n  "title": "test: Jest failing in CI",\n  "body": "Original PR description",\n  "comments": []\n}\nEOF'
-        elif scenario == "cross_link":
-            view_json = 'cat << \'EOF\'\n{\n  "number": 123,\n  "title": "test: Jest failing in CI",\n  "body": "Original PR description",\n  "comments": []\n}\nEOF'
-        elif scenario == "all_features":
+        elif (
+            scenario == "labels_add"
+            or scenario == "cross_link"
+            or scenario == "all_features"
+        ):
             view_json = 'cat << \'EOF\'\n{\n  "number": 123,\n  "title": "test: Jest failing in CI",\n  "body": "Original PR description",\n  "comments": []\n}\nEOF'
         else:
             raise ValueError(f"Unknown enrichment scenario: {scenario}")

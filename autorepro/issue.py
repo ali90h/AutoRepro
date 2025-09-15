@@ -288,16 +288,15 @@ def upsert_issue_comment(  # noqa: PLR0913 # Backward compatibility requires ext
                 comment_id, request.body, request.config.gh_path, request.config.dry_run
             )
             return exit_code, True
-        else:
-            # Create new comment
-            log.info(f"Creating new autorepro comment on issue #{request.target_id}")
-            exit_code = create_issue_comment(
-                request.target_id,
-                request.body,
-                request.config.gh_path,
-                request.config.dry_run,
-            )
-            return exit_code, False
+        # Create new comment
+        log.info(f"Creating new autorepro comment on issue #{request.target_id}")
+        exit_code = create_issue_comment(
+            request.target_id,
+            request.body,
+            request.config.gh_path,
+            request.config.dry_run,
+        )
+        return exit_code, False
 
     except IssueNotFoundError:
         raise
