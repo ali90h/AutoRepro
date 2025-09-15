@@ -1031,12 +1031,11 @@ class ReplayConfig:
         """Validate replay configuration and raise descriptive errors."""
         # Required field validation
         if not self.from_path:
-            raise FieldValidationError(
-                "from_path is required", field="from_path"
-            )
+            raise FieldValidationError("from_path is required", field="from_path")
 
         # File existence validation
         from pathlib import Path
+
         if not Path(self.from_path).exists():
             raise FieldValidationError(
                 f"input file does not exist: {self.from_path}", field="from_path"
@@ -2250,7 +2249,9 @@ def _parse_jsonl_file(file_path: str) -> list[dict]:
     return run_records
 
 
-def _filter_records_by_indexes(records: list[dict], indexes_str: str | None) -> list[dict]:
+def _filter_records_by_indexes(
+    records: list[dict], indexes_str: str | None
+) -> list[dict]:
     """Filter records by index string like '0,2-3'."""
     if not indexes_str:
         return records
@@ -2376,7 +2377,12 @@ def _create_replay_run_record(
 
 
 def _create_replay_summary_record(  # noqa: PLR0913
-    runs: int, successes: int, failures: int, matches: int, mismatches: int, first_success_index: int | None
+    runs: int,
+    successes: int,
+    failures: int,
+    matches: int,
+    mismatches: int,
+    first_success_index: int | None,
 ) -> dict:
     """Create a replay summary record for JSONL output."""
     return {
@@ -2514,7 +2520,9 @@ def cmd_replay(config: ReplayConfig) -> int:  # noqa: PLR0915, C901, PLR0911, PL
                 return 1
 
         # Log final results
-        log.info(f"Replay completed: {runs} runs, {successes} successes, {matches} matches")
+        log.info(
+            f"Replay completed: {runs} runs, {successes} successes, {matches} matches"
+        )
 
         return 0
 

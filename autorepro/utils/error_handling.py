@@ -295,9 +295,11 @@ def _safe_subprocess_run_impl(
             errno_val == 1 or "not permitted" in str(e).lower()
         ):
             te = subprocess.TimeoutExpired(
-                cmd
-                if isinstance(cmd, list)
-                else (cmd.split() if isinstance(cmd, str) else cmd),
+                (
+                    cmd
+                    if isinstance(cmd, list)
+                    else (cmd.split() if isinstance(cmd, str) else cmd)
+                ),
                 config.timeout,
             )
             error_msg = f"{operation_name} timed out after {config.timeout}s: {cmd_str}"

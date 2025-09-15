@@ -1,13 +1,19 @@
 """Tests for replay command functionality."""
 
 import json
-import os
 import tempfile
 from pathlib import Path
 
 import pytest
 
-from autorepro.cli import ReplayConfig, cmd_replay, _parse_jsonl_file, _filter_records_by_indexes, _create_replay_run_record, _create_replay_summary_record
+from autorepro.cli import (
+    ReplayConfig,
+    _create_replay_run_record,
+    _create_replay_summary_record,
+    _filter_records_by_indexes,
+    _parse_jsonl_file,
+    cmd_replay,
+)
 from autorepro.config.exceptions import FieldValidationError
 
 
@@ -18,8 +24,10 @@ class TestReplayConfig:
         """Test valid replay configuration."""
         with tempfile.TemporaryDirectory() as tmpdir:
             test_file = Path(tmpdir) / "test.jsonl"
-            test_file.write_text('{"type": "run", "index": 0, "cmd": "echo test", "exit_code": 0}\n')
-            
+            test_file.write_text(
+                '{"type": "run", "index": 0, "cmd": "echo test", "exit_code": 0}\n'
+            )
+
             config = ReplayConfig(from_path=str(test_file))
             config.validate()  # Should not raise
 
@@ -39,8 +47,10 @@ class TestReplayConfig:
         """Test validation fails with invalid timeout."""
         with tempfile.TemporaryDirectory() as tmpdir:
             test_file = Path(tmpdir) / "test.jsonl"
-            test_file.write_text('{"type": "run", "index": 0, "cmd": "echo test", "exit_code": 0}\n')
-            
+            test_file.write_text(
+                '{"type": "run", "index": 0, "cmd": "echo test", "exit_code": 0}\n'
+            )
+
             config = ReplayConfig(from_path=str(test_file), timeout=0)
             with pytest.raises(FieldValidationError, match="timeout must be positive"):
                 config.validate()
@@ -49,8 +59,10 @@ class TestReplayConfig:
         """Test valid indexes string parsing."""
         with tempfile.TemporaryDirectory() as tmpdir:
             test_file = Path(tmpdir) / "test.jsonl"
-            test_file.write_text('{"type": "run", "index": 0, "cmd": "echo test", "exit_code": 0}\n')
-            
+            test_file.write_text(
+                '{"type": "run", "index": 0, "cmd": "echo test", "exit_code": 0}\n'
+            )
+
             config = ReplayConfig(from_path=str(test_file), indexes="0,2-4,7")
             result = config._parse_indexes("0,2-4,7")
             expected = [0, 2, 3, 4, 7]
@@ -60,8 +72,10 @@ class TestReplayConfig:
         """Test invalid indexes string parsing."""
         with tempfile.TemporaryDirectory() as tmpdir:
             test_file = Path(tmpdir) / "test.jsonl"
-            test_file.write_text('{"type": "run", "index": 0, "cmd": "echo test", "exit_code": 0}\n')
-            
+            test_file.write_text(
+                '{"type": "run", "index": 0, "cmd": "echo test", "exit_code": 0}\n'
+            )
+
             config = ReplayConfig(from_path=str(test_file), indexes="invalid")
             with pytest.raises(FieldValidationError, match="invalid indexes format"):
                 config.validate()
@@ -74,12 +88,12 @@ class TestJSONLParsing:
         """Test parsing valid JSONL file with run records."""
         with tempfile.TemporaryDirectory() as tmpdir:
             test_file = Path(tmpdir) / "test.jsonl"
-            content = '''{"type": "run", "index": 0, "cmd": "echo test1", "exit_code": 0}
+            content = """{"type": "run", "index": 0, "cmd": "echo test1", "exit_code": 0}
 {"type": "run", "index": 1, "cmd": "echo test2", "exit_code": 1}
 {"type": "summary", "runs": 2}
-'''
+"""
             test_file.write_text(content)
-            
+
             records = _parse_jsonl_file(str(test_file))
             assert len(records) == 2
             assert records[0]["cmd"] == "echo test1"
@@ -90,7 +104,7 @@ class TestJSONLParsing:
         with tempfile.TemporaryDirectory() as tmpdir:
             test_file = Path(tmpdir) / "empty.jsonl"
             test_file.write_text("")
-            
+
             records = _parse_jsonl_file(str(test_file))
             assert records == []
 
@@ -98,11 +112,11 @@ class TestJSONLParsing:
         """Test parsing JSONL file with no run records."""
         with tempfile.TemporaryDirectory() as tmpdir:
             test_file = Path(tmpdir) / "test.jsonl"
-            content = '''{"type": "summary", "runs": 0}
+            content = """{"type": "summary", "runs": 0}
 {"type": "other", "data": "value"}
-'''
+"""
             test_file.write_text(content)
-            
+
             records = _parse_jsonl_file(str(test_file))
             assert records == []
 
@@ -110,12 +124,12 @@ class TestJSONLParsing:
         """Test parsing JSONL file with some invalid JSON lines."""
         with tempfile.TemporaryDirectory() as tmpdir:
             test_file = Path(tmpdir) / "test.jsonl"
-            content = '''{"type": "run", "index": 0, "cmd": "echo test1", "exit_code": 0}
+            content = """{"type": "run", "index": 0, "cmd": "echo test1", "exit_code": 0}
 invalid json line
 {"type": "run", "index": 1, "cmd": "echo test2", "exit_code": 1}
-'''
+"""
             test_file.write_text(content)
-            
+
             records = _parse_jsonl_file(str(test_file))
             assert len(records) == 2
             assert records[0]["cmd"] == "echo test1"
@@ -132,7 +146,7 @@ class TestIndexFiltering:
             {"type": "run", "index": 1, "cmd": "cmd1"},
             {"type": "run", "index": 2, "cmd": "cmd2"},
         ]
-        
+
         filtered = _filter_records_by_indexes(records, "1")
         assert len(filtered) == 1
         assert filtered[0]["cmd"] == "cmd1"
@@ -145,7 +159,7 @@ class TestIndexFiltering:
             {"type": "run", "index": 2, "cmd": "cmd2"},
             {"type": "run", "index": 3, "cmd": "cmd3"},
         ]
-        
+
         filtered = _filter_records_by_indexes(records, "1-2")
         assert len(filtered) == 2
         assert filtered[0]["cmd"] == "cmd1"
@@ -160,7 +174,7 @@ class TestIndexFiltering:
             {"type": "run", "index": 3, "cmd": "cmd3"},
             {"type": "run", "index": 4, "cmd": "cmd4"},
         ]
-        
+
         filtered = _filter_records_by_indexes(records, "0,2-3")
         assert len(filtered) == 3
         assert filtered[0]["cmd"] == "cmd0"
@@ -173,7 +187,7 @@ class TestIndexFiltering:
             {"type": "run", "index": 0, "cmd": "cmd0"},
             {"type": "run", "index": 1, "cmd": "cmd1"},
         ]
-        
+
         filtered = _filter_records_by_indexes(records, "5-7")
         assert filtered == []
 
@@ -183,7 +197,7 @@ class TestIndexFiltering:
             {"type": "run", "index": 0, "cmd": "cmd0"},
             {"type": "run", "index": 1, "cmd": "cmd1"},
         ]
-        
+
         filtered = _filter_records_by_indexes(records, None)
         assert filtered == records
 
@@ -194,7 +208,7 @@ class TestRecordCreation:
     def test_create_replay_run_record(self):
         """Test creation of replay run records."""
         from datetime import datetime
-        
+
         results = {
             "exit_code": 1,
             "duration_ms": 150,
@@ -203,9 +217,9 @@ class TestRecordCreation:
             "stdout_preview": "output",
             "stderr_preview": "error",
         }
-        
+
         record = _create_replay_run_record(2, "test command", 0, results)
-        
+
         assert record["type"] == "run"
         assert record["index"] == 2
         assert record["cmd"] == "test command"
@@ -219,7 +233,7 @@ class TestRecordCreation:
     def test_create_replay_summary_record(self):
         """Test creation of replay summary records."""
         record = _create_replay_summary_record(5, 3, 2, 4, 1, 1)
-        
+
         assert record["type"] == "summary"
         assert record["schema_version"] == 1
         assert record["tool"] == "autorepro"
@@ -240,14 +254,14 @@ class TestReplayExecution:
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create test JSONL file
             test_file = Path(tmpdir) / "test.jsonl"
-            content = '''{"type": "run", "index": 0, "cmd": "echo test1", "exit_code": 0}
+            content = """{"type": "run", "index": 0, "cmd": "echo test1", "exit_code": 0}
 {"type": "run", "index": 1, "cmd": "echo test2", "exit_code": 1}
-'''
+"""
             test_file.write_text(content)
-            
+
             config = ReplayConfig(from_path=str(test_file), dry_run=True)
             result = cmd_replay(config)
-            
+
             assert result == 0
 
     def test_replay_simple_execution(self):
@@ -255,30 +269,30 @@ class TestReplayExecution:
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create test JSONL file
             test_file = Path(tmpdir) / "test.jsonl"
-            content = '''{"type": "run", "index": 0, "cmd": "echo 'success'", "exit_code": 0}
+            content = """{"type": "run", "index": 0, "cmd": "echo 'success'", "exit_code": 0}
 {"type": "run", "index": 1, "cmd": "python -c 'import sys; sys.exit(1)'", "exit_code": 1}
-'''
+"""
             test_file.write_text(content)
-            
+
             # Create output files
             jsonl_file = Path(tmpdir) / "replay.jsonl"
             summary_file = Path(tmpdir) / "summary.json"
-            
+
             config = ReplayConfig(
                 from_path=str(test_file),
                 jsonl_path=str(jsonl_file),
                 summary_path=str(summary_file),
             )
             result = cmd_replay(config)
-            
+
             assert result == 0
             assert jsonl_file.exists()
             assert summary_file.exists()
-            
+
             # Verify JSONL output
-            jsonl_lines = jsonl_file.read_text().strip().split('\n')
+            jsonl_lines = jsonl_file.read_text().strip().split("\n")
             assert len(jsonl_lines) == 3  # 2 run records + 1 summary
-            
+
             # Verify summary
             summary = json.loads(summary_file.read_text())
             assert summary["runs"] == 2
@@ -290,23 +304,23 @@ class TestReplayExecution:
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create test JSONL file
             test_file = Path(tmpdir) / "test.jsonl"
-            content = '''{"type": "run", "index": 0, "cmd": "echo 'cmd0'", "exit_code": 0}
+            content = """{"type": "run", "index": 0, "cmd": "echo 'cmd0'", "exit_code": 0}
 {"type": "run", "index": 1, "cmd": "echo 'cmd1'", "exit_code": 0}
 {"type": "run", "index": 2, "cmd": "echo 'cmd2'", "exit_code": 0}
-'''
+"""
             test_file.write_text(content)
-            
+
             summary_file = Path(tmpdir) / "summary.json"
-            
+
             config = ReplayConfig(
                 from_path=str(test_file),
                 indexes="0,2",
                 summary_path=str(summary_file),
             )
             result = cmd_replay(config)
-            
+
             assert result == 0
-            
+
             # Verify only 2 commands were run
             summary = json.loads(summary_file.read_text())
             assert summary["runs"] == 2
@@ -316,23 +330,23 @@ class TestReplayExecution:
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create test JSONL file - first command fails, second succeeds
             test_file = Path(tmpdir) / "test.jsonl"
-            content = '''{"type": "run", "index": 0, "cmd": "python -c 'import sys; sys.exit(1)'", "exit_code": 1}
+            content = """{"type": "run", "index": 0, "cmd": "python -c 'import sys; sys.exit(1)'", "exit_code": 1}
 {"type": "run", "index": 1, "cmd": "echo 'success'", "exit_code": 0}
 {"type": "run", "index": 2, "cmd": "echo 'should not run'", "exit_code": 0}
-'''
+"""
             test_file.write_text(content)
-            
+
             summary_file = Path(tmpdir) / "summary.json"
-            
+
             config = ReplayConfig(
                 from_path=str(test_file),
                 until_success=True,
                 summary_path=str(summary_file),
             )
             result = cmd_replay(config)
-            
+
             assert result == 0
-            
+
             # Should stop after second command (first success)
             summary = json.loads(summary_file.read_text())
             assert summary["runs"] == 2
@@ -345,12 +359,12 @@ class TestReplayExecution:
         config = ReplayConfig(from_path="/nonexistent/file.jsonl")
         result = cmd_replay(config)
         assert result == 1
-        
+
         # Test with empty JSONL file
         with tempfile.TemporaryDirectory() as tmpdir:
             test_file = Path(tmpdir) / "empty.jsonl"
             test_file.write_text("")
-            
+
             config = ReplayConfig(from_path=str(test_file))
             result = cmd_replay(config)
             assert result == 1
@@ -360,10 +374,10 @@ class TestReplayExecution:
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create test JSONL file
             test_file = Path(tmpdir) / "test.jsonl"
-            content = '''{"type": "run", "index": 0, "cmd": "echo test", "exit_code": 0}
-'''
+            content = """{"type": "run", "index": 0, "cmd": "echo test", "exit_code": 0}
+"""
             test_file.write_text(content)
-            
+
             config = ReplayConfig(from_path=str(test_file), indexes="invalid")
             result = cmd_replay(config)
             assert result == 1
@@ -373,10 +387,10 @@ class TestReplayExecution:
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create test JSONL file
             test_file = Path(tmpdir) / "test.jsonl"
-            content = '''{"type": "run", "index": 0, "cmd": "echo test", "exit_code": 0}
-'''
+            content = """{"type": "run", "index": 0, "cmd": "echo test", "exit_code": 0}
+"""
             test_file.write_text(content)
-            
+
             config = ReplayConfig(from_path=str(test_file), indexes="5-7")
             result = cmd_replay(config)
             assert result == 1
